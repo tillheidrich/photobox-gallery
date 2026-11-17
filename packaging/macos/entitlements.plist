@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Die Kamera hängt am USB-Kabel, aber macOS zählt Tethering zum Kamerazugriff. -->
+  <key>com.apple.security.device.camera</key><true/>
+  <key>com.apple.security.device.usb</key><true/>
+
+  <!-- Das Canon EDSDK ist von Canon signiert, nicht von uns. Unter Hardened
+       Runtime lehnt macOS fremd signierte Bibliotheken sonst ab, und die Box
+       findet ihre Kamera nicht. Diese Ausnahme ist der Grund, warum eine
+       notarisierte Fotobox überhaupt mit dem SDK sprechen kann. -->
+  <key>com.apple.security.cs.disable-library-validation</key><true/>
+
+  <!-- PyInstaller entpackt und führt zur Laufzeit aus; ohne das startet nichts. -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key><true/>
+
+  <!-- Aufnahmen liegen im Datenordner, Ablagen können auf externe Platten zeigen. -->
+  <key>com.apple.security.files.user-selected.read-write</key><true/>
+</dict>
+</plist>

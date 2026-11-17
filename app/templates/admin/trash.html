@@ -1,0 +1,101 @@
+{% extends "layout_admin.html" %}
+{% block title %}Papierkorb{% endblock %}
+{% block page_title %}Papierkorb{% endblock %}
+{% block content %}
+<style>
+  .tr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;list-style:none;margin:0;padding:0}
+  .tr-item{border:1px solid var(--color-border);border-radius:12px;overflow:hidden;background:var(--color-surface);display:flex;flex-direction:column}
+  .tr-thumb{aspect-ratio:4/3;background:var(--color-surface-3);display:grid;place-items:center;color:var(--color-text-2);font-size:.8125rem}
+  .tr-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .tr-meta{padding:8px 10px 0;font-size:.8125rem;line-height:1.4;min-width:0}
+  .tr-meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tr-meta span{color:var(--color-text-2)}
+  .tr-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px}
+  .tr-actions form{margin:0}
+  .tr-actions .btn{width:100%;min-height:44px;justify-content:center}
+  .tr-settings{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end}
+  .tr-settings .form-control{max-width:120px;min-height:44px;font-size:16px}
+  .tr-bulk{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+  .tr-bulk form{margin:0}
+  .tr-bulk .btn{min-height:44px}
+  .tr-empty{padding:28px 8px;text-align:center;color:var(--color-text-2)}
+</style>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Papierkorb</h1>
+    <p class="page-subtitle">Von Hand gelöschte Bilder liegen hier {{ days }} Tage, bevor sie endgültig gelöscht werden.
+      In der Galerie, in ZIPs, Zählern und für Assistenten sind sie sofort weg.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn--secondary" href="{{ url_for('admin.deletions') }}">Löschprotokoll</a></div>
+</div>
+
+<div class="card" style="margin-bottom:var(--sp-6)">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Einstellung</h2></div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('gallery_tools.trash_settings') }}" class="tr-settings">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div>
+        <label class="form-label" for="trDays">Tage im Papierkorb</label>
+        <input class="form-control" id="trDays" name="trash_days" type="number" min="0" max="{{ max_days }}" inputmode="numeric" value="{{ days }}">
+      </div>
+      <label class="gs-check" style="display:flex;gap:8px;align-items:center;min-height:44px">
+        <input type="checkbox" name="trash_guest_deletes" {% if guests_raw %}checked{% endif %}> Auch was Gäste über ihren QR-Code löschen
+      </label>
+      <button class="btn btn--primary" type="submit" style="min-height:44px">Speichern</button>
+    </form>
+    <p class="form-hint" style="margin:10px 0 0">0 heißt: kein Papierkorb, gelöscht ist sofort gelöscht (wie bisher). Empfehlung: 14 Tage.
+      Immer sofort, ohne Papierkorb: „Fotos löschen, Event behalten“, das Löschen eines Events und die Aufbewahrungsfrist.
+      Endgültig gelöscht wird bei der nächsten Wartung nach Ablauf der Tage; erst dann entsteht der Eintrag im Löschprotokoll.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+    <h2 style="font-size:.9375rem;font-weight:600;margin:0">Inhalt{% if event_filter %} (ein Event){% endif %}</h2>
+    <span style="font-size:.8125rem;color:var(--color-text-2)" data-trash-usage>{{ usage.count }} Bilder · {{ usage_h }} belegt</span>
+  </div>
+  <div class="card-body">
+    {% if items %}
+    <div class="tr-bulk">
+      <form method="post" action="{{ url_for('gallery_tools.trash_restore_all') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% if event_filter %}<input type="hidden" name="event" value="{{ event_filter }}">{% endif %}
+        <button class="btn btn--secondary" type="submit">Alle wiederherstellen</button>
+      </form>
+      <form method="post" action="{{ url_for('gallery_tools.trash_empty') }}"
+            onsubmit="return confirm({{ (items|length ~ ' Bilder endgültig löschen? Das lässt sich nicht rückgängig machen.')|tojson|forceescape }})">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% if event_filter %}<input type="hidden" name="event" value="{{ event_filter }}">{% endif %}
+        <input type="hidden" name="confirm_count" value="{{ items|length }}">
+        <button class="btn btn--danger" type="submit">Jetzt endgültig löschen</button>
+      </form>
+      {% if event_filter %}<a class="btn btn--secondary" style="min-height:44px" href="{{ url_for('gallery_tools.trash_page') }}">Alle Events</a>{% endif %}
+    </div>
+    <ul class="tr-grid">
+      {% for it in items %}
+      <li class="tr-item">
+        <div class="tr-thumb">{% if it.thumb_rel %}<img src="{{ url_for('gallery_tools.trash_thumb', entry_id=it.id) }}" alt="" loading="lazy">{% else %}{{ it.kind }}{% endif %}</div>
+        <div class="tr-meta">
+          <b title="{{ it.filename }}">{{ it.filename or ('Bild ' ~ it.media_id) }}</b>
+          <span><a href="{{ url_for('gallery_tools.trash_page', event=it.event_id) }}">{{ it.event_name or 'Event gelöscht' }}</a></span><br>
+          <span>gelöscht {{ it.trashed_h }}{% if it.actor == 'guest' %} vom Gast{% elif it.actor == 'assistant' %} vom Assistenten{% endif %} · {{ it.size_h }}</span><br>
+          <span>endgültig ab {{ it.purge_h }}</span>
+        </div>
+        <div class="tr-actions">
+          <form method="post" action="{{ url_for('gallery_tools.trash_restore', entry_id=it.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% if event_filter %}<input type="hidden" name="event" value="{{ event_filter }}">{% endif %}
+            <button class="btn btn--secondary btn--sm" type="submit">Zurückholen</button>
+          </form>
+          <form method="post" action="{{ url_for('gallery_tools.trash_purge', entry_id=it.id) }}"
+                onsubmit="return confirm('Dieses Bild endgültig löschen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% if event_filter %}<input type="hidden" name="event" value="{{ event_filter }}">{% endif %}
+            <button class="btn btn--secondary btn--sm" type="submit">Löschen</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="tr-empty">Der Papierkorb ist leer.{% if not days %} Er ist zurzeit aus: Gelöschtes ist sofort weg.{% endif %}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

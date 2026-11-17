@@ -1,0 +1,120 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'events' %}
+
+{% block title %}Speicher – {{ event.name }}{% endblock %}
+{% block page_title %}Speicher{% endblock %}
+
+{% block topbar_actions %}
+<a href="/admin/events/{{ event.id }}/edit" class="btn btn--ghost btn--sm">← Zum Event</a>
+{% endblock %}
+
+{% block content %}
+<style>
+  .st-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;margin-bottom:1.25rem}
+  .st-tile{border:1px solid var(--color-border);border-radius:var(--r-lg);padding:1rem;background:var(--color-surface)}
+  .st-label{font-size:.75rem;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.06em}
+  .st-value{font-size:1.4rem;font-weight:700;margin-top:.25rem;font-variant-numeric:tabular-nums}
+  .st-sub{font-size:.78rem;color:var(--color-text-muted);margin-top:.25rem}
+  @media (max-width:768px){.st-sub{font-size:.8125rem}.st-label{font-size:.8125rem}}
+  .st-bar{height:8px;border-radius:99px;background:var(--color-surface-3);overflow:hidden;margin:.5rem 0}
+  .st-bar i{display:block;height:100%;background:var(--color-primary)}
+  .st-bar.is-warning i{background:var(--color-danger)}
+</style>
+
+<div style="max-width:880px">
+  <h1 class="adm-objname" style="font-weight:600;margin-bottom:.75rem">{{ event.name }}</h1>
+
+  <div class="st-grid">
+    <div class="st-tile">
+      <div class="st-label">Dateien</div>
+      <div class="st-value">{{ usage.files }}</div>
+      <div class="st-sub">inkl. versteckter und wartender Aufnahmen</div>
+    </div>
+    <div class="st-tile">
+      <div class="st-label">Web-Fassungen</div>
+      <div class="st-value">{{ human(usage.web_bytes) }}</div>
+      <div class="st-sub">was Gäste sofort sehen</div>
+    </div>
+    <div class="st-tile">
+      <div class="st-label">Originale</div>
+      <div class="st-value">{{ human(usage.original_bytes) }}</div>
+      <div class="st-sub">volle Auflösung aus der Box</div>
+    </div>
+    <div class="st-tile">
+      <div class="st-label">Gesamt</div>
+      <div class="st-value">{{ human(usage.total_bytes) }}</div>
+      <div class="st-sub">Summe aus der Datenbank</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Lokal oder auf dem NAS</h2></div>
+    <div class="card-body">
+      <p style="font-size:.85rem;color:var(--color-text-secondary);margin:0 0 .75rem">
+        Ausgelagerte Originale liegen auf dem NAS und werden beim Download durchgeleitet.
+        Auf dem Server bleibt, was Gäste sofort brauchen.
+      </p>
+      <div class="st-grid" style="margin:0">
+        <div class="st-tile">
+          <div class="st-label">Lokal</div>
+          <div class="st-value">{{ human(usage.local_bytes) }}</div>
+          <div class="st-sub">{{ usage.files - usage.remote_files }} Dateien</div>
+        </div>
+        <div class="st-tile">
+          <div class="st-label">NAS</div>
+          <div class="st-value">{{ human(usage.remote_bytes) }}</div>
+          <div class="st-sub">{{ usage.remote_files }} Dateien</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.25rem" id="fotos-loeschen">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Fotos löschen, Event behalten</h2></div>
+    <div class="card-body">
+      <p style="font-size:.85rem;color:var(--color-text-secondary);margin:0 0 .75rem">
+        Für eine Galerie, die umgezogen ist (z. B. zu Picdrop): Alle Fotos dieses Events gehen —
+        Dateien, Vorschauen, Download-Größen, Originale und ihre Kopie auf dem NAS. Das Event bleibt mit
+        Adresse, alten Adressen, QR-Codes{% if redirect_host %} und der Weiterleitung auf <b>{{ redirect_host }}</b>{% endif %}.
+        Die Löschung steht danach im <a href="/admin/deletions">Löschprotokoll</a>.
+        {% if trash_on() %}Das geht sofort, ohne <a href="/admin/trash?event={{ event.id }}">Papierkorb</a>, und nimmt auch dessen Bilder dieses Events mit.{% endif %}
+      </p>
+      {% if photo_count %}
+      {% set frage = photo_count ~ ' Fotos endgültig löschen? Das Event bleibt bestehen.' %}
+      <form method="post" action="/admin/events/{{ event.id }}/purge-media"
+            onsubmit="return confirm({{ frage|tojson|forceescape }})">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="confirm_count" value="{{ photo_count }}">
+        <button class="btn btn--danger">{{ photo_count }} Fotos löschen, Event behalten</button>
+      </form>
+      {% else %}
+      <p style="font-size:.85rem;margin:0">Dieses Event hat keine Fotos mehr.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Platte des Servers</h2></div>
+    <div class="card-body">
+      {% if disk.ok %}
+      <div class="st-bar {{ 'is-warning' if warning }}"><i style="width:{{ disk.percent_used }}%"></i></div>
+      <p style="font-size:.85rem;margin:0">
+        {{ human(disk.used) }} von {{ human(disk.total) }} belegt ({{ disk.percent_used }} %) ·
+        {{ human(disk.free) }} frei
+      </p>
+      <p style="font-size:.78rem;color:var(--color-text-muted);margin:.35rem 0 0">
+        Alle Events zusammen: {{ human(totals.total_bytes) }} in {{ totals.files }} Dateien.
+        Warnschwelle: {{ warn_percent }} %.
+      </p>
+      {% if warning %}
+      <div class="alert alert--warning" style="margin:.75rem 0 0">
+        Die Platte ist zu {{ disk.percent_used }} % voll. Alte Events archivieren oder Originale auslagern.
+      </div>
+      {% endif %}
+      {% else %}
+      <p style="font-size:.85rem;margin:0;color:var(--color-text-muted)">Plattenbelegung nicht lesbar.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends "layout_admin.html" %}
+{% block title %}Rahmen für Boomerang & Video{% endblock %}
+{% block content %}
+<style>
+  .rf-list{display:flex;flex-wrap:wrap;gap:16px}
+  .rf-item{margin:0;width:150px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.8rem;text-align:center}
+  .rf-item img{max-width:150px;max-height:220px;border-radius:6px;background:#222}
+  .rf-edit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);gap:18px;align-items:start}
+  .rf-edit .form-group{margin-bottom:8px}
+  .rf-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  .rf-preview{position:sticky;top:12px;text-align:center}
+  .rf-preview img{max-width:100%;max-height:70vh;border-radius:8px;background:#222}
+  .rf-msg{font-size:.85rem;margin-top:6px;white-space:pre-wrap}
+  .rf-msg.is-error{color:var(--color-danger,#b42318)}
+  @media (max-width:768px){.rf-edit{grid-template-columns:1fr}.rf-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<div class="page-header">
+  <h1 class="page-title">Rahmen für Boomerang &amp; Video</h1>
+  <p class="page-subtitle">Der Film läuft im Fenster des Rahmens, Hintergrund und Texte drumherum. Zuweisen im Box-Profil (Abschnitt „Rahmen für Boomerang &amp; Video“) oder am Event.</p>
+</div>
+
+<div class="card" style="margin-bottom:18px"><div class="card-body">
+  <h2 style="font-size:1rem;margin-top:0">Eigene Rahmen</h2>
+  {% if eigene %}<div class="rf-list">{% for e in eigene %}
+    <figure class="rf-item"><img src="{{ url_for('admin_booth.frame_picture', ident=e.asset.file) }}" alt="">
+      <figcaption><b>{{ e.frame.name }}</b><br>{{ e.frame.format }} · <code>{{ e.asset.file }}</code><br>
+        <a href="{{ url_for('admin_booth.frames_list', datei=e.asset.file) }}#bauen">Bearbeiten</a>
+        <form method="post" action="{{ url_for('admin_booth.frame_delete') }}" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="datei" value="{{ e.asset.file }}">
+          <button class="btn btn-link" style="padding:0;font-size:.8rem">Löschen</button></form></figcaption></figure>
+  {% endfor %}</div>{% else %}<p style="color:var(--color-text-muted)">Noch keine. Unten einen bauen oder eine JSON-Datei hochladen.</p>{% endif %}
+  <form method="post" action="{{ url_for('admin_booth.assets') }}" enctype="multipart/form-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:14px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="kind" value="motion">
+    <div class="form-group" style="margin:0"><label class="form-label">Rahmen als JSON hochladen</label>
+      <input type="file" name="files" accept=".json" class="form-control"></div>
+    <button class="btn btn-secondary">Hochladen</button>
+  </form>
+  <p style="font-size:.8rem;color:var(--color-text-muted);margin:8px 0 0">Aufbau: <code>docs/VORLAGEN-FORMAT-FUER-KI.md</code>, Abschnitt „Rahmen für Boomerang und Video“. Hintergrundbilder erst unter <a href="{{ url_for('admin_booth.assets') }}">Medien</a> hochladen (Art „Collage-Hintergrund“ oder „Overlay“).</p>
+</div></div>
+
+<div class="card" style="margin-bottom:18px"><div class="card-body">
+  <h2 style="font-size:1rem;margin-top:0">Mitgeliefert</h2>
+  <div class="rf-list">{% for f in mitgeliefert %}
+    <figure class="rf-item"><img src="{{ url_for('admin_booth.frame_picture', ident=f.id) }}" alt="">
+      <figcaption><b>{{ f.name }}</b><br>{{ f.format }} · <code>{{ f.id }}</code><br>
+        <a href="{{ url_for('admin_booth.frames_list', von=f.id) }}#bauen" data-copy="{{ f.id }}">Als Vorlage nehmen</a></figcaption></figure>
+  {% endfor %}</div>
+</div></div>
+
+<div class="card" id="bauen"><div class="card-body">
+  <h2 style="font-size:1rem;margin-top:0">Rahmen bauen</h2>
+  <div class="rf-edit">
+    <form id="rfForm" onsubmit="return false">
+      <div class="rf-row">
+        <div class="form-group" style="grid-column:span 2"><label class="form-label">Name</label><input class="form-control" name="name" value="Eigener Rahmen" maxlength="60"></div>
+        <div class="form-group"><label class="form-label">Format</label><select class="form-control" name="format">{% for k, v in formate.items() %}<option value="{{ k }}">{{ k }} ({{ v[0] }}×{{ v[1] }})</option>{% endfor %}</select></div>
+        <div class="form-group"><label class="form-label">Für</label><select class="form-control" name="modes"><option value="both">Boomerang und Video</option><option value="boomerang">nur Boomerang</option><option value="video">nur Video</option></select></div>
+      </div>
+      <div class="rf-row">
+        <div class="form-group" style="grid-column:span 2"><label class="form-label">Hintergrundbild</label><select class="form-control" name="background_file"><option value="">— Farbe statt Bild —</option>{% for a in bilder %}<option value="{{ a.file }}">{{ a.name }} ({{ a.kind }})</option>{% endfor %}</select></div>
+        <div class="form-group"><label class="form-label">Farbe oben</label><input type="color" class="form-control" name="background" value="#1b1b21"></div>
+        <div class="form-group"><label class="form-label">Farbe unten</label><input type="color" class="form-control" name="background_to" value="#2e2e38"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Overlay über dem Film (PNG mit Transparenz, optional)</label><select class="form-control" name="overlay"><option value="">— keines —</option>{% for a in bilder %}{% if a.file.lower().endswith('.png') %}<option value="{{ a.file }}">{{ a.name }}</option>{% endif %}{% endfor %}</select></div>
+      <p class="form-label" style="margin:.4rem 0">Videofenster (Pixel auf der Fläche)</p>
+      <div class="rf-row">
+        <div class="form-group"><label class="form-label">x</label><input type="number" class="form-control" name="x" value="60"></div>
+        <div class="form-group"><label class="form-label">y</label><input type="number" class="form-control" name="y" value="120"></div>
+        <div class="form-group"><label class="form-label">Breite</label><input type="number" class="form-control" name="w" value="960"></div>
+        <div class="form-group"><label class="form-label">Höhe</label><input type="number" class="form-control" name="h" value="1290"></div>
+        <div class="form-group"><label class="form-label">Ecken</label><input type="number" class="form-control" name="radius" value="36" min="0"></div>
+        <div class="form-group"><label class="form-label">Schatten</label><input type="number" class="form-control" name="shadow" value="24" min="0" max="60"></div>
+        <div class="form-group"><label class="form-label">Linie (px)</label><input type="number" class="form-control" name="border_width" value="0" min="0" max="40"></div>
+        <div class="form-group"><label class="form-label">Linienfarbe</label><input type="color" class="form-control" name="border_color" value="#ffffff"></div>
+      </div>
+      <p class="form-label" style="margin:.4rem 0">Texte ({event_name} = Name des Events, {date} = Datum)</p>
+      <div class="rf-row">
+        <div class="form-group" style="grid-column:span 2"><label class="form-label">Zeile 1</label><input class="form-control" name="t1" value="{event_name}"></div>
+        <div class="form-group"><label class="form-label">y</label><input type="number" class="form-control" name="t1y" value="1446"></div>
+        <div class="form-group"><label class="form-label">Größe</label><input type="number" class="form-control" name="t1s" value="80"></div>
+        <div class="form-group" style="grid-column:span 2"><label class="form-label">Zeile 2</label><input class="form-control" name="t2" value="{date}"></div>
+        <div class="form-group"><label class="form-label">y</label><input type="number" class="form-control" name="t2y" value="1548"></div>
+        <div class="form-group"><label class="form-label">Größe</label><input type="number" class="form-control" name="t2s" value="42"></div>
+        <div class="form-group"><label class="form-label">Ausrichtung</label><select class="form-control" name="align"><option value="center">mittig</option><option value="left">links</option><option value="right">rechts</option></select></div>
+        <div class="form-group"><label class="form-label">x</label><input type="number" class="form-control" name="tx" value="540"></div>
+        <div class="form-group"><label class="form-label">Schrift</label><select class="form-control" name="font"><option value="system">system</option><option value="display">display</option><option value="serif">serif</option></select></div>
+        <div class="form-group"><label class="form-label">Textfarbe</label><input type="color" class="form-control" name="color" value="#ffffff"></div>
+      </div>
+      <details style="margin:.6rem 0"><summary>JSON (wird aus dem Formular geschrieben; Änderungen hier gelten beim Speichern)</summary>
+        <textarea id="rfJson" class="form-control" rows="12" style="font-family:monospace;font-size:.8rem"></textarea></details>
+      <button type="button" class="btn btn-primary" id="rfSave">Speichern</button>
+      <div class="rf-msg" id="rfMsg" role="status"></div>
+    </form>
+    <div class="rf-preview"><img id="rfPic" alt="Vorschau des Rahmens mit Beispielbild"><div class="rf-msg" id="rfPicMsg"></div></div>
+  </div>
+</div></div>
+
+<script>
+(function () {
+  var csrf = {{ csrf_token|tojson }};
+  var start = {{ (vorlage or {})|tojson }};
+  var builtins = {{ mitgeliefert|tojson }};
+  var form = document.getElementById("rfForm"), pic = document.getElementById("rfPic");
+  var json = document.getElementById("rfJson"), jsonTouched = false;
+  var copy = new URLSearchParams(location.search).get("von");
+  if (copy && !start.kind) {
+    var b = builtins.find(function (x) { return x.id === copy; });
+    if (b) { start = JSON.parse(JSON.stringify(b)); delete start.builtin; start.id = ""; start.name = b.name + " (Kopie)"; }
+  }
+  function v(n) { return form.elements[n].value; }
+  function num(n) { return Number(form.elements[n].value) || 0; }
+  function fill(f) {
+    if (!f || !f.kind) return;
+    var e = form.elements, w = f.window || {};
+    e.name.value = f.name || ""; e.format.value = f.format || "9:16";
+    e.modes.value = (f.modes || []).length === 1 ? f.modes[0] : "both";
+    var bg = f.background || "";
+    if (bg.charAt(0) === "#") { e.background.value = bg; e.background_file.value = ""; } else { e.background_file.value = bg; }
+    if (f.background_to) e.background_to.value = f.background_to;
+    e.overlay.value = f.overlay || "";
+    ["x", "y", "w", "h", "radius", "shadow"].forEach(function (k) { e[k].value = w[k] || 0; });
+    e.border_width.value = (w.border || {}).width || 0; e.border_color.value = (w.border || {}).color || "#ffffff";
+    var t = f.texts || [];
+    e.t1.value = t[0] ? t[0].value : ""; e.t1y.value = t[0] ? t[0].y : 0; e.t1s.value = t[0] ? t[0].size : 60;
+    e.t2.value = t[1] ? t[1].value : ""; e.t2y.value = t[1] ? t[1].y : 0; e.t2s.value = t[1] ? t[1].size : 40;
+    if (t[0]) { e.align.value = t[0].align || "center"; e.tx.value = t[0].x; e.font.value = t[0].font || "system"; e.color.value = t[0].color && t[0].color.charAt(0) === "#" ? t[0].color : "#ffffff"; }
+    form.dataset.id = f.id || "";
+  }
+  function build() {
+    var bgFile = v("background_file");
+    var text = function (val, y, size, bold) {
+      return val ? { value: val, x: num("tx"), y: y, size: size, bold: bold, align: v("align"), color: v("color"), font: v("font") } : null;
+    };
+    var w = { x: num("x"), y: num("y"), w: num("w"), h: num("h"), radius: num("radius"), shadow: num("shadow") };
+    if (num("border_width")) w.border = { width: num("border_width"), color: v("border_color") };
+    var f = { kind: "motion_frame", name: v("name"), format: v("format"),
+      modes: v("modes") === "both" ? ["boomerang", "video"] : [v("modes")],
+      background: bgFile || v("background"), window: w,
+      texts: [text(v("t1"), num("t1y"), num("t1s"), true), text(v("t2"), num("t2y"), num("t2s"), false)].filter(Boolean) };
+    if (form.dataset.id) f.id = form.dataset.id;
+    if (!bgFile) f.background_to = v("background_to");
+    if (v("overlay")) f.overlay = v("overlay");
+    return f;
+  }
+  function current() {
+    if (jsonTouched) { try { return JSON.parse(json.value); } catch (e) { return null; } }
+    return build();
+  }
+  var timer = 0, seq = 0;
+  function refresh() {
+    if (!jsonTouched) json.value = JSON.stringify(build(), null, 1);
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      var f = current(), mine = ++seq, msg = document.getElementById("rfPicMsg");
+      if (!f) { msg.textContent = "Das JSON ist nicht lesbar."; msg.className = "rf-msg is-error"; return; }
+      fetch({{ url_for('admin_booth.frame_preview')|tojson }}, { method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(f) })
+        .then(function (r) { return r.ok ? r.blob() : r.json().then(function (j) { throw new Error(j.error || r.status); }); })
+        .then(function (blob) { if (mine !== seq) return; pic.src = URL.createObjectURL(blob); msg.textContent = ""; msg.className = "rf-msg"; })
+        .catch(function (e) { if (mine !== seq) return; msg.textContent = e.message; msg.className = "rf-msg is-error"; });
+    }, 250);
+  }
+  form.addEventListener("input", function () { jsonTouched = false; refresh(); });
+  json.addEventListener("input", function () { jsonTouched = true; refresh(); });
+  document.getElementById("rfSave").addEventListener("click", function () {
+    var f = current(), msg = document.getElementById("rfMsg");
+    if (!f) { msg.textContent = "Das JSON ist nicht lesbar."; msg.className = "rf-msg is-error"; return; }
+    fetch({{ url_for('admin_booth.frame_save')|tojson }}, { method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(f) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); })
+      .then(function (j) {
+        form.dataset.id = j.frame.id;
+        msg.className = "rf-msg";
+        msg.textContent = "Gespeichert als " + j.file + "." + (j.hints.length ? "\n" + j.hints.join("\n") : "") +
+          "\nJetzt im Box-Profil oder am Event zuweisen.";
+      })
+      .catch(function (e) { msg.textContent = e.message; msg.className = "rf-msg is-error"; });
+  });
+  fill(start);
+  refresh();
+})();
+</script>
+{% endblock %}

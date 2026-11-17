@@ -1,0 +1,107 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}Rechtliches – Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'legal' %}
+{% set settings_subtitle = 'Impressum und Datenschutzerklärung' %}
+{% include 'admin/settings/_tabs.html' %}
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div class="settings-section" style="max-width:860px">
+    {% if legal_status %}
+    <div class="alert alert--error legal-unfinished" style="margin-bottom:var(--sp-6)">
+      <strong>{{ t('admin.legal.unfinished_title') }}</strong>
+      {% for kind, found in legal_status.items() %}
+      <p style="margin:.4rem 0 0">{{ 'Impressum' if kind == 'impressum' else 'Datenschutzerklärung' }}: {{ found|join(', ') }}</p>
+      {% endfor %}
+      <p style="margin:.4rem 0 0">{{ t('admin.legal.unfinished_desc') }}</p>
+    </div>
+    {% endif %}
+    <div class="alert alert--info" style="margin-bottom:var(--sp-6)">
+      {{ t('admin.legal.intro') }}
+      <a href="/impressum" target="_blank" rel="noopener">/impressum</a> · <a href="/datenschutz" target="_blank" rel="noopener">/datenschutz</a>
+    </div>
+
+    <h2 class="settings-section-title">{{ t('admin.legal.facts_title') }}</h2>
+    <p class="settings-section-desc">{{ t('admin.legal.facts_desc') }}</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="legal_role">{{ t('admin.legal.role') }}</label>
+          <select id="legal_role" name="legal_role" class="form-control">
+            <option value="controller" {% if settings.legal_role != 'processor' %}selected{% endif %}>{{ t('admin.legal.role_controller') }}</option>
+            <option value="processor" {% if settings.legal_role == 'processor' %}selected{% endif %}>{{ t('admin.legal.role_processor') }}</option>
+          </select>
+        </div>
+        {% set legal_fields = [
+          ('legal_operator', t('admin.legal.legal_operator'), t('admin.legal.legal_operator_hint')),
+          ('legal_address', t('admin.legal.legal_address'), t('admin.legal.legal_address_hint')),
+          ('legal_contact_email', t('admin.legal.legal_contact_email'), t('admin.legal.legal_contact_email_hint')),
+          ('legal_phone', t('admin.legal.legal_phone'), t('admin.legal.legal_phone_hint')),
+          ('legal_register', t('admin.legal.legal_register'), t('admin.legal.legal_register_hint')),
+          ('legal_tax', t('admin.legal.legal_tax'), t('admin.legal.legal_tax_hint')),
+          ('legal_editorial', t('admin.legal.legal_editorial'), t('admin.legal.legal_editorial_hint')),
+          ('legal_dispute', t('admin.legal.legal_dispute'), t('admin.legal.legal_dispute_hint')),
+          ('legal_principal', t('admin.legal.legal_principal'), t('admin.legal.legal_principal_hint')),
+          ('legal_hoster', t('admin.legal.legal_hoster'), t('admin.legal.legal_hoster_hint')),
+          ('legal_external_storage', t('admin.legal.legal_external_storage'), t('admin.legal.legal_external_storage_hint')),
+          ('legal_mail_provider', t('admin.legal.legal_mail_provider'), t('admin.legal.legal_mail_provider_hint')),
+          ('legal_authority', t('admin.legal.legal_authority'), t('admin.legal.legal_authority_hint')),
+          ('legal_server_logs', t('admin.legal.legal_server_logs'), t('admin.legal.legal_server_logs_hint')),
+          ('legal_assistant', t('admin.legal.legal_assistant'), t('admin.legal.legal_assistant_hint')),
+        ] %}
+        {% for key, label, hint in legal_fields %}
+        <div class="form-group">
+          <label class="form-label" for="{{ key }}">{{ label }}</label>
+          <input type="text" id="{{ key }}" name="{{ key }}" class="form-control" maxlength="500"
+                 value="{{ settings[key] or '' }}">
+          <p class="form-hint">{{ hint }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <h2 class="settings-section-title">Impressum</h2>
+    <p class="settings-section-desc">{{ t('admin.legal.own_text_desc', path='/impressum') }}</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <textarea name="impressum_text" class="form-control" rows="12"
+                    style="font-family:var(--font-mono); font-size:0.8rem"
+                    placeholder="leer = Vorlage aus den Angaben oben">{{ settings.impressum_text or '' }}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="impressum_text_en">Impressum (englisch)</label>
+          <textarea id="impressum_text_en" name="impressum_text_en" class="form-control" rows="12"
+                    placeholder="leer = deutsche Fassung">{{ settings.impressum_text_en or '' }}</textarea>
+          <p class="form-hint">Wird gezeigt, solange die Seite auf Englisch steht. Fehlt sie, gilt die deutsche Fassung.</p>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="settings-section-title">Datenschutzerklärung</h2>
+    <p class="settings-section-desc">{{ t('admin.legal.own_text_desc', path='/datenschutz') }}</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <textarea name="datenschutz_text" class="form-control" rows="12"
+                    style="font-family:var(--font-mono); font-size:0.8rem"
+                    placeholder="leer = Vorlage aus den Angaben oben (mit der Löschfrist der jeweiligen Galerie)">{{ settings.datenschutz_text or '' }}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="datenschutz_text_en">Datenschutzerklärung (englisch)</label>
+          <textarea id="datenschutz_text_en" name="datenschutz_text_en" class="form-control" rows="12"
+                    placeholder="leer = deutsche Fassung">{{ settings.datenschutz_text_en or '' }}</textarea>
+          <p class="form-hint">Wird gezeigt, solange die Seite auf Englisch steht. Fehlt sie, gilt die deutsche Fassung.</p>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn--primary">Texte speichern</button>
+  </div>
+</form>
+{% endblock %}

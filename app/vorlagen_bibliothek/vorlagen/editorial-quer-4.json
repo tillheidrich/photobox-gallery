@@ -1,0 +1,207 @@
+{
+ "id": "editorial-quer-4",
+ "name": "Editorial Schwarz-Weiß · quer · 4 Fotos",
+ "paper": "10x15-quer",
+ "canvas": [
+  1800,
+  1200
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 792,
+   "h": 388,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  },
+  {
+   "x": 912,
+   "y": 96,
+   "w": 792,
+   "h": 388,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-2"
+  },
+  {
+   "x": 96,
+   "y": 508,
+   "w": 792,
+   "h": 388,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-3"
+  },
+  {
+   "x": 912,
+   "y": 508,
+   "w": 792,
+   "h": 388,
+   "shot": 3,
+   "radius": 0,
+   "id": "foto-4"
+  }
+ ],
+ "texts": [
+  {
+   "x": 160,
+   "y": 990,
+   "size": 36,
+   "bold": false,
+   "align": "center",
+   "value": "A & B",
+   "color": "#141414",
+   "id": "mono",
+   "font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 900,
+   "y": 950,
+   "size": 84,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#141414",
+   "id": "t1",
+   "font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 1704,
+   "y": 988,
+   "size": 38,
+   "bold": false,
+   "align": "right",
+   "value": "{date}",
+   "color": "#4d4d4d",
+   "id": "datum",
+   "font": "CormorantSC-SemiBold.ttf"
+  }
+ ],
+ "shots": 4,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1800,
+   "h": 1200,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 92,
+   "y": 92,
+   "w": 800,
+   "h": 396,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-1"
+  },
+  {
+   "kind": "rect",
+   "x": 908,
+   "y": 92,
+   "w": 800,
+   "h": 396,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-2"
+  },
+  {
+   "kind": "rect",
+   "x": 92,
+   "y": 504,
+   "w": 800,
+   "h": 396,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-3"
+  },
+  {
+   "kind": "rect",
+   "x": 908,
+   "y": 504,
+   "w": 800,
+   "h": 396,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-4"
+  },
+  {
+   "kind": "ellipse",
+   "x": 100,
+   "y": 952,
+   "w": 120,
+   "h": 120,
+   "fill": "",
+   "stroke": "#141414",
+   "stroke_width": 3,
+   "opacity": 100,
+   "id": "form-5"
+  },
+  {
+   "kind": "line",
+   "x": 246,
+   "y": 1009,
+   "w": 110,
+   "h": 6,
+   "fill": "",
+   "stroke": "#141414",
+   "stroke_width": 3,
+   "opacity": 100,
+   "id": "form-6"
+  },
+  {
+   "kind": "line",
+   "x": 1334,
+   "y": 1009,
+   "w": 110,
+   "h": 6,
+   "fill": "",
+   "stroke": "#141414",
+   "stroke_width": 3,
+   "opacity": 100,
+   "id": "form-7"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "form-1",
+  "form-2",
+  "form-3",
+  "form-4",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "foto-4",
+  "form-5",
+  "form-6",
+  "form-7",
+  "mono",
+  "t1",
+  "datum"
+ ]
+}

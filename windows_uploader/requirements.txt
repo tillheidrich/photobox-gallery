@@ -1,0 +1,3 @@
+requests>=2.32.0
+# Nur nötig, wenn das optionale Datei-Backup (backup.enabled=true) genutzt wird:
+paramiko>=3.4.0

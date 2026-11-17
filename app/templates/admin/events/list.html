@@ -1,0 +1,159 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'events' %}
+
+{% block title %}Events – Photobox Gallery Admin{% endblock %}
+{% block page_title %}Events{% endblock %}
+
+{% block topbar_actions %}
+<a href="/admin/events/new" class="btn btn--primary btn--sm">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+  Neues Event
+</a>
+{% endblock %}
+
+{% block content %}
+{% if not events %}
+<div class="card">
+  <div class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+      <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
+    </svg>
+    <h3>Noch keine Events</h3>
+    <p>Erstelle dein erstes Event, verbinde deine Fotobox und lade Fotos hoch.</p>
+    <a href="/admin/events/new" class="btn btn--primary">Erstes Event erstellen</a>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  {% for event in events %}
+  <div class="event-list-item">
+    <div class="event-list-cover">
+      {% if event.cover_url %}
+        <img src="{{ event.cover_url }}" alt="" loading="lazy">
+      {% else %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="m21 15-5-5L5 21"/>
+        </svg>
+      {% endif %}
+    </div>
+
+    <div class="event-list-info">
+      <h2 class="event-list-title">
+        <span class="event-list-name">
+          {% if event.parent_name %}<small style="color:var(--color-text-muted)">{{ event.parent_name }} /</small>{% endif %}
+          <a href="/admin/events/{{ event.id }}/edit">{{ event.name }}</a>
+          {% if event.featured %}<span class="event-list-star" title="Dieses Event ist hervorgehoben" aria-label="Hervorgehoben">★</span>{% endif %}
+        </span>
+      </h2>
+      <div class="event-list-meta">
+        {% if event.state == 'scheduled' %}
+          <span class="badge badge--amber" title="Geht automatisch live">Geplant{% if event.live_at %} · {{ event.live_at }}{% endif %}</span>
+        {% elif event.state == 'expired' %}
+          <span class="badge badge--gray" title="Ablaufdatum erreicht">Abgelaufen{% if event.expires_at %} · {{ event.expires_at }}{% endif %}</span>
+        {% else %}
+          <span class="badge {% if event.published %}badge-success{% else %}badge-secondary{% endif %}">
+            {% if event.published %}Live{% else %}Entwurf{% endif %}
+          </span>
+        {% endif %}
+        {% if event.date %}<span>{{ event.date }}</span>{% endif %}
+        <span>{{ event.photo_count }} Foto{{ 's' if event.photo_count != 1 else '' }}</span>
+        {% if event.state not in ('scheduled', 'expired') %}
+          {% if event.expires_at %}<span class="text-xs text-muted" title="Verfügbar bis">bis {{ event.expires_at }}</span>{% endif %}
+          {% set fate = event.get('fate') or {} %}
+          {% if fate.get('deadline') %}<span class="text-xs text-muted" title="{{ t('kind.fate_date', date=fate.deadline) }}">{{ t('kind.list_until', date=fate.deadline) }}</span>
+          {% elif fate and not fate.get('auto') %}<span class="text-xs text-muted" title="{{ t('kind.fate_stays') }}">{{ t('kind.list_stays') }}</span>{% endif %}
+        {% endif %}
+        {% if event.redirect_host %}
+          <span class="badge badge--amber" title="Gäste landen auf dieser Adresse">leitet weiter auf {{ event.redirect_host }}</span>
+        {% endif %}
+        {% if event.pending %}
+          <a href="/admin/events/{{ event.id }}/review" class="badge badge--blue" style="text-decoration:none">{{ event.pending }} zu prüfen</a>
+        {% endif %}
+        <span class="text-xs text-muted">{{ event.storage_h }}</span>
+        <span class="text-xs text-muted event-list-slug">/{{ event.slug }}</span>
+      </div>
+    </div>
+
+    {#- On a desk: icons in a row. On a phone: "Bearbeiten" and "Galerie" with
+        words, the rest behind "Mehr", so nothing runs off the card. -#}
+    <div class="event-list-actions">
+      <form method="post" action="/admin/events/{{ event.id }}/toggle-featured" style="display:inline;" class="adm-desk-only">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn--ghost btn--sm" title="{% if event.featured %}Nicht hervorgehoben{% else %}Hervorheben{% endif %}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="{% if event.featured %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 10.26 24 10.5 17.55 16.16 19.98 24.5 12 18.92 4.02 24.5 6.45 16.16 0 10.5 8.91 10.26"/>
+          </svg>
+        </button>
+      </form>
+      {#- Picdrop's "Vorschau": the gallery as guests see it, also as a draft or
+          with a password (public.gallery?ansicht=vorschau). -#}
+      <a href="/gallery/{{ event.slug }}?ansicht=vorschau" class="btn btn--ghost btn--sm event-list-preview"
+         title="{{ t('preview.admin_hint') }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span class="adm-phone-label">{{ t('preview.admin_button') }}</span>
+      </a>
+      {% if event.published %}
+      <a href="/gallery/{{ event.slug }}" target="_blank"
+         class="btn btn--ghost btn--sm" title="Galerie öffnen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        <span class="adm-phone-label">Galerie</span>
+      </a>
+      <a href="/kiosk/{{ event.slug }}" target="_blank"
+         class="btn btn--ghost btn--sm adm-desk-only" title="Kiosk-Seite">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+      </a>
+      {% endif %}
+      <a href="/admin/events/{{ event.id }}/storage" class="btn btn--ghost btn--sm adm-desk-only" title="Speicher">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <ellipse cx="12" cy="6" rx="9" ry="3"/><path d="M3 6v12c0 1.66 4.03 3 9 3s9-1.34 9-3V6"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+        </svg>
+      </a>
+      {% with pe = event, back = 'list' %}{% include "admin/events/_publish_button.html" %}{% endwith %}
+      <a href="/admin/events/{{ event.id }}/edit" class="btn btn--secondary btn--sm event-list-edit">Bearbeiten</a>
+      <form method="post" action="/admin/events/{{ event.id }}/delete" class="adm-desk-only"
+            onsubmit="return confirm({{ ('Event «' ~ event.name ~ '» und alle Fotos löschen?')|tojson|forceescape }})">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn--ghost btn--sm"
+                style="color:var(--color-danger)" title="Löschen">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
+      </form>
+      <details class="adm-more adm-phone-only">
+        <summary class="btn btn--ghost btn--sm">Mehr<span class="sr-only"> zu {{ event.name }}</span></summary>
+        <div class="adm-more-menu">
+          {% if event.published %}
+          <a class="adm-more-item" href="/kiosk/{{ event.slug }}" target="_blank">Kiosk-Seite öffnen</a>
+          {% endif %}
+          <a class="adm-more-item" href="/admin/events/{{ event.id }}/storage">Speicher ansehen</a>
+          <form method="post" action="/admin/events/{{ event.id }}/toggle-featured">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="adm-more-item">{% if event.featured %}Nicht mehr hervorheben{% else %}Hervorheben{% endif %}</button>
+          </form>
+          <form method="post" action="/admin/events/{{ event.id }}/delete"
+                onsubmit="return confirm({{ ('Event «' ~ event.name ~ '» und alle Fotos löschen?')|tojson|forceescape }})">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="adm-more-item adm-more-item--danger">Event löschen</button>
+          </form>
+        </div>
+      </details>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

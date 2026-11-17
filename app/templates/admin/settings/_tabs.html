@@ -1,0 +1,28 @@
+{# Gemeinsamer Kopf + Tab-Leiste für alle Einstellungen-Seiten.
+   Aufruf:  {% set active_tab = 'homepage' %}
+            {% set settings_subtitle = '…' %}
+            {% include 'admin/settings/_tabs.html' %}
+   Fällt auf die vom Handler übergebene Variable `tab` zurück. #}
+{% set _tab = active_tab if active_tab is defined else (tab if tab is defined else '') %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Einstellungen</h1>
+    <p class="page-subtitle">{{ settings_subtitle if settings_subtitle is defined else 'System und Account konfigurieren' }}</p>
+  </div>
+</div>
+
+<nav class="settings-tabs" aria-label="Einstellungen">
+  <a href="/admin/settings"                class="settings-tab {{ 'active' if _tab == 'account' }}"{% if _tab == 'account' %} aria-current="page"{% endif %}>Account &amp; Logo</a>
+  <a href="/admin/settings/homepage"       class="settings-tab {{ 'active' if _tab == 'homepage' }}"{% if _tab == 'homepage' %} aria-current="page"{% endif %}>Startseite</a>
+  <a href="/admin/settings/tracking"       class="settings-tab {{ 'active' if _tab == 'tracking' }}"{% if _tab == 'tracking' %} aria-current="page"{% endif %}>Tracking</a>
+  <a href="/admin/settings/mail"           class="settings-tab {{ 'active' if _tab == 'mail' }}"{% if _tab == 'mail' %} aria-current="page"{% endif %}>E-Mail</a>
+  <a href="/admin/settings/notifications"  class="settings-tab {{ 'active' if _tab == 'notifications' }}"{% if _tab == 'notifications' %} aria-current="page"{% endif %}>Benachrichtigungen</a>
+  <a href="/admin/settings/legal"          class="settings-tab {{ 'active' if _tab == 'legal' }}"{% if _tab == 'legal' %} aria-current="page"{% endif %}>Rechtliches</a>
+  <a href="/admin/settings/faq"            class="settings-tab {{ 'active' if _tab == 'faq' }}"{% if _tab == 'faq' %} aria-current="page"{% endif %}>FAQ</a>
+  <a href="/admin/settings/eingang"        class="settings-tab {{ 'active' if _tab == 'eingang' }}"{% if _tab == 'eingang' %} aria-current="page"{% endif %}>Eingang</a>
+  <a href="/admin/settings/bewertungen"    class="settings-tab {{ 'active' if _tab == 'bewertungen' }}"{% if _tab == 'bewertungen' %} aria-current="page"{% endif %}>Bewertungen</a>
+  <a href="/admin/settings/galerie"        class="settings-tab {{ 'active' if _tab == 'galerie' }}"{% if _tab == 'galerie' %} aria-current="page"{% endif %}>Galerie-Vorgaben</a>
+  <a href="/admin/settings/qr"             class="settings-tab {{ 'active' if _tab == 'qr' }}"{% if _tab == 'qr' %} aria-current="page"{% endif %}>QR &amp; Sharepic</a>
+  <a href="/admin/settings/mcp"            class="settings-tab {{ 'active' if _tab == 'mcp' }}"{% if _tab == 'mcp' %} aria-current="page"{% endif %}>Assistenten-Zugang (MCP)</a>
+  <a href="/admin/settings/assistants"     class="settings-tab {{ 'active' if _tab == 'assistants' }}"{% if _tab == 'assistants' %} aria-current="page"{% endif %}>{{ t('oauth.admin.title') }}</a>
+</nav>

@@ -1,0 +1,77 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    # Loopback only: the gallery is meant to sit behind a reverse proxy
+    # (Traefik in Coolify, Caddy, nginx) that terminates TLS. Publishing the
+    # port on all interfaces would let anyone bypass the proxy. For a NAS in
+    # the home network use docker-compose.nas.yml (docs/INSTALL-NAS.md).
+    ports:
+      - "127.0.0.1:${PORT:-5000}:5000"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATA_DIR=/data
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      # The gallery's public address. Reset mails and pairing codes are only
+      # built from it (or from a host in ALLOWED_HOSTS); without it they are refused.
+      - BASE_URL=${BASE_URL:-}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
+      # Opt-in: set TRUST_PROXY=1 only when a reverse proxy is the only way
+      # in (Coolify/Traefik). Otherwise X-Forwarded-For could be forged.
+      - TRUST_PROXY=${TRUST_PROXY:-0}
+      # Optional legacy ENV fallbacks (can also be set in admin UI):
+      - TG_TOKEN=${TG_TOKEN:-}
+      - TG_CHAT_ID=${TG_CHAT_ID:-}
+      - DISCORD_WEBHOOK=${DISCORD_WEBHOOK:-}
+      # NAS offload: the pruner moves originals away, the web service streams
+      # them back on download — both need the same settings, or a download of
+      # an offloaded original answers 503 (README, "Originals on a NAS").
+      - ORIGINALS_BACKEND=${ORIGINALS_BACKEND:-local}
+      - ORIGINALS_SFTP_HOST=${ORIGINALS_SFTP_HOST:-}
+      - ORIGINALS_SFTP_USER=${ORIGINALS_SFTP_USER:-}
+      - ORIGINALS_SFTP_KEY=${ORIGINALS_SFTP_KEY:-}
+      - ORIGINALS_SFTP_PATH=${ORIGINALS_SFTP_PATH:-/photobox}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/healthz')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  pruner:
+    build: .
+    restart: unless-stopped
+    # A literal block keeps the line breaks Python needs. Until 15.11.2026
+    # this was a plain multi-line scalar, which is not valid YAML (strict
+    # parsers such as `docker compose config` refuse the file), and it called
+    # db.prune_expired_media(), which does not exist. Retention itself runs in
+    # the gallery's daily maintenance; this loop only offloads originals.
+    command:
+      - python
+      - -c
+      - |
+        import time
+        from app import create_app, storage
+        app = create_app()
+        with app.app_context():
+            while True:
+                try:
+                    print("NAS-Auslagerung:", storage.offload_pending(), flush=True)
+                except Exception as e:
+                    print(f"Offload error: {e}", flush=True)
+                time.sleep(600)
+    volumes:
+      - ./data:/data
+    environment:
+      - DATA_DIR=/data
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ORIGINALS_BACKEND=${ORIGINALS_BACKEND:-local}
+      - ORIGINALS_SFTP_HOST=${ORIGINALS_SFTP_HOST:-}
+      - ORIGINALS_SFTP_USER=${ORIGINALS_SFTP_USER:-}
+      - ORIGINALS_SFTP_KEY=${ORIGINALS_SFTP_KEY:-}
+      - ORIGINALS_SFTP_PATH=${ORIGINALS_SFTP_PATH:-/photobox}
+    depends_on:
+      - web

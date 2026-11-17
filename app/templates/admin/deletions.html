@@ -1,0 +1,85 @@
+{% extends "layout_admin.html" %}
+{% block title %}Löschprotokoll{% endblock %}
+{% block page_title %}Löschprotokoll{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Löschprotokoll</h1>
+    <p class="page-subtitle">Der Nachweis, dass gelöscht wurde: Zeitpunkt, Umfang, Grund, Veranlasser.
+      Keine Bilder und keine Namen — Kennungen, Zahlen, Zeitpunkte.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn--secondary" href="/admin/trash">Papierkorb{% if trash_on() %} (an){% endif %}</a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.deletions_csv', reason=reason, event=event_slug) }}">Als CSV</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--sp-6)">
+  <div class="card-body">
+    <dl class="about-facts" style="margin:0">
+      <dt>Letzte 30 Tage</dt>
+      <dd>{{ summary.runs }} Löschvorgänge · {{ summary.files }} Dateien ·
+          {{ (summary.bytes / 1048576) | round(1) }} MB</dd>
+      {% if summary.by_reason %}
+      <dt>Gründe</dt>
+      <dd>{% for key, count in summary.by_reason.items() %}{{ reasons.get(key, key) }} ({{ count }}){% if not loop.last %} · {% endif %}{% endfor %}</dd>
+      {% endif %}
+    </dl>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--sp-6)">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Fällige Aufbewahrung</h2></div>
+  <div class="card-body">
+    {% if due %}
+      <p class="form-hint" style="margin-top:0">Diese Galerien haben ihre Aufbewahrungsdauer überschritten und liegen noch auf der Platte:</p>
+      <ul>
+        {% for e in due %}<li><strong>{{ e.name }}</strong> ({{ e.slug }}) — fällig seit {{ e.deadline }}</li>{% endfor %}
+      </ul>
+      <form method="post" action="{{ url_for('admin.deletions_sweep') }}"
+            onsubmit="return confirm('Alle Aufnahmen der fälligen Galerien werden gelöscht. Das lässt sich nicht rückgängig machen.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn--primary" type="submit">Jetzt löschen</button>
+      </form>
+    {% else %}
+      <p style="margin:0">Nichts fällig. Die geplante Aufgabe räumt automatisch ab; hier steht nur, was übrig bleibt.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Einträge</h2></div>
+  <div class="card-body">
+    <form method="get" class="row" style="margin-bottom:1rem;display:flex;gap:12px;flex-wrap:wrap">
+      <select name="reason" class="form-control" style="max-width:280px" onchange="this.form.submit()">
+        <option value="">alle Gründe</option>
+        {% for key, label in reasons.items() %}
+        <option value="{{ key }}" {% if reason == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <input class="form-control" name="event" value="{{ event_slug }}" placeholder="Event-Kürzel" style="max-width:240px">
+      <button class="btn btn--secondary" type="submit">Filtern</button>
+    </form>
+    {% if rows %}
+    <table class="table table--stack">
+      <thead><tr><th>Zeitpunkt (UTC)</th><th>Umfang</th><th>Event</th><th>Durchgang</th>
+                 <th>Dateien</th><th>Grund</th><th>Veranlasst von</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="td-main" style="white-space:nowrap">{{ r.at }}</td>
+          <td data-label="Umfang">{{ r.scope }}</td>
+          <td data-label="Event">{{ r.event_slug or '—' }}</td>
+          <td data-label="Durchgang"><code>{{ r.session_uid or '—' }}</code></td>
+          <td data-label="Dateien"><span>{{ r.files }}{% if r.bytes %} <small>({{ (r.bytes / 1048576) | round(1) }} MB)</small>{% endif %}</span></td>
+          <td data-label="Grund">{{ reasons.get(r.reason, r.reason) }}</td>
+          <td data-label="Veranlasst von"><span>{{ r.actor }}{% if r.note %} <small>· {{ r.note }}</small>{% endif %}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="margin:0">Noch nichts gelöscht — oder der Filter passt auf nichts.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

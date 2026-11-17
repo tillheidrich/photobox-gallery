@@ -1,0 +1,1475 @@
+{
+ "format": 1,
+ "familien": [
+  {
+   "id": "gruen",
+   "nummer": 1,
+   "name": "Grün & Gold",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "gruen-quer-1.json",
+     "id": "gruen-quer-1",
+     "name": "Grün & Gold · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "gruen-quer-1.jpg"
+    },
+    {
+     "datei": "gruen-hoch-1.json",
+     "id": "gruen-hoch-1",
+     "name": "Grün & Gold · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "gruen-hoch-1.jpg"
+    },
+    {
+     "datei": "gruen-quer-3.json",
+     "id": "gruen-quer-3",
+     "name": "Grün & Gold · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "gruen-quer-3.jpg"
+    },
+    {
+     "datei": "gruen-quer-4.json",
+     "id": "gruen-quer-4",
+     "name": "Grün & Gold · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "gruen-quer-4.jpg"
+    },
+    {
+     "datei": "gruen-hoch-4.json",
+     "id": "gruen-hoch-4",
+     "name": "Grün & Gold · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "gruen-hoch-4.jpg"
+    },
+    {
+     "datei": "gruen-quer-6.json",
+     "id": "gruen-quer-6",
+     "name": "Grün & Gold · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "gruen-quer-6.jpg"
+    },
+    {
+     "datei": "gruen-hoch-6.json",
+     "id": "gruen-hoch-6",
+     "name": "Grün & Gold · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "gruen-hoch-6.jpg"
+    },
+    {
+     "datei": "gruen-streifen-3.json",
+     "id": "gruen-streifen-3",
+     "name": "Grün & Gold · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "gruen-streifen-3.jpg"
+    },
+    {
+     "datei": "gruen-streifen-4.json",
+     "id": "gruen-streifen-4",
+     "name": "Grün & Gold · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "gruen-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "schrift",
+   "nummer": 2,
+   "name": "Schrift auf Weiß",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "schrift-quer-1.json",
+     "id": "schrift-quer-1",
+     "name": "Schrift auf Weiß · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "schrift-quer-1.jpg"
+    },
+    {
+     "datei": "schrift-hoch-1.json",
+     "id": "schrift-hoch-1",
+     "name": "Schrift auf Weiß · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "schrift-hoch-1.jpg"
+    },
+    {
+     "datei": "schrift-quer-3.json",
+     "id": "schrift-quer-3",
+     "name": "Schrift auf Weiß · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "schrift-quer-3.jpg"
+    },
+    {
+     "datei": "schrift-quer-4.json",
+     "id": "schrift-quer-4",
+     "name": "Schrift auf Weiß · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "schrift-quer-4.jpg"
+    },
+    {
+     "datei": "schrift-hoch-4.json",
+     "id": "schrift-hoch-4",
+     "name": "Schrift auf Weiß · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "schrift-hoch-4.jpg"
+    },
+    {
+     "datei": "schrift-quer-6.json",
+     "id": "schrift-quer-6",
+     "name": "Schrift auf Weiß · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "schrift-quer-6.jpg"
+    },
+    {
+     "datei": "schrift-hoch-6.json",
+     "id": "schrift-hoch-6",
+     "name": "Schrift auf Weiß · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "schrift-hoch-6.jpg"
+    },
+    {
+     "datei": "schrift-streifen-3.json",
+     "id": "schrift-streifen-3",
+     "name": "Schrift auf Weiß · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "schrift-streifen-3.jpg"
+    },
+    {
+     "datei": "schrift-streifen-4.json",
+     "id": "schrift-streifen-4",
+     "name": "Schrift auf Weiß · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "schrift-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "editorial",
+   "nummer": 3,
+   "name": "Editorial Schwarz-Weiß",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "editorial-quer-1.json",
+     "id": "editorial-quer-1",
+     "name": "Editorial Schwarz-Weiß · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "editorial-quer-1.jpg"
+    },
+    {
+     "datei": "editorial-hoch-1.json",
+     "id": "editorial-hoch-1",
+     "name": "Editorial Schwarz-Weiß · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "editorial-hoch-1.jpg"
+    },
+    {
+     "datei": "editorial-quer-3.json",
+     "id": "editorial-quer-3",
+     "name": "Editorial Schwarz-Weiß · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "editorial-quer-3.jpg"
+    },
+    {
+     "datei": "editorial-quer-4.json",
+     "id": "editorial-quer-4",
+     "name": "Editorial Schwarz-Weiß · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "editorial-quer-4.jpg"
+    },
+    {
+     "datei": "editorial-hoch-4.json",
+     "id": "editorial-hoch-4",
+     "name": "Editorial Schwarz-Weiß · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "editorial-hoch-4.jpg"
+    },
+    {
+     "datei": "editorial-quer-6.json",
+     "id": "editorial-quer-6",
+     "name": "Editorial Schwarz-Weiß · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "editorial-quer-6.jpg"
+    },
+    {
+     "datei": "editorial-hoch-6.json",
+     "id": "editorial-hoch-6",
+     "name": "Editorial Schwarz-Weiß · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "editorial-hoch-6.jpg"
+    },
+    {
+     "datei": "editorial-streifen-3.json",
+     "id": "editorial-streifen-3",
+     "name": "Editorial Schwarz-Weiß · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "editorial-streifen-3.jpg"
+    },
+    {
+     "datei": "editorial-streifen-4.json",
+     "id": "editorial-streifen-4",
+     "name": "Editorial Schwarz-Weiß · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "editorial-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "gartenfest",
+   "nummer": 4,
+   "name": "Gartenfest Streifen",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "gartenfest-quer-1.json",
+     "id": "gartenfest-quer-1",
+     "name": "Gartenfest Streifen · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "gartenfest-quer-1.jpg"
+    },
+    {
+     "datei": "gartenfest-hoch-1.json",
+     "id": "gartenfest-hoch-1",
+     "name": "Gartenfest Streifen · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "gartenfest-hoch-1.jpg"
+    },
+    {
+     "datei": "gartenfest-quer-3.json",
+     "id": "gartenfest-quer-3",
+     "name": "Gartenfest Streifen · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "gartenfest-quer-3.jpg"
+    },
+    {
+     "datei": "gartenfest-quer-4.json",
+     "id": "gartenfest-quer-4",
+     "name": "Gartenfest Streifen · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "gartenfest-quer-4.jpg"
+    },
+    {
+     "datei": "gartenfest-hoch-4.json",
+     "id": "gartenfest-hoch-4",
+     "name": "Gartenfest Streifen · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "gartenfest-hoch-4.jpg"
+    },
+    {
+     "datei": "gartenfest-quer-6.json",
+     "id": "gartenfest-quer-6",
+     "name": "Gartenfest Streifen · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "gartenfest-quer-6.jpg"
+    },
+    {
+     "datei": "gartenfest-hoch-6.json",
+     "id": "gartenfest-hoch-6",
+     "name": "Gartenfest Streifen · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "gartenfest-hoch-6.jpg"
+    },
+    {
+     "datei": "gartenfest-streifen-3.json",
+     "id": "gartenfest-streifen-3",
+     "name": "Gartenfest Streifen · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "gartenfest-streifen-3.jpg"
+    },
+    {
+     "datei": "gartenfest-streifen-4.json",
+     "id": "gartenfest-streifen-4",
+     "name": "Gartenfest Streifen · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "gartenfest-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "salbei",
+   "nummer": 5,
+   "name": "Salbei & feine Zweige",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "salbei-quer-1.json",
+     "id": "salbei-quer-1",
+     "name": "Salbei & feine Zweige · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "salbei-quer-1.jpg"
+    },
+    {
+     "datei": "salbei-hoch-1.json",
+     "id": "salbei-hoch-1",
+     "name": "Salbei & feine Zweige · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "salbei-hoch-1.jpg"
+    },
+    {
+     "datei": "salbei-quer-3.json",
+     "id": "salbei-quer-3",
+     "name": "Salbei & feine Zweige · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "salbei-quer-3.jpg"
+    },
+    {
+     "datei": "salbei-quer-4.json",
+     "id": "salbei-quer-4",
+     "name": "Salbei & feine Zweige · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "salbei-quer-4.jpg"
+    },
+    {
+     "datei": "salbei-hoch-4.json",
+     "id": "salbei-hoch-4",
+     "name": "Salbei & feine Zweige · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "salbei-hoch-4.jpg"
+    },
+    {
+     "datei": "salbei-quer-6.json",
+     "id": "salbei-quer-6",
+     "name": "Salbei & feine Zweige · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "salbei-quer-6.jpg"
+    },
+    {
+     "datei": "salbei-hoch-6.json",
+     "id": "salbei-hoch-6",
+     "name": "Salbei & feine Zweige · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "salbei-hoch-6.jpg"
+    },
+    {
+     "datei": "salbei-streifen-3.json",
+     "id": "salbei-streifen-3",
+     "name": "Salbei & feine Zweige · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "salbei-streifen-3.jpg"
+    },
+    {
+     "datei": "salbei-streifen-4.json",
+     "id": "salbei-streifen-4",
+     "name": "Salbei & feine Zweige · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "salbei-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "boho",
+   "nummer": 6,
+   "name": "Boho Terrakotta",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "boho-quer-1.json",
+     "id": "boho-quer-1",
+     "name": "Boho Terrakotta · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "boho-quer-1.jpg"
+    },
+    {
+     "datei": "boho-hoch-1.json",
+     "id": "boho-hoch-1",
+     "name": "Boho Terrakotta · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "boho-hoch-1.jpg"
+    },
+    {
+     "datei": "boho-quer-3.json",
+     "id": "boho-quer-3",
+     "name": "Boho Terrakotta · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "boho-quer-3.jpg"
+    },
+    {
+     "datei": "boho-quer-4.json",
+     "id": "boho-quer-4",
+     "name": "Boho Terrakotta · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "boho-quer-4.jpg"
+    },
+    {
+     "datei": "boho-hoch-4.json",
+     "id": "boho-hoch-4",
+     "name": "Boho Terrakotta · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "boho-hoch-4.jpg"
+    },
+    {
+     "datei": "boho-quer-6.json",
+     "id": "boho-quer-6",
+     "name": "Boho Terrakotta · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "boho-quer-6.jpg"
+    },
+    {
+     "datei": "boho-hoch-6.json",
+     "id": "boho-hoch-6",
+     "name": "Boho Terrakotta · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "boho-hoch-6.jpg"
+    },
+    {
+     "datei": "boho-streifen-3.json",
+     "id": "boho-streifen-3",
+     "name": "Boho Terrakotta · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "boho-streifen-3.jpg"
+    },
+    {
+     "datei": "boho-streifen-4.json",
+     "id": "boho-streifen-4",
+     "name": "Boho Terrakotta · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "boho-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "filmstreifen",
+   "nummer": 7,
+   "name": "Filmstreifen",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "filmstreifen-quer-1.json",
+     "id": "filmstreifen-quer-1",
+     "name": "Filmstreifen · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "filmstreifen-quer-1.jpg"
+    },
+    {
+     "datei": "filmstreifen-hoch-1.json",
+     "id": "filmstreifen-hoch-1",
+     "name": "Filmstreifen · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "filmstreifen-hoch-1.jpg"
+    },
+    {
+     "datei": "filmstreifen-quer-3.json",
+     "id": "filmstreifen-quer-3",
+     "name": "Filmstreifen · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "filmstreifen-quer-3.jpg"
+    },
+    {
+     "datei": "filmstreifen-quer-4.json",
+     "id": "filmstreifen-quer-4",
+     "name": "Filmstreifen · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "filmstreifen-quer-4.jpg"
+    },
+    {
+     "datei": "filmstreifen-hoch-4.json",
+     "id": "filmstreifen-hoch-4",
+     "name": "Filmstreifen · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "filmstreifen-hoch-4.jpg"
+    },
+    {
+     "datei": "filmstreifen-quer-6.json",
+     "id": "filmstreifen-quer-6",
+     "name": "Filmstreifen · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "filmstreifen-quer-6.jpg"
+    },
+    {
+     "datei": "filmstreifen-hoch-6.json",
+     "id": "filmstreifen-hoch-6",
+     "name": "Filmstreifen · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "filmstreifen-hoch-6.jpg"
+    },
+    {
+     "datei": "filmstreifen-streifen-3.json",
+     "id": "filmstreifen-streifen-3",
+     "name": "Filmstreifen · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "filmstreifen-streifen-3.jpg"
+    },
+    {
+     "datei": "filmstreifen-streifen-4.json",
+     "id": "filmstreifen-streifen-4",
+     "name": "Filmstreifen · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "filmstreifen-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "nachtblau",
+   "nummer": 8,
+   "name": "Nachtblau & Gold",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "nachtblau-quer-1.json",
+     "id": "nachtblau-quer-1",
+     "name": "Nachtblau & Gold · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "nachtblau-quer-1.jpg"
+    },
+    {
+     "datei": "nachtblau-hoch-1.json",
+     "id": "nachtblau-hoch-1",
+     "name": "Nachtblau & Gold · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "nachtblau-hoch-1.jpg"
+    },
+    {
+     "datei": "nachtblau-quer-3.json",
+     "id": "nachtblau-quer-3",
+     "name": "Nachtblau & Gold · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "nachtblau-quer-3.jpg"
+    },
+    {
+     "datei": "nachtblau-quer-4.json",
+     "id": "nachtblau-quer-4",
+     "name": "Nachtblau & Gold · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "nachtblau-quer-4.jpg"
+    },
+    {
+     "datei": "nachtblau-hoch-4.json",
+     "id": "nachtblau-hoch-4",
+     "name": "Nachtblau & Gold · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "nachtblau-hoch-4.jpg"
+    },
+    {
+     "datei": "nachtblau-quer-6.json",
+     "id": "nachtblau-quer-6",
+     "name": "Nachtblau & Gold · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "nachtblau-quer-6.jpg"
+    },
+    {
+     "datei": "nachtblau-hoch-6.json",
+     "id": "nachtblau-hoch-6",
+     "name": "Nachtblau & Gold · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "nachtblau-hoch-6.jpg"
+    },
+    {
+     "datei": "nachtblau-streifen-3.json",
+     "id": "nachtblau-streifen-3",
+     "name": "Nachtblau & Gold · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "nachtblau-streifen-3.jpg"
+    },
+    {
+     "datei": "nachtblau-streifen-4.json",
+     "id": "nachtblau-streifen-4",
+     "name": "Nachtblau & Gold · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "nachtblau-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "rose",
+   "nummer": 9,
+   "name": "Rosé Aquarell",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "rose-quer-1.json",
+     "id": "rose-quer-1",
+     "name": "Rosé Aquarell · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "rose-quer-1.jpg"
+    },
+    {
+     "datei": "rose-hoch-1.json",
+     "id": "rose-hoch-1",
+     "name": "Rosé Aquarell · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "rose-hoch-1.jpg"
+    },
+    {
+     "datei": "rose-quer-3.json",
+     "id": "rose-quer-3",
+     "name": "Rosé Aquarell · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "rose-quer-3.jpg"
+    },
+    {
+     "datei": "rose-quer-4.json",
+     "id": "rose-quer-4",
+     "name": "Rosé Aquarell · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "rose-quer-4.jpg"
+    },
+    {
+     "datei": "rose-hoch-4.json",
+     "id": "rose-hoch-4",
+     "name": "Rosé Aquarell · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "rose-hoch-4.jpg"
+    },
+    {
+     "datei": "rose-quer-6.json",
+     "id": "rose-quer-6",
+     "name": "Rosé Aquarell · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "rose-quer-6.jpg"
+    },
+    {
+     "datei": "rose-hoch-6.json",
+     "id": "rose-hoch-6",
+     "name": "Rosé Aquarell · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "rose-hoch-6.jpg"
+    },
+    {
+     "datei": "rose-streifen-3.json",
+     "id": "rose-streifen-3",
+     "name": "Rosé Aquarell · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "rose-streifen-3.jpg"
+    },
+    {
+     "datei": "rose-streifen-4.json",
+     "id": "rose-streifen-4",
+     "name": "Rosé Aquarell · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "rose-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "winterhochzeit",
+   "nummer": 10,
+   "name": "Winter",
+   "kategorie": "Hochzeit",
+   "vorlagen": [
+    {
+     "datei": "winterhochzeit-quer-1.json",
+     "id": "winterhochzeit-quer-1",
+     "name": "Winter · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "winterhochzeit-quer-1.jpg"
+    },
+    {
+     "datei": "winterhochzeit-hoch-1.json",
+     "id": "winterhochzeit-hoch-1",
+     "name": "Winter · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "winterhochzeit-hoch-1.jpg"
+    },
+    {
+     "datei": "winterhochzeit-quer-3.json",
+     "id": "winterhochzeit-quer-3",
+     "name": "Winter · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "winterhochzeit-quer-3.jpg"
+    },
+    {
+     "datei": "winterhochzeit-quer-4.json",
+     "id": "winterhochzeit-quer-4",
+     "name": "Winter · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "winterhochzeit-quer-4.jpg"
+    },
+    {
+     "datei": "winterhochzeit-hoch-4.json",
+     "id": "winterhochzeit-hoch-4",
+     "name": "Winter · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "winterhochzeit-hoch-4.jpg"
+    },
+    {
+     "datei": "winterhochzeit-quer-6.json",
+     "id": "winterhochzeit-quer-6",
+     "name": "Winter · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "winterhochzeit-quer-6.jpg"
+    },
+    {
+     "datei": "winterhochzeit-hoch-6.json",
+     "id": "winterhochzeit-hoch-6",
+     "name": "Winter · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "winterhochzeit-hoch-6.jpg"
+    },
+    {
+     "datei": "winterhochzeit-streifen-3.json",
+     "id": "winterhochzeit-streifen-3",
+     "name": "Winter · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "winterhochzeit-streifen-3.jpg"
+    },
+    {
+     "datei": "winterhochzeit-streifen-4.json",
+     "id": "winterhochzeit-streifen-4",
+     "name": "Winter · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "winterhochzeit-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "gold",
+   "nummer": 11,
+   "name": "Schwarz & Gold",
+   "kategorie": "Geburtstag",
+   "vorlagen": [
+    {
+     "datei": "gold-quer-1.json",
+     "id": "gold-quer-1",
+     "name": "Schwarz & Gold · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "gold-quer-1.jpg"
+    },
+    {
+     "datei": "gold-hoch-1.json",
+     "id": "gold-hoch-1",
+     "name": "Schwarz & Gold · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "gold-hoch-1.jpg"
+    },
+    {
+     "datei": "gold-quer-3.json",
+     "id": "gold-quer-3",
+     "name": "Schwarz & Gold · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "gold-quer-3.jpg"
+    },
+    {
+     "datei": "gold-quer-4.json",
+     "id": "gold-quer-4",
+     "name": "Schwarz & Gold · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "gold-quer-4.jpg"
+    },
+    {
+     "datei": "gold-hoch-4.json",
+     "id": "gold-hoch-4",
+     "name": "Schwarz & Gold · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "gold-hoch-4.jpg"
+    },
+    {
+     "datei": "gold-quer-6.json",
+     "id": "gold-quer-6",
+     "name": "Schwarz & Gold · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "gold-quer-6.jpg"
+    },
+    {
+     "datei": "gold-hoch-6.json",
+     "id": "gold-hoch-6",
+     "name": "Schwarz & Gold · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "gold-hoch-6.jpg"
+    },
+    {
+     "datei": "gold-streifen-3.json",
+     "id": "gold-streifen-3",
+     "name": "Schwarz & Gold · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "gold-streifen-3.jpg"
+    },
+    {
+     "datei": "gold-streifen-4.json",
+     "id": "gold-streifen-4",
+     "name": "Schwarz & Gold · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "gold-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "ballon",
+   "nummer": 12,
+   "name": "Luftballons & Konfetti",
+   "kategorie": "Geburtstag",
+   "vorlagen": [
+    {
+     "datei": "ballon-quer-1.json",
+     "id": "ballon-quer-1",
+     "name": "Luftballons & Konfetti · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "ballon-quer-1.jpg"
+    },
+    {
+     "datei": "ballon-hoch-1.json",
+     "id": "ballon-hoch-1",
+     "name": "Luftballons & Konfetti · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "ballon-hoch-1.jpg"
+    },
+    {
+     "datei": "ballon-quer-3.json",
+     "id": "ballon-quer-3",
+     "name": "Luftballons & Konfetti · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "ballon-quer-3.jpg"
+    },
+    {
+     "datei": "ballon-quer-4.json",
+     "id": "ballon-quer-4",
+     "name": "Luftballons & Konfetti · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "ballon-quer-4.jpg"
+    },
+    {
+     "datei": "ballon-hoch-4.json",
+     "id": "ballon-hoch-4",
+     "name": "Luftballons & Konfetti · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "ballon-hoch-4.jpg"
+    },
+    {
+     "datei": "ballon-quer-6.json",
+     "id": "ballon-quer-6",
+     "name": "Luftballons & Konfetti · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "ballon-quer-6.jpg"
+    },
+    {
+     "datei": "ballon-hoch-6.json",
+     "id": "ballon-hoch-6",
+     "name": "Luftballons & Konfetti · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "ballon-hoch-6.jpg"
+    },
+    {
+     "datei": "ballon-streifen-3.json",
+     "id": "ballon-streifen-3",
+     "name": "Luftballons & Konfetti · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "ballon-streifen-3.jpg"
+    },
+    {
+     "datei": "ballon-streifen-4.json",
+     "id": "ballon-streifen-4",
+     "name": "Luftballons & Konfetti · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "ballon-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "business",
+   "nummer": 13,
+   "name": "Business klar",
+   "kategorie": "Firma",
+   "vorlagen": [
+    {
+     "datei": "business-quer-1.json",
+     "id": "business-quer-1",
+     "name": "Business klar · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "business-quer-1.jpg"
+    },
+    {
+     "datei": "business-hoch-1.json",
+     "id": "business-hoch-1",
+     "name": "Business klar · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "business-hoch-1.jpg"
+    },
+    {
+     "datei": "business-quer-3.json",
+     "id": "business-quer-3",
+     "name": "Business klar · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "business-quer-3.jpg"
+    },
+    {
+     "datei": "business-quer-4.json",
+     "id": "business-quer-4",
+     "name": "Business klar · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "business-quer-4.jpg"
+    },
+    {
+     "datei": "business-hoch-4.json",
+     "id": "business-hoch-4",
+     "name": "Business klar · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "business-hoch-4.jpg"
+    },
+    {
+     "datei": "business-quer-6.json",
+     "id": "business-quer-6",
+     "name": "Business klar · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "business-quer-6.jpg"
+    },
+    {
+     "datei": "business-hoch-6.json",
+     "id": "business-hoch-6",
+     "name": "Business klar · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "business-hoch-6.jpg"
+    },
+    {
+     "datei": "business-streifen-3.json",
+     "id": "business-streifen-3",
+     "name": "Business klar · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "business-streifen-3.jpg"
+    },
+    {
+     "datei": "business-streifen-4.json",
+     "id": "business-streifen-4",
+     "name": "Business klar · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "business-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "winter",
+   "nummer": 14,
+   "name": "Winterabend",
+   "kategorie": "Weihnachten & Winter",
+   "vorlagen": [
+    {
+     "datei": "winter-quer-1.json",
+     "id": "winter-quer-1",
+     "name": "Winterabend · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "winter-quer-1.jpg"
+    },
+    {
+     "datei": "winter-hoch-1.json",
+     "id": "winter-hoch-1",
+     "name": "Winterabend · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "winter-hoch-1.jpg"
+    },
+    {
+     "datei": "winter-quer-3.json",
+     "id": "winter-quer-3",
+     "name": "Winterabend · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "winter-quer-3.jpg"
+    },
+    {
+     "datei": "winter-quer-4.json",
+     "id": "winter-quer-4",
+     "name": "Winterabend · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "winter-quer-4.jpg"
+    },
+    {
+     "datei": "winter-hoch-4.json",
+     "id": "winter-hoch-4",
+     "name": "Winterabend · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "winter-hoch-4.jpg"
+    },
+    {
+     "datei": "winter-quer-6.json",
+     "id": "winter-quer-6",
+     "name": "Winterabend · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "winter-quer-6.jpg"
+    },
+    {
+     "datei": "winter-hoch-6.json",
+     "id": "winter-hoch-6",
+     "name": "Winterabend · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "winter-hoch-6.jpg"
+    },
+    {
+     "datei": "winter-streifen-3.json",
+     "id": "winter-streifen-3",
+     "name": "Winterabend · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "winter-streifen-3.jpg"
+    },
+    {
+     "datei": "winter-streifen-4.json",
+     "id": "winter-streifen-4",
+     "name": "Winterabend · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "winter-streifen-4.jpg"
+    }
+   ]
+  },
+  {
+   "id": "party",
+   "nummer": 15,
+   "name": "Bunte Party",
+   "kategorie": "Party",
+   "vorlagen": [
+    {
+     "datei": "party-quer-1.json",
+     "id": "party-quer-1",
+     "name": "Bunte Party · quer · 1 Foto",
+     "layout": "quer-1",
+     "layout_name": "quer · 1 Foto",
+     "paper": "10x15-quer",
+     "shots": 1,
+     "vorschau": "party-quer-1.jpg"
+    },
+    {
+     "datei": "party-hoch-1.json",
+     "id": "party-hoch-1",
+     "name": "Bunte Party · hoch · 1 Foto",
+     "layout": "hoch-1",
+     "layout_name": "hoch · 1 Foto",
+     "paper": "10x15",
+     "shots": 1,
+     "vorschau": "party-hoch-1.jpg"
+    },
+    {
+     "datei": "party-quer-3.json",
+     "id": "party-quer-3",
+     "name": "Bunte Party · quer · 3 Fotos",
+     "layout": "quer-3",
+     "layout_name": "quer · 3 Fotos",
+     "paper": "10x15-quer",
+     "shots": 3,
+     "vorschau": "party-quer-3.jpg"
+    },
+    {
+     "datei": "party-quer-4.json",
+     "id": "party-quer-4",
+     "name": "Bunte Party · quer · 4 Fotos",
+     "layout": "quer-4",
+     "layout_name": "quer · 4 Fotos",
+     "paper": "10x15-quer",
+     "shots": 4,
+     "vorschau": "party-quer-4.jpg"
+    },
+    {
+     "datei": "party-hoch-4.json",
+     "id": "party-hoch-4",
+     "name": "Bunte Party · hoch · 4 Fotos",
+     "layout": "hoch-4",
+     "layout_name": "hoch · 4 Fotos",
+     "paper": "10x15",
+     "shots": 4,
+     "vorschau": "party-hoch-4.jpg"
+    },
+    {
+     "datei": "party-quer-6.json",
+     "id": "party-quer-6",
+     "name": "Bunte Party · quer · 6 Fotos",
+     "layout": "quer-6",
+     "layout_name": "quer · 6 Fotos",
+     "paper": "10x15-quer",
+     "shots": 6,
+     "vorschau": "party-quer-6.jpg"
+    },
+    {
+     "datei": "party-hoch-6.json",
+     "id": "party-hoch-6",
+     "name": "Bunte Party · hoch · 6 Fotos",
+     "layout": "hoch-6",
+     "layout_name": "hoch · 6 Fotos",
+     "paper": "10x15",
+     "shots": 6,
+     "vorschau": "party-hoch-6.jpg"
+    },
+    {
+     "datei": "party-streifen-3.json",
+     "id": "party-streifen-3",
+     "name": "Bunte Party · Streifen · 3 Fotos",
+     "layout": "streifen-3",
+     "layout_name": "Streifen · 3 Fotos",
+     "paper": "streifen",
+     "shots": 3,
+     "vorschau": "party-streifen-3.jpg"
+    },
+    {
+     "datei": "party-streifen-4.json",
+     "id": "party-streifen-4",
+     "name": "Bunte Party · Streifen · 4 Fotos",
+     "layout": "streifen-4",
+     "layout_name": "Streifen · 4 Fotos",
+     "paper": "streifen",
+     "shots": 4,
+     "vorschau": "party-streifen-4.jpg"
+    }
+   ]
+  }
+ ]
+}

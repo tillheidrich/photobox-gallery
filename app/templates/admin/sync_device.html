@@ -1,0 +1,588 @@
+{% extends "layout_admin.html" %}
+{% block title %}{{ device.name }} · Sync fernwarten{% endblock %}
+{% block content %}
+<style>
+  .sy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:18px;align-items:start}
+  .sy-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e5e5e5);border-radius:14px;padding:20px 22px}
+  .sy-card.full{grid-column:1/-1}
+  .sy-card h2{font-size:1rem;margin:0 0 4px}
+  .sy-card>p.hint{margin:0 0 14px;color:var(--color-text-secondary,#666);font-size:.85rem;line-height:1.45}
+  .sy-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .sy-stat{padding:12px 14px;border-radius:10px;background:var(--color-bg-secondary,#f5f5f5)}
+  .sy-stat b{display:block;font-size:1.6rem;font-variant-numeric:tabular-nums;line-height:1.1}
+  .sy-stat span{font-size:.75rem;color:var(--color-text-secondary,#666)}
+  .sy-dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:.875rem;margin:0}
+  .sy-dl dt{color:var(--color-text-secondary,#666)} .sy-dl dd{margin:0;word-break:break-word}
+  table.sy{width:100%;border-collapse:collapse;font-size:.85rem}
+  table.sy th{text-align:left;font-weight:600;color:var(--color-text-secondary,#666);padding:6px 8px 6px 0;border-bottom:1px solid var(--color-border,#e5e5e5)}
+  table.sy td{padding:7px 8px 7px 0;border-bottom:1px solid var(--color-border,#eee);vertical-align:top}
+  table.sy tr:last-child td{border-bottom:0}
+  .sy-actions{display:flex;flex-wrap:wrap;gap:8px}
+  .sy-log{font-size:.75rem;line-height:1.5;max-height:260px;overflow:auto;white-space:pre-wrap;margin:0;color:var(--color-text-secondary,#666)}
+  .sy-out{font-size:.8rem;margin-top:12px;display:none}
+  .sy-out li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--color-border,#eee);list-style:none}
+  .sy-out ul{margin:0;padding:0}
+  .sy-pick{display:grid;gap:6px;max-height:300px;overflow:auto;margin:10px 0}
+  .sy-pick button{text-align:left;width:100%}
+  .sy-off{opacity:.55}
+  .sy-flag{font-size:.7rem;padding:2px 8px;border-radius:99px;background:var(--color-bg-secondary,#f0f0f0);white-space:nowrap}
+  dialog{border:1px solid var(--color-border,#e5e5e5);border-radius:14px;padding:22px;max-width:560px;width:92vw;background:var(--color-surface,#fff);color:inherit}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  [hidden]{display:none!important}   /* Ordnerziele zeigen keine FTP-Felder */
+  @media (max-width:768px){
+    .sy-card{padding:16px}
+    .sy-stat b{font-size:1.375rem}
+    .sy-stat span,.sy-flag{font-size:.8125rem}
+    .sy-dl{grid-template-columns:1fr;gap:2px}
+    .sy-dl dd{margin-bottom:8px}
+    /* File lists keep their columns and scroll inside their card. */
+    table.sy{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
+    .sy-log{font-size:.8125rem}
+  }
+</style>
+
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+  <div>
+    <h1 class="page-title">{{ device.name }} — Sync</h1>
+    <p class="page-subtitle" id="sub">
+      {% if report %}Version {{ report.version }} · zuletzt gemeldet {{ report.updated_at }}
+      {% elif light %}Die Box meldet sich selbst — letzte Meldung {{ light.age_text }}.
+      {% else %}Diese Box hat noch nichts gemeldet.{% endif %}
+    </p>
+  </div>
+  <div class="sy-actions">
+    <a href="{{ url_for('admin.device_logs', device_id=device.id) }}" class="btn btn-secondary btn-sm">Protokoll</a>
+    <a href="{{ url_for('admin.devices') }}" class="btn btn-secondary btn-sm">← Boxen</a>
+  </div>
+</div>
+
+{% if not report and light %}
+<div class="sy-card" data-light="{{ device.id }}:{{ light.health }}">
+  <h2>Box mit eingebautem Abgleich</h2>
+  <p class="hint">Diese Box lädt selbst hoch und meldet sich direkt bei der Galerie (zuletzt {{ light.age_text }}).
+    Einen eigenen Bericht mit Ordnern und Zielen schickt nur das separate Programm Photobox Sync — das läuft hier nicht.</p>
+  <dl class="sy-dl">
+    <dt>Uploads offen</dt><dd>{{ light.upload_queue.pending }}</dd>
+    <dt>Fehlgeschlagen</dt><dd>{{ light.upload_queue.failed }}</dd>
+    <dt>Ampel</dt><dd>{{ light.findings[0].text if light.findings else "Alles in Ordnung" }}</dd>
+  </dl>
+  <div class="sy-actions" style="margin-top:12px">
+    <a href="{{ url_for('admin.booths') }}" class="btn btn-primary btn-sm">Zur Ampel aller Boxen</a>
+  </div>
+</div>
+{% include "admin/_second_target_card.html" %}
+{# The booth's two queues entry by entry, as its last heartbeat listed them.
+   Retry is one tap; discarding asks once more on the same button. #}
+{% set queues = queues if queues is defined else {'prints': [], 'failed': []} %}
+<div class="sy-card" id="queues" data-device="{{ device.id }}" data-csrf="{{ csrf_token }}">
+  <h2>Warteschlangen der Box</h2>
+  <p class="hint">Stand des letzten Kontakts. Ein verworfener Druck gibt dem Gast sein Kontingent zurück; ein verworfener
+    Upload bleibt als Datei auf der Box, wird aber nicht mehr versucht.</p>
+  <h3 class="sy-q-h">Drucke ({{ queues.prints|length }})</h3>
+  {% for j in queues.prints %}
+  <div class="sy-q-row">
+    <div><b>Druck {{ j.run or ('#' ~ j.id) }} · {{ j.copies }}×</b>
+      <small>{{ j.created|int|default(0) }}{# epoch, formatted below #} · {{ {'queued':'wartet auf einen Drucker','printing':'druckt gerade','held':'angehalten'}.get(j.state, j.state) }}{% if j.slot %} · Drucker {{ j.slot }}{% endif %}</small>
+      {% if j.reason %}<small class="sy-q-why">{{ j.reason }}</small>{% endif %}</div>
+    <button type="button" class="btn btn-secondary" data-q-job="discard_prints" data-q-ids="{{ j.id }}" data-q-confirm="Wirklich verwerfen?">Verwerfen</button>
+  </div>
+  {% else %}<p class="hint">Keine Drucke in der Warteschlange.</p>{% endfor %}
+  {% if queues.prints|length > 1 %}<button type="button" class="btn btn-secondary" data-q-job="discard_prints" data-q-all="1"
+     data-q-confirm="Wirklich alle Drucke verwerfen?">Alle Drucke verwerfen</button>{% endif %}
+  <h3 class="sy-q-h">Fehlgeschlagene Uploads ({{ queues.failed|length }})</h3>
+  {% if queues.reasons %}<p class="sy-q-why" id="qReasons">Warum: {% for r in queues.reasons %}{{ r.count }}× {{ r.reason }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+  {% for f in queues.failed %}
+  <div class="sy-q-row">
+    {# Booths since 17.11.2026 send no file name (it can carry a guest's text): the run and the kind instead. #}
+    <div><b>{{ f.file or ('Durchgang ' ~ (f.run or ('#' ~ f.id)) ~ (' · ' ~ f.kind if f.kind else '')) }}</b><small>{{ f.created|int|default(0) }} · Ziel {{ f.target }}{% if f.attempts %} · {{ f.attempts }} Versuche{% endif %}</small>
+      {% if f.reason %}<small class="sy-q-why">Grund: {{ f.reason }}</small>{% elif f.error %}<small class="sy-q-why">{{ f.error }}</small>{% endif %}</div>
+    <div class="sy-q-btns">
+      <button type="button" class="btn btn-secondary" data-q-job="retry_failed" data-q-ids="{{ f.id }}">Erneut</button>
+      <button type="button" class="btn btn-secondary" data-q-job="discard_failed_uploads" data-q-ids="{{ f.id }}" data-q-confirm="Wirklich verwerfen?">Verwerfen</button>
+    </div>
+  </div>
+  {% else %}<p class="hint">Keine fehlgeschlagenen Uploads.</p>{% endfor %}
+  {% if queues.failed|length > 1 %}<div class="sy-q-btns">
+    <button type="button" class="btn btn-secondary" data-q-job="retry_failed">Alle erneut versuchen</button>
+    <button type="button" class="btn btn-secondary" data-q-job="discard_failed_uploads" data-q-all="1" data-q-confirm="Wirklich alle verwerfen?">Alle verwerfen</button>
+  </div>{% endif %}
+  <p class="hint" id="qNote" role="status"></p>
+</div>
+<style>
+  .sy-q-h{margin:16px 0 8px;font-size:1rem}
+  .sy-q-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;margin-bottom:8px;
+    border-radius:10px;box-shadow:inset 0 0 0 1px var(--color-border,#ddd);overflow-wrap:anywhere}
+  .sy-q-row small{display:block;color:var(--color-text-secondary,#666)}
+  .sy-q-row .sy-q-why{color:#b45309}
+  .sy-q-btns{display:flex;flex-wrap:wrap;gap:8px}
+  #queues .btn{min-height:44px}
+  #queues .btn[data-armed="1"]{background:#b42318;color:#fff}
+</style>
+<script>
+(() => {
+  const box = document.getElementById("queues");
+  if (!box) return;
+  const DEVICE = box.dataset.device, CSRF = box.dataset.csrf;
+  box.querySelectorAll("small").forEach((s) => {   // epoch seconds at the start -> local time
+    s.textContent = s.textContent.replace(/^(\d{9,})/, (m) => new Date(+m * 1000).toLocaleString("de-DE",
+      {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}));
+  });
+  async function send(btn) {
+    const payload = btn.dataset.qIds ? {ids: [Number(btn.dataset.qIds)]} : (btn.dataset.qAll ? {confirm: "all"} : {});
+    btn.disabled = true;
+    const note = document.getElementById("qNote");
+    try {
+      const r = await fetch(`/admin/devices/${DEVICE}/sync/job`, {method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRF-Token": CSRF},
+        body: JSON.stringify({type: btn.dataset.qJob, payload})});
+      const d = await r.json();
+      note.textContent = d.ok ? "Auftrag an die Box geschickt. Die Liste zeigt das Ergebnis nach dem nächsten Kontakt (Seite neu laden)."
+                              : (d.error || "Nicht geschickt.");
+    } catch (e) { note.textContent = "Nicht geschickt: " + e.message; }
+    btn.disabled = false;
+  }
+  box.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-q-job]");
+    if (!btn) return;
+    if (btn.dataset.qConfirm && btn.dataset.armed !== "1") {
+      const label = btn.textContent;
+      btn.dataset.armed = "1"; btn.textContent = btn.dataset.qConfirm;
+      setTimeout(() => { if (btn.dataset.armed === "1") { btn.dataset.armed = ""; btn.textContent = label; } }, 6000);
+      return;
+    }
+    btn.dataset.armed = "";
+    send(btn);
+  });
+})();
+</script>
+{% elif not report %}
+<div class="sy-card">
+  <h2>Noch kein Bericht — hier ist die Kopplung</h2>
+  <p class="hint">So findet der Event-PC diese Galerie: Photobox Sync dort starten
+    (<code>http://127.0.0.1:8766</code>), den Code unten unter <b>Kopplungscode</b> einfügen, koppeln.
+    Danach erscheint an dieser Stelle alles: Warteschlange, Aufträge, Ziele, Protokoll.</p>
+  <div class="sy-actions">
+    <button class="btn btn-primary btn-sm" onclick="makeCode(this)">Kopplungscode erzeugen</button>
+  </div>
+  <div id="codeBox" hidden style="margin-top:14px">
+    <code id="codeShort" style="font-size:1.4rem;letter-spacing:.06em;font-weight:600"></code>
+    <button class="btn btn-sm btn-secondary" style="margin-left:10px"
+            onclick="navigator.clipboard.writeText(document.getElementById('codeShort').textContent)">Kopieren</button>
+    <span id="codeTtl" class="hint" style="margin-left:10px"></span>
+    <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Langer Code (PC hat beim Koppeln noch kein Internet)</summary>
+      <p class="hint">Der lange Code enthält den Schlüssel selbst. Ihn zu erzeugen erneuert den Schlüssel — eine Box, die gerade läuft, wird getrennt.</p>
+      <button class="btn btn-sm btn-secondary" onclick="makeCode(this, true)">Langen Code erzeugen</button>
+      <code id="codeLong" style="font-size:.75rem;word-break:break-all;display:block;margin-top:6px"></code>
+    </details>
+  </div>
+</div>
+<script>
+async function makeCode(btn, long) {
+  if (long && !confirm("Schlüssel erneuern und langen Code erzeugen? Eine laufende Box wird getrennt.")) return;
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/admin/devices/{{ device.id }}/pairing`, {
+      method: "POST", headers: {"Content-Type": "application/json", "X-CSRF-Token": "{{ csrf_token }}"},
+      body: JSON.stringify({long: !!long})});
+    const d = await r.json();
+    if (!d.ok) { document.getElementById("codeTtl").textContent = d.error || "Fehler"; document.getElementById("codeBox").hidden = false; return; }
+    document.getElementById("codeShort").textContent = d.short;
+    if (long) document.getElementById("codeLong").textContent = d.long;
+    document.getElementById("codeTtl").textContent = `${d.minutes} Minuten gültig, einmal einlösbar`;
+    document.getElementById("codeBox").hidden = false;
+  } finally { btn.disabled = false; }
+}
+</script>
+{% else %}
+<div class="sy-grid">
+
+  <section class="sy-card">
+    <h2>Warteschlange</h2>
+    <div class="sy-stats">
+      <div class="sy-stat"><b id="qPending">{{ report.queue.pending }}</b><span>offen</span></div>
+      <div class="sy-stat"><b id="qDone">{{ report.queue.done }}</b><span>übertragen</span></div>
+      <div class="sy-stat"><b id="qFailed">{{ report.queue.failed }}</b><span>fehlgeschlagen</span></div>
+    </div>
+    <dl class="sy-dl">
+      <dt>Tempo</dt><dd id="speed">–</dd>
+      <dt>Restzeit</dt><dd id="eta">–</dd>
+      <dt>Freier Platz</dt><dd id="disk">{{ report.disk_free_gb }} GB</dd>
+      <dt>Letzter Upload</dt><dd id="lastUpload">{% if report.last_upload %}{{ report.last_upload.file }} → {{ report.last_upload.target }}{% else %}–{% endif %}</dd>
+      <dt>Aufnahme-Software</dt><dd>{{ "läuft" if report.booth_running else "nicht gestartet" }}</dd>
+      <dt>Ziele</dt><dd>{{ report.target_names|join(", ") or "keins" }}</dd>
+      <dt>Autostart</dt><dd id="autostart">{{ report.autostart.detail }}</dd>
+      <dt>Oberfläche am PC</dt><dd><code>http://127.0.0.1:{{ report.port }}</code></dd>
+    </dl>
+    <div class="sy-actions" style="margin-top:16px">
+      <button class="btn btn-sm btn-primary" onclick="job('check_targets', {}, this)">Ziele prüfen</button>
+      <button class="btn btn-sm btn-secondary" onclick="job('rescan', {}, this)">Ordner neu prüfen</button>
+      <button class="btn btn-sm btn-secondary" onclick="job('retry_failed', {}, this)">Fehlgeschlagene erneut</button>
+      <button class="btn btn-sm btn-secondary" onclick="job('sync_now', {}, this)">Jetzt synchronisieren</button>
+      <button class="btn btn-sm btn-secondary" id="pauseBtn"
+              onclick="job('set_sync_config', {paused: !{{ 'true' if report.paused else 'false' }}}, this)">
+        {{ "Upload fortsetzen" if report.paused else "Upload pausieren" }}</button>
+      {% if report.autostart.supported %}
+      <button class="btn btn-sm btn-secondary" onclick="job('set_sync_config', {autostart: {{ 'false' if report.autostart.enabled else 'true' }}}, this)">
+        Autostart {{ "ausschalten" if report.autostart.enabled else "einschalten" }}</button>
+      {% endif %}
+    </div>
+    <div class="sy-out" id="out"></div>
+  </section>
+
+  <section class="sy-card">
+    <h2>Zuletzt erkannt</h2>
+    <p class="hint">Die letzten Dateien, die das Sync-Programm gesehen hat.</p>
+    <table class="sy"><tbody id="lastFiles">
+      {% for f in report.last_files %}<tr><td>{{ f.name }}</td><td style="text-align:right;color:var(--color-text-secondary,#666)">{{ f.kind }}</td></tr>{% endfor %}
+      {% if not report.last_files %}<tr><td colspan="2" style="color:var(--color-text-secondary,#666)">Noch keine Dateien.</td></tr>{% endif %}
+    </tbody></table>
+  </section>
+
+  <section class="sy-card full">
+    <h2>Sync-Aufträge</h2>
+    <p class="hint">Ein Auftrag je Ordner. „Ziele" leer heißt: an alle. Änderungen gehen als Auftrag an den PC —
+      er holt sie beim nächsten Melden ab, in der Regel innerhalb von fünf Sekunden.</p>
+    <div id="jobRows"></div>
+    <div class="sy-actions" style="margin-top:10px">
+      <button class="btn btn-sm btn-secondary" type="button" onclick="addJobRow({})">+ Auftrag</button>
+    </div>
+  </section>
+
+  <section class="sy-card full">
+    <h2>Ziele</h2>
+    <p class="hint">FTPS für Picdrop, FTP ohne TLS für NAS und Webspace, SFTP/SSH mit Passwort oder Schlüsseldatei.
+      Passwörter stehen nie in der Galerie — leer lassen behält das gespeicherte. <b>Ordner wählen</b> zeigt,
+      was am Ziel wirklich liegt.</p>
+    <div id="targetRows"></div>
+    <div class="sy-actions" style="margin-top:10px">
+      <button class="btn btn-sm btn-secondary" type="button" onclick="addTargetRow({type:'ftps'})">+ Ziel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAll(this)">Änderungen an den PC senden</button>
+    </div>
+  </section>
+
+  <section class="sy-card full">
+    <h2>Verlauf — was ist wohin gegangen</h2>
+    <p class="hint">Die Frage nach dem Event: ist alles oben? Der PC meldet die letzten übertragenen Dateien mit.</p>
+    <table class="sy"><thead><tr><th>Datei</th><th>Ziel</th><th>Größe</th><th>Wann</th></tr></thead>
+      <tbody id="history"></tbody></table>
+  </section>
+
+  <section class="sy-card full">
+    <h2>Protokoll vom PC</h2>
+    <pre class="sy-log" id="log">{{ report.log|join("\n") }}</pre>
+  </section>
+
+  <section class="sy-card full">
+    <h2>Letzte Aufträge</h2>
+    <table class="sy">
+      <thead><tr><th>Auftrag</th><th>Gesendet</th><th>Antwort</th></tr></thead>
+      <tbody id="recentJobs">
+        {% for j in jobs %}
+        <tr><td>{{ j.type }}</td><td>{{ (j.created_at or "")[:16] }}</td>
+          <td>{{ j.state_label }}{% if j.state == "done" %}: {{ "✓" if j.ok else "✕" }} {{ (j.result_short or "")[:160] }}{% elif j.state == "expired" %}: {{ j.result_text }}{% endif %}</td></tr>
+        {% endfor %}
+        {% if not jobs %}<tr><td colspan="3" style="color:var(--color-text-secondary,#666)">Noch keine.</td></tr>{% endif %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<dialog id="picker">
+  <h2 style="margin:0 0 4px;font-size:1rem">Ordner am Ziel</h2>
+  <p class="hint" id="pickerPath" style="color:var(--color-text-secondary,#666);font-size:.8rem;word-break:break-all"></p>
+  <div class="sy-pick" id="pickerList"></div>
+  <div class="sy-actions">
+    <button class="btn btn-primary btn-sm" id="pickTake" onclick="pickHere()">Diesen Ordner nehmen</button>
+    <button class="btn btn-secondary btn-sm" onclick="pickNew()">Neuer Unterordner …</button>
+    <button class="btn btn-secondary btn-sm" onclick="picker.close()">Abbrechen</button>
+  </div>
+</dialog>
+
+<script>
+const DEVICE = {{ device.id }};
+const CSRF = "{{ csrf_token }}";
+const REPORT = {{ report|tojson }};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// Passwords are sealed to the PC's key in the gallery (app/sync_secrets.py); a
+// version without a key takes none from here.
+const SEALING = {{ 'true' if (report or {}).get('sealing') else 'false' }};
+const TYPES = [["ftps","Picdrop / FTPS"],["ftp","FTP ohne Verschlüsselung (Passwort und Bilder lesbar)"],["sftp","NAS / SFTP (SSH)"],
+               ["folder","Ordner / USB-Stick am PC"]];
+const LAYOUTS = [["event/date","Unterordner: Event / Datum"],["event","Unterordner: Event"],["flat","alles in einen Ordner"]];
+const KINDS = ["auto","photo","print","gif","video","boomerang","original"];
+const liste = (v) => String(v || "").split(",").map((x) => x.trim()).filter(Boolean);
+const groesse = (b) => b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
+const dauer = (s) => s < 90 ? `${Math.round(s)} s` : s < 5400 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, {...opts, headers: {"Content-Type": "application/json", "X-CSRF-Token": CSRF}});
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.json();
+}
+
+// Einen Auftrag losschicken und auf die Antwort warten. Der PC meldet sich alle
+// fünf Sekunden, solange etwas offen ist — länger als eine Minute heißt: er ist weg.
+async function job(type, payload, btn, quiet) {
+  const label = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "läuft …"; }
+  try {
+    const {job_id} = await api(`/admin/devices/${DEVICE}/sync/job`, {method: "POST", body: JSON.stringify({type, payload})});
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const res = await api(`/admin/devices/${DEVICE}/sync/job/${job_id}`);
+      if (res.done) {
+        if (!quiet) show(type, res);
+        refresh();
+        return res;
+      }
+    }
+    throw new Error("keine Antwort vom PC — läuft Photobox Sync dort?");
+  } catch (e) {
+    if (!quiet) show(type, {success: false, result: e.message});
+    throw e;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
+}
+
+function show(type, res) {
+  const box = $("out");
+  box.style.display = "block";
+  let body = esc(res.result);
+  if (type === "check_targets" && res.success) {
+    try {
+      body = "<ul>" + JSON.parse(res.result).map((t) =>
+        `<li><span>${t.ok === true ? "✓" : t.ok === false ? "✕" : "–"} ${esc(t.name)}</span><span style="color:var(--color-text-secondary,#666)">${esc(t.detail)}</span></li>`).join("") + "</ul>";
+    } catch (e) { /* kein JSON: Rohtext zeigen */ }
+  }
+  box.innerHTML = `<div style="padding:10px 12px;border-radius:10px;background:var(--color-bg-secondary,#f5f5f5)">
+    <b>${res.success ? "" : "Fehler: "}${esc(type)}</b>${body ? "<div style='margin-top:6px'>" + body + "</div>" : ""}</div>`;
+}
+
+// ── Aufträge ──────────────────────────────────────────
+function targetNames() {
+  return [...(REPORT.upload_to_gallery ? ["gallery"] : []),
+          ...[...document.querySelectorAll('#targetRows [data-t="name"]')].map((el) => el.value.trim()).filter(Boolean)];
+}
+function addJobRow(f) {
+  const d = document.createElement("div");
+  d.className = "sy-card" + (f.enabled === false ? " sy-off" : "");
+  d.style.marginBottom = "10px"; d.dataset.row = "job";
+  d.innerHTML = `<div class="bp-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+      <div class="form-group"><label class="form-label">Auftrag</label><input class="form-control" data-j="name" value="${esc(f.name || "")}" placeholder="Originale"></div>
+      <div class="form-group"><label class="form-label">Ordner auf dem PC</label><input class="form-control" data-j="path" value="${esc(f.path || "")}" placeholder="C:\\Users\\Fotobox\\Pictures\\dslrBooth"></div>
+      <div class="form-group"><label class="form-label">Art</label><select class="form-control" data-j="kind">${KINDS.map((k) => `<option ${f.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></div>
+    </div>
+    <details style="margin-bottom:10px"><summary class="hint" style="cursor:pointer">Filter</summary>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:8px">
+        <div class="form-group"><label class="form-label">Nur diese Muster</label><input class="form-control" data-j="include" value="${esc((f.include || []).join(", "))}" placeholder="leer = alles"></div>
+        <div class="form-group"><label class="form-label">Diese nie</label><input class="form-control" data-j="exclude" value="${esc((f.exclude || []).join(", "))}" placeholder="thumbs.db, *_thumb.jpg"></div>
+        <div class="form-group"><label class="form-label">Mindestgröße (KB)</label><input class="form-control" data-j="min_kb" value="${esc(f.min_kb || "")}" placeholder="0"></div>
+      </div>
+    </details>
+    <div style="display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:.85rem">
+      <span style="color:var(--color-text-secondary,#666)">Ziele:</span><span class="sy-chips"></span>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-j="enabled" ${f.enabled === false ? "" : "checked"}> aktiv</label>
+      ${f.exists === false && f.path ? '<span class="sy-flag" style="color:var(--color-danger,#d4383f)">Ordner fehlt</span>' : ""}
+      <button type="button" class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="this.closest('[data-row]').remove()">Entfernen</button>
+    </div>`;
+  d.dataset.targets = JSON.stringify(f.targets || []);
+  $("jobRows").appendChild(d);
+  renderChips();
+}
+function renderChips() {
+  const names = targetNames();
+  document.querySelectorAll('[data-row="job"]').forEach((d) => {
+    const box = d.querySelector(".sy-chips");
+    let sel = box.dataset.ready ? [...box.querySelectorAll("input:checked")].map((i) => i.value) : JSON.parse(d.dataset.targets || "[]");
+    box.dataset.ready = "1";
+    box.innerHTML = names.length
+      ? names.map((n) => `<label style="display:inline-flex;gap:5px;align-items:center;margin-right:12px"><input type="checkbox" value="${esc(n)}" ${sel.includes(n) ? "checked" : ""}> ${esc(n === "gallery" ? "Galerie" : n)}</label>`).join("")
+      : '<span style="color:var(--color-text-secondary,#666)">kein Ziel eingerichtet</span>';
+    box.insertAdjacentHTML("beforeend", '<span class="sy-allhint" style="color:var(--color-text-secondary,#666)">— nichts angekreuzt = alle</span>');
+    const hint = box.querySelector(".sy-allhint");
+    const sync = () => { hint.hidden = box.querySelectorAll("input:checked").length > 0; };
+    box.querySelectorAll("input").forEach((i) => i.addEventListener("change", sync));
+    sync();
+  });
+}
+
+// ── Ziele ─────────────────────────────────────────────
+function addTargetRow(t) {
+  const d = document.createElement("div");
+  d.className = "sy-card"; d.style.marginBottom = "10px"; d.dataset.row = "target";
+  d.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+      <div class="form-group"><label class="form-label">Art</label><select class="form-control" data-t="type">${TYPES.map(([v, l]) => `<option value="${v}" ${t.type === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+      <div class="form-group"><label class="form-label">Name</label><input class="form-control" data-t="name" value="${esc(t.name || "")}" placeholder="picdrop"></div>
+      <div class="form-group net"><label class="form-label">Server</label><input class="form-control" data-t="host" value="${esc(t.host || "")}"></div>
+      <div class="form-group net"><label class="form-label">Port</label><input class="form-control" data-t="port" value="${esc(t.port || "")}" placeholder="21 / 22"></div>
+      <div class="form-group net"><label class="form-label">Benutzer</label><input class="form-control" data-t="user" value="${esc(t.user || "")}" autocomplete="off"></div>
+      <div class="form-group net"><label class="form-label">Passwort</label><input class="form-control" data-t="password" type="password" placeholder="${!SEALING ? "Fassung zu alt — Passwort am PC eintragen" : t.has_password ? "gespeichert — leer lassen" : "neu"}" ${SEALING ? "" : "disabled"} autocomplete="new-password"></div>
+      <div class="form-group ssh"><label class="form-label">Schlüsseldatei am PC</label><input class="form-control" data-t="key_file" value="" placeholder="${esc(t.key_file || "C:\\Users\\…\\id_ed25519")}"></div>
+      <div class="form-group"><label class="form-label">Ordner ${t.type === "folder" ? "auf dem PC" : "am Ziel"}</label><input class="form-control" data-t="path" value="${esc(t.path || "")}" placeholder="leer = Hauptordner"></div>
+      <div class="form-group local"><label class="form-label">Ablage</label><select class="form-control" data-t="layout">${LAYOUTS.map(([v, l]) => `<option value="${v}" ${t.layout === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:.85rem">
+      <label class="net" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-t="flat" ${t.flat !== false ? "checked" : ""}> alles in einen Ordner</label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-t="only_web" ${t.only_web ? "checked" : ""}> nur Web-Fassungen</label>
+      <label class="local" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-t="removable" ${t.removable ? "checked" : ""}> Wechseldatenträger (darf fehlen)</label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-t="paused" ${t.paused ? "checked" : ""}> pausiert</label>
+      <label class="net" style="display:flex;gap:6px;align-items:center">Bremse
+        <input class="form-control" data-t="limit_kbps" value="${esc(t.limit_kbps || "")}" placeholder="0" style="width:90px;padding:4px 8px;min-height:0"> KB/s</label>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="browse(this)">Ordner wählen …</button>
+      <button type="button" class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="this.closest('[data-row]').remove(); renderChips()">Entfernen</button>
+    </div>`;
+  $("targetRows").appendChild(d);
+  d.querySelectorAll('[data-t="name"]').forEach((el) => el.addEventListener("input", renderChips));
+  const type = d.querySelector('[data-t="type"]');
+  const fit = () => {
+    const v = type.value;
+    d.querySelectorAll(".net").forEach((el) => { el.hidden = v === "folder"; });
+    d.querySelectorAll(".ssh").forEach((el) => { el.hidden = v !== "sftp"; });
+    d.querySelectorAll(".local").forEach((el) => { el.hidden = v !== "folder"; });
+  };
+  type.addEventListener("change", fit); fit();
+  renderChips();
+}
+function readTargets() {
+  return [...document.querySelectorAll('[data-row="target"]')].map((d) => {
+    const o = {};
+    d.querySelectorAll("[data-t]").forEach((el) => {
+      const v = el.type === "checkbox" ? el.checked : el.value.trim();
+      if (v !== "") o[el.dataset.t] = v;
+    });
+    if (o.port) o.port = Number(o.port);
+    o.limit_kbps = Number(o.limit_kbps || 0);
+    if (!o.name) o.name = o.type === "sftp" ? "nas" : o.type === "ftp" ? "ftp" : "picdrop";
+    return o;
+  }).filter((o) => o.host || o.path);
+}
+function readJobs() {
+  return [...document.querySelectorAll('[data-row="job"]')].map((d) => {
+    const o = {recursive: true};
+    d.querySelectorAll("[data-j]").forEach((el) => { o[el.dataset.j] = el.type === "checkbox" ? el.checked : el.value.trim(); });
+    o.include = liste(o.include); o.exclude = liste(o.exclude); o.min_kb = Number(o.min_kb || 0);
+    o.targets = [...d.querySelectorAll(".sy-chips input:checked")].map((i) => i.value);
+    return o;
+  }).filter((f) => f.path);
+}
+async function saveAll(btn) {
+  const blind = readJobs().filter((f) => f.enabled && !f.targets.length);
+  const payload = {folders: readJobs(), targets: readTargets()};
+  await job("set_sync_config", payload, btn);
+  if (blind.length) {
+    $("out").insertAdjacentHTML("beforeend",
+      `<p class="hint" style="margin:8px 0 0">Ohne Kreuzchen gehen diese Aufträge an <b>alle</b> Ziele: ${esc(blind.map((f) => f.name || f.path).join(", "))}</p>`);
+  }
+  setTimeout(refresh, 2000);
+}
+
+// ── Ordner am Ziel auswählen ──────────────────────────
+let PICK_FOR = null, PICK_PATH = "";
+async function browse(btn) {
+  const row = btn.closest('[data-row="target"]');
+  const name = row.querySelector('[data-t="name"]').value.trim();
+  if (!name) return alert("Erst einen Namen für das Ziel vergeben und speichern.");
+  PICK_FOR = row;
+  await openPath(name, row.querySelector('[data-t="path"]').value.trim());
+}
+async function openPath(name, path, create) {
+  $("pickerList").innerHTML = '<span style="color:var(--color-text-secondary,#666)">frage den PC …</span>';
+  $("pickerPath").textContent = name + " — " + (path || "Hauptordner");
+  PICK_PATH = path;                     // schon jetzt, damit „nehmen" nie einen alten Pfad übernimmt
+  $("pickTake").disabled = true;        // und erst freigeben, wenn der PC geantwortet hat
+  if (!$("picker").open) $("picker").showModal();
+  let res;
+  try {
+    res = await job("browse_remote", {target: name, path, create: !!create}, null, true);
+  } catch (e) {
+    $("pickerList").innerHTML = `<span style="color:var(--color-danger,#d4383f)">${esc(e.message)}</span>`;
+    return;
+  }
+  if (!res.success) {
+    $("pickerList").innerHTML = `<span style="color:var(--color-danger,#d4383f)">${esc(res.result)}</span>`;
+    return;
+  }
+  const data = JSON.parse(res.result);
+  PICK_PATH = data.path;
+  $("pickTake").disabled = false;
+  $("pickerPath").textContent = data.target + " — " + data.path;
+  // Folder names come from the PC or the remote server: data attributes and
+  // a listener, never a JS string inside onclick (an apostrophe in a folder
+  // name broke out of it; HTML escaping does not help there, second review).
+  const up = data.parent ? `<button type="button" class="btn btn-sm btn-secondary" data-open-target="${esc(data.target)}" data-open-path="${esc(data.parent)}">Eine Ebene höher</button>` : "";
+  const dirs = data.dirs.map((n) => `<button type="button" class="btn btn-sm btn-secondary" data-open-target="${esc(data.target)}" data-open-path="${esc(data.path.replace(/\/$/, "") + "/" + n)}">Ordner: ${esc(n)}</button>`).join("");
+  const files = data.files.length
+    ? `<div style="font-size:.75rem;color:var(--color-text-secondary,#666);padding:6px 2px">${data.files.length} Datei(en)${data.more_files ? " und " + data.more_files + " weitere" : ""}</div>` : "";
+  $("pickerList").innerHTML = up + dirs + files || '<span style="color:var(--color-text-secondary,#666)">Keine Unterordner.</span>';
+  $("pickerList").querySelectorAll("[data-open-path]").forEach((b) =>
+    b.addEventListener("click", () => openPath(b.dataset.openTarget, b.dataset.openPath)));
+}
+function pickHere() {
+  if (PICK_FOR) {
+    PICK_FOR.querySelector('[data-t="path"]').value = PICK_PATH;
+    const flat = PICK_FOR.querySelector('[data-t="flat"]');
+    if (flat && PICK_FOR.querySelector('[data-t="type"]').value !== "folder") flat.checked = false;
+  }
+  $("picker").close();
+}
+async function pickNew() {
+  const name = prompt("Name des neuen Ordners");
+  if (!name) return;
+  const target = $("pickerPath").textContent.split(" — ")[0];
+  await openPath(target, PICK_PATH.replace(/\/$/, "") + "/" + name, true);
+}
+
+// ── Laufende Aktualisierung ───────────────────────────
+async function refresh() {
+  try {
+    const {report, recent} = await api(`/admin/devices/${DEVICE}/sync/state`);
+    $("recentJobs").innerHTML = (recent || []).length
+      ? recent.map((j) => `<tr><td>${esc(j.type)}</td><td>${esc(j.created)}</td><td>${
+          esc(j.state_label) + (j.state === "done" ? ": " + (j.ok ? "✓ " : "✕ ") + esc(j.result)
+                                 : j.state === "expired" ? ": " + esc(j.result) : "")}</td></tr>`).join("")
+      : '<tr><td colspan="3" style="color:var(--color-text-secondary,#666)">Noch keine.</td></tr>';
+    if (!report || !report.queue) return;
+    $("qPending").textContent = report.queue.pending;
+    $("qDone").textContent = report.queue.done;
+    $("qFailed").textContent = report.queue.failed;
+    $("autostart").textContent = (report.autostart || {}).detail || "–";
+    $("lastUpload").textContent = report.last_upload ? `${report.last_upload.file} → ${report.last_upload.target}` : "–";
+    $("log").textContent = (report.log || []).join("\n");
+    $("speed").textContent = report.speed_bps ? `${(report.speed_bps / 1024 / 1024 * 8).toFixed(1)} Mbit/s` : "–";
+    $("eta").textContent = report.eta_seconds === null || report.eta_seconds === undefined ? "–"
+      : report.eta_seconds === 0 ? "alles übertragen" : dauer(report.eta_seconds);
+    $("disk").textContent = `${report.disk_free_gb} GB`;
+    $("disk").style.color = report.disk_free_gb < 2 ? "var(--color-danger,#d4383f)" : "";
+    $("pauseBtn").textContent = report.paused ? "Upload fortsetzen" : "Upload pausieren";
+    $("pauseBtn").setAttribute("onclick", `job('set_sync_config', {paused: ${!report.paused}}, this)`);
+    $("history").innerHTML = (report.history || []).length
+      ? report.history.map((i) => `<tr><td>${i.ok ? "✓" : "✕"} ${esc(i.file)}</td><td>${esc(i.target)}</td>
+          <td>${i.bytes ? groesse(i.bytes) : "–"}</td>
+          <td style="color:var(--color-text-secondary,#666)">${i.at ? new Date(i.at * 1000).toLocaleString("de-DE") : "–"}${i.ok ? "" : " · " + esc(i.error || "")}</td></tr>`).join("")
+      : '<tr><td colspan="4" style="color:var(--color-text-secondary,#666)">Noch nichts übertragen.</td></tr>';
+    // Alter statt Zeitstempel: „vor 4 s" sagt sofort, ob die Zahlen noch stimmen
+    const alter = (utc) => {
+      const sek = (Date.now() - Date.parse(utc.replace(" ", "T") + "Z")) / 1000;
+      return sek < 0 ? "gerade eben" : sek < 90 ? `vor ${Math.round(sek)} s`
+        : sek < 5400 ? `vor ${Math.round(sek / 60)} min` : `vor ${(sek / 3600).toFixed(1)} h`;
+    };
+    const age = report.updated_at ? alter(report.updated_at) : "noch nie";
+    $("sub").textContent = `Version ${report.version} · gemeldet ${age}`;
+    $("sub").style.color = report.updated_at && Date.now() - Date.parse(report.updated_at.replace(" ", "T") + "Z") > 180000
+      ? "var(--color-danger,#d4383f)" : "";
+    $("lastFiles").innerHTML = (report.last_files || []).length
+      ? report.last_files.map((f) => `<tr><td>${esc(f.name)}</td><td style="text-align:right;color:var(--color-text-secondary,#666)">${esc(f.kind)}</td></tr>`).join("")
+      : '<tr><td colspan="2" style="color:var(--color-text-secondary,#666)">Noch keine Dateien.</td></tr>';
+  } catch (e) { /* Galerie kurz nicht erreichbar: beim nächsten Mal wieder */ }
+}
+
+(REPORT.jobs || []).forEach(addJobRow);
+(REPORT.targets || []).forEach(addTargetRow);
+if (!(REPORT.jobs || []).length) addJobRow({});
+refresh();                      // nicht auf den ersten Takt warten
+setInterval(refresh, 10000);
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,97 @@
+/* ============================================================
+   Photobox Gallery — Kiosk-Ebene (Box)
+   Lädt NACH photobox-brand.css. Gilt nur im Vollbild an der Box.
+
+   Andere Bedingungen als im Web: 1920×1200 Touch, Bedienabstand
+   40–80 cm, Partylicht, nasse oder ungenaue Finger, Menschen mit
+   einem Glas in der Hand. Darum: dunkle Bühne, große Ziele,
+   wenig Worte, EIN Primärziel pro Screen.
+   ============================================================ */
+
+:root {
+  /* Die Box ist immer dunkel — aber warm, nicht grau. Das Foto ist
+     das einzig Helle im Bild. */
+  --pb-surface:        oklch(0.185 0.008 75);
+  --pb-surface-sunken: oklch(0.135 0.007 75);
+  --pb-surface-raised: oklch(0.245 0.009 75);
+  --pb-surface-inset:  oklch(0.150 0.007 75);
+
+  --pb-line:        oklch(0.315 0.009 75);
+  --pb-line-subtle: oklch(0.250 0.008 75);
+
+  --pb-text:       oklch(0.965 0.004 75);
+  --pb-text-2:     oklch(0.790 0.008 75);
+  --pb-text-muted: oklch(0.620 0.009 75);
+
+  --pb-accent:       var(--pb-amber-400);
+  --pb-accent-hover: var(--pb-amber-300);
+  --pb-on-accent:    var(--pb-amber-950);
+
+  /* Schleier über dem Live-Bild und Überlagerungen leiten sich aus
+     der Hintergrundfarbe ab — nur so funktionieren helle Vorlagen. */
+  --pb-bg-rgb: 26 22 18;
+  --pb-schleier:      rgb(var(--pb-bg-rgb) / .82);
+  --pb-schleier-weich:rgb(var(--pb-bg-rgb) / .55);
+
+  /* Ziele: 76 px ist das Minimum, 96 px die Regel für Hauptaktionen. */
+  --pb-touch-min: 76px;
+  --pb-btn-h:     96px;
+  --pb-kachel-h: 190px;
+
+  /* Kiosk-Typografie: Anzeigeschrift, keine Websiteschrift. */
+  --pb-font-kiosk: var(--pb-font-display);
+  --pb-k-augenbraue: 22px;
+  --pb-k-titel:  clamp(56px, 7.4vw, 128px);
+  --pb-k-lede:   30px;
+  --pb-k-kachel: 38px;
+  --pb-k-knopf:  26px;
+  --pb-k-hinweis:18px;
+
+  --pb-r-kiosk: 22px;   /* Kiosk darf runder sein: Finger, nicht Maus */
+}
+
+.pb-kiosk { font-family: var(--pb-font-kiosk); }
+.pb-kiosk h1 { font-size: var(--pb-k-titel); letter-spacing: -.035em; line-height: .95; font-weight: 700; }
+.pb-kiosk .pb-augenbraue {
+  font-size: var(--pb-k-augenbraue);
+  letter-spacing: var(--pb-track-wide);
+  text-transform: uppercase;
+  color: var(--pb-text-muted);
+}
+
+/* Knöpfe: ein Primärziel, alles andere tritt zurück. */
+.pb-kiosk .pb-btn {
+  min-height: var(--pb-btn-h);
+  padding: 0 34px;
+  border-radius: var(--pb-r-full);
+  font-size: var(--pb-k-knopf);
+  font-weight: 600;
+  letter-spacing: -.01em;
+  transition: transform var(--pb-t) , background var(--pb-t);
+}
+.pb-kiosk .pb-btn--primaer { background: var(--pb-accent); color: var(--pb-on-accent); }
+.pb-kiosk .pb-btn--zweit   { background: var(--pb-surface-raised); color: var(--pb-text); }
+.pb-kiosk .pb-btn:active   { transform: scale(.97); }
+
+/* Aufnahme läuft: das ist der EINZIGE Ort für Signalrot. */
+.pb-kiosk .pb-rec     { color: var(--pb-signal-dark); }
+.pb-kiosk .pb-rec-dot { background: var(--pb-signal-dark); }
+
+/* Statuszeile liegt auf einer Pille — lesbar auf jedem Untergrund,
+   auch im dunklen Standard über einem hellen Live-Bild. */
+.pb-kiosk .pb-status {
+  background: var(--pb-schleier);
+  border-radius: var(--pb-r-full);
+  padding: 8px 16px;
+  font-size: var(--pb-k-hinweis);
+  color: var(--pb-text-2);
+}
+
+/* Der Countdown gehört dem Bild, nicht der Marke: kein Akzent, weiß. */
+.pb-kiosk .pb-countdown { color: #fff; text-shadow: 0 10px 60px rgb(0 0 0 / .45); }
+
+/* Auf der Box zeigt die Marke sich EINMAL: klein, unten, leise —
+   und sie verschwindet vollständig, sobald ein Event ein eigenes
+   Logo hat (siehe photobox-event.css). */
+.pb-kiosk .pb-marke { opacity: .55; height: 28px; }
+.pb-kiosk[data-event-logo="1"] .pb-marke { display: none; }

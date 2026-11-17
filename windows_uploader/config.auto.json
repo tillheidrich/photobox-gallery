@@ -1,0 +1,11 @@
+{
+  "server_url": "http://your-server:5000",
+  "api_key": "YOUR_DEVICE_API_KEY",
+  "watch_folder": "C:\\Fotobox\\Bilder",
+  "upload_interval": 2,
+  "auto_event": true,
+  "event_name_template": "Event {date}",
+  "supported_extensions": [".jpg", ".jpeg", ".png", ".gif", ".mp4"],
+  "delete_after_upload": false,
+  "log_file": "uploader.log"
+}

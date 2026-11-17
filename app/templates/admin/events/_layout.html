@@ -1,0 +1,76 @@
+{# Layout approval by the customer (app/layout_freigabe.py). Shown only with the
+   gallery setting "Layout-Freigabe durch Kunden". #}
+{% set lp = layout_panel(event) %}
+{% set inv = lp.inv %}
+<div class="card" style="margin:1.25rem 0" id="layout-freigabe">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Layout vom Kunden gestalten lassen</h2></div>
+  <div class="card-body">
+    {% if lp.assigned %}
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border-radius:8px;background:var(--color-success-bg)">
+      <span style="font-size:.85rem">Die Box bietet bei diesem Event nur dieses Layout an: <b>{{ lp.assigned|join(', ') }}</b></span>
+      <form method="post" action="/admin/events/{{ event.id }}/layout/zuweisung-aufheben" style="margin:0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-sm btn-secondary">Zuweisung aufheben</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if inv and not inv.revoked_at %}
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px);gap:18px;align-items:start">
+      <div>
+        <p style="margin:0 0 6px;font-size:.85rem;color:var(--color-text-2)">Stand</p>
+        <p style="margin:0 0 10px;font-weight:600">{{ lp.status_label[inv.status] }}{% if lp.expired %} · Link abgelaufen{% endif %}</p>
+        <p style="margin:0 0 12px;font-size:.8rem;color:var(--color-text-2)">Link erzeugt {{ inv.created_at[:16] }} · gilt bis {{ inv.expires_at[:10] }}
+          {% if inv.submitted_at %} · abgeschickt {{ inv.submitted_at[:16] }}{% endif %}
+          {% if inv.approved_at %} · freigegeben {{ inv.approved_at[:16] }} von {{ inv.approved_by }}{% endif %}</p>
+        {% if inv['values'].template %}
+        <dl style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:.85rem">
+          <dt style="color:var(--color-text-2)">Layout</dt><dd style="margin:0">{{ lp.template_names.get(inv['values'].template, inv['values'].template) }}</dd>
+          {% for f in inv.fields %}<dt style="color:var(--color-text-2)">{{ f.label }}</dt><dd style="margin:0">{{ inv['values'].fields.get(f.key) or '—' }}</dd>{% endfor %}
+          {% if inv['values'].palette %}<dt style="color:var(--color-text-2)">Farben</dt><dd style="margin:0">{{ dict(lp.palettes).get(inv['values'].palette, inv['values'].palette) }}</dd>{% endif %}
+          {% if inv['values'].font %}<dt style="color:var(--color-text-2)">Schrift</dt><dd style="margin:0">{{ dict(lp.fonts).get(inv['values'].font, inv['values'].font) }}</dd>{% endif %}
+          {% if inv.logo %}<dt style="color:var(--color-text-2)">Logo</dt><dd style="margin:0">{{ 'hochgeladen' if lp.has_logo else 'keins' }}</dd>{% endif %}
+        </dl>
+        {% endif %}
+        {% if inv.note %}<p style="margin:0 0 12px;font-size:.85rem"><span style="color:var(--color-text-2)">Dein Hinweis:</span> {{ inv.note }}</p>{% endif %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+          {% if inv.status == 'eingereicht' %}
+          <form method="post" action="/admin/events/{{ event.id }}/layout/freigeben" style="margin:0">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-primary btn-sm">Freigeben</button>
+          </form>
+          {% endif %}
+          <form method="post" action="/admin/events/{{ event.id }}/layout/sperren" style="margin:0">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-secondary btn-sm">Link sperren</button>
+          </form>
+        </div>
+        {% if inv.status == 'eingereicht' %}
+        <form method="post" action="/admin/events/{{ event.id }}/layout/zurueck" style="margin:12px 0 0;display:grid;gap:6px">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label class="form-label" for="lf-note" style="margin:0">Hinweis für den Kunden</label>
+          <textarea class="form-control" id="lf-note" name="note" rows="2" maxlength="500" placeholder="z. B. Bitte das Datum ohne Jahr."></textarea>
+          <button class="btn btn-secondary btn-sm" style="justify-self:start">Zurückgeben mit Hinweis</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if inv['values'].template %}
+      <a href="/admin/events/{{ event.id }}/layout/vorschau.jpg" target="_blank" rel="noopener" title="Größer ansehen">
+        <img src="/admin/events/{{ event.id }}/layout/vorschau.jpg" alt="Vorschau des Kundenlayouts"
+             style="width:100%;border-radius:6px;box-shadow:0 0 0 1px var(--color-border)">
+      </a>
+      {% endif %}
+    </div>
+    <details style="margin-top:16px">
+      <summary style="cursor:pointer;font-size:.85rem">Neuen Link erzeugen (der jetzige hört dann auf zu gelten)</summary>
+      {% include "admin/events/_layout_form.html" %}
+    </details>
+    {% else %}
+    <p style="margin:0 0 12px;font-size:.875rem;color:var(--color-text-2)">Dein Kunde bekommt einen persönlichen Link, sucht
+      sich eines deiner Layouts aus, trägt Namen, Datum und einen Spruch ein, wählt Farben und Schrift aus dem, was du
+      erlaubst, und schickt es ab. Du gibst frei, und die Box bekommt das Layout beim nächsten Abgleich für dieses Event.
+      {% if inv and inv.revoked_at %}<br><b>Der letzte Link ist gesperrt.</b>{% endif %}</p>
+    {% include "admin/events/_layout_form.html" %}
+    {% endif %}
+  </div>
+</div>

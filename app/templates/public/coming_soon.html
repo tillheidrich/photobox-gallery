@@ -1,0 +1,52 @@
+{% extends "layout_public.html" %}
+{% block title %}{{ event.name }}{% endblock %}
+{% block head %}
+{% include "public/_brand_style.html" %}
+<style>
+  .cs{max-width:640px;margin:0 auto;padding:12vh 18px 80px;text-align:center;min-height:68vh}
+  .cs-eyebrow{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 10px}
+  .cs h1{font-size:clamp(1.7rem,5vw,2.5rem);letter-spacing:-.02em;line-height:1.12;margin:0 0 14px}
+  .cs p{color:var(--color-text-2);line-height:1.6;margin:0 auto 26px;max-width:40ch}
+  .cs-clock{display:flex;justify-content:center;gap:10px;margin:0 0 22px}
+  .cs-unit{min-width:74px;padding:12px 6px;border-radius:var(--r-lg);background:var(--color-surface);
+           border:1px solid var(--color-border-subtle);box-shadow:var(--shadow-sm)}
+  .cs-num{font-size:1.7rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .cs-cap{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);margin-top:6px}
+  .cs-when{font-size:.85rem;color:var(--color-text-muted)}
+  @media(max-width:420px){.cs-unit{min-width:0;flex:1}.cs-num{font-size:1.35rem}}
+</style>
+{% endblock %}
+{% block content %}
+<main class="cs">
+  {% if brand and brand.logo_url %}<img src="{{ brand.logo_url }}" alt="" style="max-height:56px;margin:0 auto 22px">{% endif %}
+  <p class="cs-eyebrow">{{ event.name }}</p>
+  <h1>{{ t('soon.title') }}</h1>
+  <p>{{ t('soon.text') }}</p>
+  <div class="cs-clock" id="csClock" data-start="{{ start_iso }}">
+    <div class="cs-unit"><div class="cs-num" id="csD">–</div><div class="cs-cap">{{ t('soon.days') }}</div></div>
+    <div class="cs-unit"><div class="cs-num" id="csH">–</div><div class="cs-cap">{{ t('soon.hours') }}</div></div>
+    <div class="cs-unit"><div class="cs-num" id="csM">–</div><div class="cs-cap">{{ t('soon.minutes') }}</div></div>
+    <div class="cs-unit"><div class="cs-num" id="csS">–</div><div class="cs-cap">{{ t('soon.seconds') }}</div></div>
+  </div>
+  <p class="cs-when">{{ t('soon.starts_at', date=start_text) }}</p>
+</main>
+<script>
+(function () {
+  var box = document.getElementById('csClock');
+  if (!box) return;
+  var target = new Date(box.dataset.start).getTime();
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+  function tick() {
+    var left = Math.max(0, target - Date.now());
+    if (left <= 0) { location.reload(); return; }   // Startzeit erreicht: Galerie ist da
+    var s = Math.floor(left / 1000);
+    document.getElementById('csD').textContent = Math.floor(s / 86400);
+    document.getElementById('csH').textContent = pad(Math.floor(s % 86400 / 3600));
+    document.getElementById('csM').textContent = pad(Math.floor(s % 3600 / 60));
+    document.getElementById('csS').textContent = pad(s % 60);
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}

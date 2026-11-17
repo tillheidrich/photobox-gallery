@@ -1,0 +1,183 @@
+{
+ "id": "editorial-quer-3",
+ "name": "Editorial Schwarz-Weiß · quer · 3 Fotos",
+ "paper": "10x15-quer",
+ "canvas": [
+  1800,
+  1200
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 1000,
+   "h": 667,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  },
+  {
+   "x": 1120,
+   "y": 96,
+   "w": 584,
+   "h": 492,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-2"
+  },
+  {
+   "x": 1120,
+   "y": 612,
+   "w": 584,
+   "h": 492,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-3"
+  }
+ ],
+ "texts": [
+  {
+   "x": 596,
+   "y": 842,
+   "size": 32,
+   "bold": false,
+   "align": "center",
+   "value": "A & B",
+   "color": "#141414",
+   "id": "mono",
+   "font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 596,
+   "y": 936,
+   "size": 75,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#141414",
+   "id": "t1",
+   "font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 596,
+   "y": 1034,
+   "size": 30,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#4d4d4d",
+   "id": "t2",
+   "font": "CormorantSC-SemiBold.ttf"
+  }
+ ],
+ "shots": 3,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1800,
+   "h": 1200,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 92,
+   "y": 92,
+   "w": 1008,
+   "h": 675,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-1"
+  },
+  {
+   "kind": "rect",
+   "x": 1116,
+   "y": 92,
+   "w": 592,
+   "h": 500,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-2"
+  },
+  {
+   "kind": "rect",
+   "x": 1116,
+   "y": 608,
+   "w": 592,
+   "h": 500,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-3"
+  },
+  {
+   "kind": "ellipse",
+   "x": 544,
+   "y": 809,
+   "w": 104,
+   "h": 104,
+   "fill": "",
+   "stroke": "#141414",
+   "stroke_width": 3,
+   "opacity": 100,
+   "id": "form-4"
+  },
+  {
+   "kind": "line",
+   "x": 186,
+   "y": 858,
+   "w": 330,
+   "h": 6,
+   "fill": "",
+   "stroke": "#141414",
+   "stroke_width": 3,
+   "opacity": 100,
+   "id": "form-5"
+  },
+  {
+   "kind": "line",
+   "x": 676,
+   "y": 858,
+   "w": 330,
+   "h": 6,
+   "fill": "",
+   "stroke": "#141414",
+   "stroke_width": 3,
+   "opacity": 100,
+   "id": "form-6"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "form-1",
+  "form-2",
+  "form-3",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "form-4",
+  "form-5",
+  "form-6",
+  "mono",
+  "t1",
+  "t2"
+ ]
+}

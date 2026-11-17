@@ -1,0 +1,148 @@
+{% extends "layout_admin.html" %}
+{% block title %}Druckvorlagen{% endblock %}
+{% block page_title %}Druckvorlagen{% endblock %}
+{% block content %}
+<style>
+  /* Desk: title left, actions right, the import line under them. Phone: all stacked. */
+  .vl-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 12px;align-items:center}
+  .vl-head-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+  .vl-import{grid-column:1/-1;gap:8px 10px}
+  .vl-import-label{font-size:.8125rem;color:var(--color-text-muted)}
+  .vl-import input[type=file]{font-size:.8rem;max-width:260px}
+  .vl-list{display:flex;flex-wrap:wrap;gap:18px}
+  .vl-item{margin:0;display:flex;flex-direction:column;gap:6px;align-items:center;width:170px}
+  .vl-item figcaption{font-size:.78rem;text-align:center;display:flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}
+  @media (max-width:768px){
+    .vl-head{grid-template-columns:1fr}
+    .vl-head-actions{justify-content:stretch}
+    .vl-head-actions .btn{flex:1 1 auto}
+    .vl-import{border-top:1px solid var(--color-border-subtle);padding-top:12px}
+    .vl-import-label{font-size:.875rem;color:var(--color-text)}
+    .vl-import input[type=file]{max-width:none}
+    .vl-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 12px}
+    .vl-item{width:auto}
+    .vl-item figcaption{font-size:.875rem}
+    .vl-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+    #mitgeliefert figcaption,#mitgeliefert a{font-size:.875rem!important;max-width:none!important}
+    .vl-links>span{display:none}
+    .vl-links a,#mitgeliefert a{display:inline-flex;align-items:center;min-height:44px;padding:0 6px}
+  }
+</style>
+<div class="page-header">
+  <h1 class="page-title">Druckvorlagen</h1>
+  <p class="page-subtitle">Die mitgelieferten Anordnungen und deine eigenen. Was du hier speicherst, holen sich
+    alle Boxen beim nächsten Sync — derselbe Editor läuft auch an der Box selbst.</p>
+</div>
+
+<div class="card" style="margin-bottom:18px" id="layout-vom-kunden">
+  <div class="card-body" style="font-size:.875rem">
+    <b>Layout vom Kunden gestalten lassen:</b> Schreib in die Texte einer eigenen Vorlage
+    <code>{feld_namen}</code>, <code>{feld_datum}</code> oder <code>{feld_spruch}</code> und nenne eine Ebene
+    „Logo“, wenn der Kunde ein Logo hochladen darf. Den Link für den Kunden erzeugst du am
+    <a href="/admin/events">Event</a> (Galerie-Einstellungen: „Layout-Freigabe durch Kunden“).
+    Mehr dazu in <code>docs/LAYOUT-FREIGABE.md</code>.
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header vl-head">
+    <h2 style="font-size:.9375rem;font-weight:600;margin:0">Eigene Vorlagen</h2>
+    <div class="vl-head-actions">
+      <a class="btn btn-primary btn-sm" href="{{ url_for('admin_booth.templates_editor') }}">Neue Vorlage</a>
+      {% if eigene %}
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('admin_booth.templates_export') }}">Alle ausgeben (.abzug)</a>
+      {% endif %}
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('admin_booth.templates_library') }}">Vorlagen-Bibliothek</a>
+    </div>
+    {#- The file picker on its own line, its button under it on a phone:
+        side by side it pushed "Einlesen" off the card. -#}
+    <form method="post" action="{{ url_for('admin_booth.templates_import') }}"
+          enctype="multipart/form-data" class="adm-file vl-import">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="vl-import-label" for="vlPaket">Vorlagen-Datei einlesen (.abzug)</label>
+      <input type="file" id="vlPaket" name="paket" accept=".abzug,.zip" required>
+      <button class="btn btn-secondary btn-sm">Einlesen</button>
+    </form>
+  </div>
+  <div class="card-body">
+    {% if eigene %}
+    <div class="vl-list">
+      {% for e in eigene %}
+      <figure class="vl-item">
+        <div class="vl-eigene" data-vorlage='{{ e.template|tojson }}' aria-hidden="true" data-check-skip></div>
+        <figcaption>
+          <b>{{ e.template.name }}</b>
+          <span style="color:var(--color-text-muted)">{{ e.template.shots or 1 }} Foto(s) · {{ papiere.get(e.template.paper, {}).get('name', e.template.paper) }}</span>
+          <span class="vl-links">
+            <a href="{{ url_for('admin_booth.templates_editor', datei=e.asset.file) }}">bearbeiten</a><span aria-hidden="true"> · </span>
+            <a href="{{ url_for('admin_booth.templates_export', datei=e.asset.file) }}">ausgeben</a><span aria-hidden="true"> · </span>
+            <a href="/admin/vorlagen/overlay.png?datei={{ e.asset.file|urlencode }}" download title="Rahmen als PNG mit durchsichtigen Fotofeldern, für andere Fotobox-Programme">Overlay-PNG</a>
+          </span>
+        </figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+    <p style="font-size:.8rem;color:var(--color-text-muted);margin:14px 0 0"><b>Weitergeben:</b> „Ausgeben" schreibt eine
+      <code>.abzug</code>-Datei — die Vorlage samt der Hintergrundbilder, auf die sie zeigt. Dieselbe Datei
+      liest die Box ein (Verwaltung → Vorlagen) und dieses Formular hier. Es ist ein gewöhnliches ZIP:
+      wer nachsehen will, was er weitergibt, packt es aus.</p>
+    <p style="font-size:.8rem;color:var(--color-text-muted);margin:8px 0 0"><b>Für andere Fotobox-Programme:</b> „Overlay-PNG“
+      ist der Rahmen in Papiergröße mit durchsichtigen Fotofeldern (ohne QR-Code), z. B. für LumaBooth, dslrBooth oder Winbooth.
+      Platzhalter wie <code>{event_name}</code> bleiben stehen.</p>
+    <p style="font-size:.8rem;color:var(--color-text-muted);margin:8px 0 0">Zuweisen in den Box-Einstellungen unter „Eigene Collage-Vorlagen"
+      oder je Event. Sobald einer Box eigene Vorlagen zugewiesen sind, treten die mitgelieferten dort zurück.</p>
+    {% else %}
+    <p style="margin:0;color:var(--color-text-muted)">Noch keine eigene Vorlage. Fang mit einer mitgelieferten an — unten auf „kopieren".</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Mitgeliefert</h2></div>
+  <div class="card-body">
+    <p style="font-size:.85rem;color:var(--color-text-muted);margin:0 0 14px">Diese neunzehn kommen mit der Box. Ihr Aussehen (Farben,
+      Schrift, Zeilen) stellst du in den Box-Einstellungen unter „Aussehen der Vorlagen" ein — dafür braucht es keine Kopie.
+      Eine Kopie lohnt sich, wenn du die <em>Anordnung</em> ändern willst.</p>
+    <div id="mitgeliefert" class="vl-list"></div>
+  </div>
+</div>
+
+<script src="/static/js/vorlagen.js"></script>
+<script>
+(function () {
+  // Die Eigenen: jede in ihrem eigenen Kasten zeichnen.
+  document.querySelectorAll(".vl-eigene").forEach(function (box) {
+    var v = JSON.parse(box.dataset.vorlage);
+    window.pbVorlagen.laden().then(function (d) {
+      var eins = { templates: [v], presets: d.presets };
+      var alt = window.pbVorlagen.__daten;
+      box.innerHTML = "";
+      // pbVorlagen zeichnet aus seiner eigenen Datei; hier genügt ein schlichtes Schema.
+      var skala = 150 / v.canvas[0];
+      var k = document.createElement("div");
+      k.style.cssText = "position:relative;width:150px;height:" + Math.round(v.canvas[1] * skala) +
+        "px;background:" + (d.presets.clean.background) + ";border-radius:4px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.25)";
+      (v.slots || []).forEach(function (s) {
+        var f = document.createElement("div");
+        f.style.cssText = "position:absolute;left:" + s.x * skala + "px;top:" + s.y * skala + "px;width:" +
+          s.w * skala + "px;height:" + s.h * skala + "px;background:rgba(255,255,255,.18);" +
+          "display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px";
+        f.textContent = (s.shot || 0) + 1;
+        k.appendChild(f);
+      });
+      box.appendChild(k);
+    });
+  });
+
+  // Die Mitgelieferten mit „kopieren"-Link — eine Reihe, gezeichnet aus derselben
+  // Datei, aus der die Box druckt.
+  window.pbVorlagen.zeichne(document.getElementById("mitgeliefert"), {
+    breite: 150, form: document,
+    link: function (t) {
+      return { href: "{{ url_for('admin_booth.templates_editor') }}?von=" + encodeURIComponent(t.id),
+               text: "kopieren" };
+    }
+  });
+})();
+</script>
+{% endblock %}

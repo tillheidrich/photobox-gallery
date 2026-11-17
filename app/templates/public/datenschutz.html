@@ -1,0 +1,11 @@
+{% extends "layout_public.html" %}
+{% block title %}Datenschutzerklärung{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="legal-page">
+    <div class="legal-content">
+      {{ content | safe }}
+    </div>
+  </div>
+</div>
+{% endblock %}

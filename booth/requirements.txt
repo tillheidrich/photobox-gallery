@@ -1,0 +1,15 @@
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+pillow>=10.3
+qrcode>=7.4
+httpx>=0.27
+pluggy>=1.5
+psutil>=5.9
+opencv-python-headless>=4.9   # Webcam-Adapter + Live-View-Dekodierung
+paramiko>=3.4                 # SFTP-Ziel (NAS)
+PyNaCl>=1.5                   # sealed second-target password (comes with paramiko; named because the booth imports it)
+pywin32>=306; sys_platform == "win32"   # Druck unter Windows
+imageio-ffmpeg>=0.5            # bringt ffmpeg mit (Boomerang)
+pywebview>=6.2; sys_platform == "win32"   # own window (WebView2), boothcore/window.py
+-e ../sync                      # gemeinsamer Sync (Outbox, Ziele, Agent)

@@ -1,0 +1,1492 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'events' %}
+
+{% block title %}{{ 'Event bearbeiten' if event else 'Neues Event' }}{% endblock %}
+{% block page_title %}{{ 'Event bearbeiten' if event else 'Neues Event erstellen' }}{% endblock %}
+
+{% block content %}
+<div style="max-width:880px" data-phone-sections="{{ 'event-edit' if event else 'event-new' }}">
+
+  <div class="page-header" style="margin-bottom:1rem">
+    <div style="min-width:0">
+      <h1 class="page-title">{{ event.name if event else 'Neues Event' }}</h1>
+      {% if event %}<p class="page-subtitle" style="overflow-wrap:anywhere">/gallery/{{ event.slug }}</p>{% endif %}
+    </div>
+  </div>
+  {% with ss_scope='[data-phone-sections]', ss_card='.card', ss_head='.card-header h2', ss_field='.form-group, .gs-check, label.toggle', ss_chips=True %}
+  {% include "admin/_settings_search.html" %}
+  {% endwith %}
+  <div data-section-nav></div>
+
+  {# Quick links bar for existing events #}
+  {% if event %}
+  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1.5rem;padding:.75rem 1rem;background:var(--c-surface-2);border-radius:10px;flex-wrap:wrap">
+    <span style="color:var(--c-text-muted);font-size:.8125rem;margin-right:.25rem">Links:</span>
+    <a href="/gallery/{{ event.slug }}" target="_blank" class="btn btn--ghost btn--sm">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Galerie
+    </a>
+    <a href="/gallery/{{ event.slug }}?ansicht=vorschau" class="btn btn--secondary btn--sm" title="{{ t('preview.admin_hint') }}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="margin-right:4px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      {{ t('preview.admin_button') }}
+    </a>
+    <a href="/gallery/{{ event.slug }}?ansicht=verwalten" class="btn btn--ghost btn--sm">{{ t('manage.admin_button') }}</a>
+    <a href="/kiosk/{{ event.slug }}" target="_blank" class="btn btn--ghost btn--sm">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+      Kiosk
+    </a>
+    <a href="/slideshow/{{ event.slug }}" target="_blank" class="btn btn--ghost btn--sm"
+       title="Vollbild-Slideshow für Beamer oder Screen – lädt neue Fotos automatisch nach">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><rect x="2" y="3" width="20" height="14" rx="2"/><polygon points="10 8 15 10.5 10 13" fill="currentColor" stroke="none"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+      Slideshow
+    </a>
+    <a href="/gallery/{{ event.slug }}/print" target="_blank" class="btn btn--ghost btn--sm">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      QR-Druck
+    </a>
+    {% if event.code %}
+    <a href="/g/{{ event.code }}" target="_blank" title="Galerie-Code — Gäste können ihn auf der Startseite eingeben"
+       style="display:inline-flex;align-items:center;gap:6px;padding:.3rem .6rem;background:var(--color-primary-bg);
+              color:var(--color-primary-text);border-radius:8px;font-family:var(--font-mono);font-weight:700;
+              letter-spacing:.12em;font-size:.8125rem;text-decoration:none">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/></svg>
+      {{ event.code }}
+    </a>
+    {% endif %}
+    <img src="/gallery/{{ event.slug }}/qr.png" alt="QR" style="height:28px;width:28px;border-radius:4px;margin-left:.25rem">
+    <div style="flex:1"></div>
+    {% if redirect_host(event.redirect_url) %}
+      <a href="#qr-ziel" class="badge badge--amber" style="text-decoration:none" title="{{ event.redirect_url }}">leitet weiter auf {{ redirect_host(event.redirect_url) }}</a>
+    {% endif %}
+    {#- Badge, live/draft switch and count stay together on one line. -#}
+    <span class="pub-head">
+    {% if event.published %}
+      <span class="badge badge--green">Veröffentlicht</span>
+    {% else %}
+      <span class="badge badge--secondary">Entwurf</span>
+    {% endif %}
+    {% with pe = {'id': event.id, 'name': event.name, 'published': event.published,
+                  'no_password': not event.password_hash, 'kind': event.kind or 'booth'}, back = 'edit' %}
+      {% include "admin/events/_publish_button.html" %}
+    {% endwith %}
+    <span style="color:var(--c-text-muted);font-size:.75rem">{{ photos | length }} Foto{{ 's' if photos | length != 1 }}</span>
+    </span>
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" id="eventForm" data-dirty-watch>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="save">
+
+    {# Basic info #}
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Grunddaten</h2></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="name">Event-Name *</label>
+          <input type="text" id="name" name="name" class="form-control"
+                 value="{{ event.name if event else '' }}" required
+                 placeholder="z.B. Hochzeit Maria & Thomas"
+                 oninput="autoSlug(this.value)">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div class="form-group">
+            <label class="form-label" for="date">Datum</label>
+            <input type="date" id="date" name="date" class="form-control"
+                   value="{{ event.date[:10] if event and event.date else '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="slug">Adresse der Galerie</label>
+            <div style="display:flex;align-items:center;gap:.35rem">
+              <span class="form-hint" style="white-space:nowrap">/gallery/</span>
+              <input type="text" id="slug" name="slug" class="form-control"
+                     value="{{ event.slug if event else '' }}"
+                     placeholder="wird automatisch generiert">
+            </div>
+            <span class="form-hint">Leer lassen = automatisch aus dem Namen. Großbuchstaben, Umlaute und Leerzeichen werden umgeschrieben.</span>
+            {% if event %}
+            <label class="gs-check" style="margin-top:.5rem"><input type="checkbox" name="drop_old_slug"> Alte Adresse nicht weiterleiten</label>
+            <span class="form-hint">Standard: Die bisherige Adresse leitet weiter, damit gedruckte QR-Codes und verschickte Links weiter ankommen.</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if slug_aliases %}
+        <div class="form-group">
+          <label class="form-label">Alte Adressen, die weiterleiten</label>
+          <ul style="list-style:none;padding:0;margin:0;font-size:.875rem">
+            {% for alias in slug_aliases %}
+            <li style="display:flex;align-items:center;gap:.5rem;padding:.25rem 0">
+              <code>/gallery/{{ alias }}</code>
+              <span class="form-hint">→ /gallery/{{ event.slug }}</span>
+              <button type="submit" form="alias-{{ loop.index }}" class="btn btn-sm btn-secondary">abschalten</button>
+            </li>
+            {% endfor %}
+          </ul>
+          <span class="form-hint">Abschalten heißt: Der alte Link führt danach ins Leere.</span>
+        </div>
+        {% endif %}
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="description">Beschreibung (optional)</label>
+          <textarea id="description" name="description" class="form-control" rows="2"
+                    placeholder="Kurze Beschreibung">{{ event.description if event else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    {% if event %}
+    {#- Link preview (app/link_preview.py). The card on the right is the real
+        image a chat app fetches, made without the admin session. -#}
+    {% set og = link_meta(event) %}
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('og.admin.title') }}</h2></div>
+      <div class="card-body og-admin">
+        <input type="hidden" name="og_form" value="1">
+        <div class="og-admin-fields">
+          <p class="form-hint" style="margin:0 0 .75rem">{{ t('og.admin.hint') }}</p>
+          <label class="form-label" for="og_image">{{ t('og.admin.title') }}</label>
+          <input type="file" id="og_image" name="og_image" accept="image/jpeg,image/png,image/webp" class="form-control">
+          <p class="form-hint og-admin-new" id="ogNewHint" hidden>{{ t('og.admin.new_file') }}</p>
+          <label class="gs-check" style="margin-top:.75rem"><input type="checkbox" name="og_image_public" value="1" {% if event.og_image_public %}checked{% endif %}> {{ t('og.admin.public') }}</label>
+          <span class="form-hint" style="display:block">{{ t('og.admin.public_hint') }}</span>
+          {% if event.og_image_path %}
+          <label class="gs-check" style="margin-top:.5rem"><input type="checkbox" name="remove_og_image" value="1"> {{ t('og.admin.remove') }}</label>
+          {% endif %}
+        </div>
+        {% if og %}
+        <figure class="og-card" aria-label="{{ t('og.admin.preview') }}">
+          <figcaption class="og-card-cap">{{ t('og.admin.preview') }}</figcaption>
+          <div class="og-card-box">
+            <img id="ogPreviewImg" src="{{ og.image }}" alt="" width="1200" height="630" loading="lazy">
+            <div class="og-card-text">
+              <span class="og-card-host">{{ og.url.split('/')[2] if og.url.count('/') >= 2 else '' }}</span>
+              <strong class="og-card-title">{{ og.title }}</strong>
+              <span class="og-card-desc">{{ og.description }}</span>
+            </div>
+          </div>
+          <p class="form-hint" style="margin:.5rem 0 0">{% if og.mode == 'full' %}{{ t('og.admin.mode_full') }}{% elif og.mode == 'custom' %}{{ t('og.admin.mode_custom') }}{% elif og.mode == 'neutral' %}{{ t('og.admin.mode_neutral') }}{% else %}{{ t('og.admin.mode_brand') }}{% endif %}</p>
+        </figure>
+        {% endif %}
+      </div>
+    </div>
+    <style>
+      .og-admin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:1.25rem;align-items:start}
+      @media (max-width:720px){.og-admin{grid-template-columns:1fr}}
+      .og-card{margin:0}
+      .og-card-cap{font-size:.75rem;color:var(--c-text-muted);margin:0 0 .35rem}
+      .og-card-box{border-radius:10px;overflow:hidden;background:var(--c-surface-2);border:1px solid var(--c-border)}
+      .og-card-box img{display:block;width:100%;height:auto;aspect-ratio:1200/630;object-fit:cover;background:var(--c-surface-3)}
+      .og-card-text{display:grid;gap:2px;padding:.55rem .7rem .65rem;font-size:.8125rem;line-height:1.35}
+      .og-card-host{color:var(--c-text-muted);font-size:.6875rem;text-transform:lowercase}
+      .og-card-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .og-card-desc{color:var(--c-text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    </style>
+    <script>
+    (function () {
+      // Live preview of a file that is not saved yet: the browser shows it in
+      // the card, cut like the server will cut it (object-fit: cover, 1.9:1).
+      var input = document.getElementById('og_image'), img = document.getElementById('ogPreviewImg');
+      var hint = document.getElementById('ogNewHint');
+      if (!input || !img) return;
+      var saved = img.src, url = null;
+      input.addEventListener('change', function () {
+        if (url) URL.revokeObjectURL(url);
+        var f = input.files && input.files[0];
+        if (f) { url = URL.createObjectURL(f); img.src = url; hint.hidden = false; }
+        else { img.src = saved; hint.hidden = true; }
+      });
+    })();
+    </script>
+    {% endif %}
+
+    {# Visibility #}
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Sichtbarkeit & Zugang</h2></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="toggle">
+            <input type="checkbox" name="published" value="1"
+                   {% if event and event.published %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            <span style="font-size:.9375rem;font-weight:500">Gemeinsame Galerie: alle sehen alle Aufnahmen</span>
+          </label>
+          <span class="form-hint" style="margin-left:56px;display:block;margin-top:.25rem">Aus heißt nicht „niemand sieht etwas“: Jeder Gast erreicht über seinen QR-Code weiterhin seinen eigenen Durchgang. An heißt zusätzlich eine Galerie des ganzen Events, in der jeder alles sieht, der die Adresse hat. Auf Firmenveranstaltungen ist „aus“ meistens die richtige Antwort.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="password">{{ t('event.password.label') }}</label>
+            {#- Never filled in: only a hash is stored. Empty keeps what is
+                stored; removing it is the checkbox below, nothing else. -#}
+            <input type="password" id="password" name="password" class="form-control" value=""
+                   autocomplete="new-password"
+                   placeholder="{{ t('event.password.stored') if event and event.password_hash else t('event.password.new') }}">
+            {% if event and event.password_hash %}
+            <label class="toggle" style="margin-top:.5rem">
+              <input type="checkbox" name="remove_password" value="1">
+              <span class="toggle-track"></span>
+              <span style="font-size:.875rem">{{ t('event.password.remove') }}</span>
+            </label>
+            <span class="form-hint" style="display:block;margin-top:.25rem">{{ t('event.password.remove_hint') }}</span>
+            {% endif %}
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="retention_days">Aufbewahrung (Tage)</label>
+            <input type="number" id="retention_days" name="retention_days" class="form-control"
+                   value="{{ event.retention_days if event else default_retention_days }}" min="1" max="3650">
+          </div>
+        </div>
+        {% set ri = retention_info(event) %}
+        <div class="form-group" id="aufbewahrung" style="margin:1rem 0 0">
+          <label class="form-label" for="gallery_kind">{{ t('kind.label') }}</label>
+          <select class="form-control" id="gallery_kind" name="gallery_kind" style="max-width:320px">
+            <option value="booth" {% if ri.kind == 'booth' %}selected{% endif %}>{{ t('kind.booth') }}</option>
+            <option value="client" {% if ri.kind == 'client' %}selected{% endif %}>{{ t('kind.client') }}</option>
+          </select>
+          {% if event %}
+          <label class="form-label" for="auto_delete" style="margin-top:.75rem">{{ t('kind.deletion_label') }}</label>
+          <select class="form-control" id="auto_delete" name="auto_delete" style="max-width:320px">
+            <option value="1" {% if ri.auto %}selected{% endif %}>{{ t('kind.auto_delete') }}</option>
+            <option value="" {% if not ri.auto %}selected{% endif %}>{{ t('kind.deletion_off') }}</option>
+          </select>
+          <p class="form-hint" style="margin:.35rem 0 0">{{ t('kind.deletion_hint') }}</p>
+          <p class="form-hint" style="margin:.35rem 0 0">
+            {% if ri.deadline %}{{ t('kind.fate_date', date=ri.deadline) }}{% elif not ri.auto %}{{ t('kind.fate_stays') }}{% else %}{{ t('kind.fate_none') }}{% endif %}
+            {% if ri.protected and not ri.auto %} · {{ t('kind.fate_protected') }}{% endif %}</p>
+          {% else %}
+          <p class="form-hint" style="margin:.35rem 0 0">{{ t('kind.hint') }}</p>
+          {% endif %}
+        </div>
+        {% if event %}
+        <hr style="border:0;border-top:1px solid var(--color-border);margin:1.25rem 0">
+        <p class="form-hint" style="margin:0 0 .75rem">
+          Zeitplan der Galerie: davor eine Countdown-Seite ohne Fotos, danach die Statusseite.
+          Gäste sehen in der letzten Woche „noch X Tage verfügbar".
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="scheduled_live_at">Live ab (optional)</label>
+            <input type="datetime-local" id="scheduled_live_at" name="scheduled_live_at" class="form-control"
+                   value="{{ (event.scheduled_live_at or '')[:16] }}">
+            <span class="form-hint">Bis dahin sehen Gäste einen Countdown — keine Fotos, keine Dateien.</span>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="expires_at">Verfügbar bis (optional)</label>
+            <input type="datetime-local" id="expires_at" name="expires_at" class="form-control"
+                   value="{{ (gs.expires_at or '')[:16] if gs else '' }}">
+            <span class="form-hint">Danach ist die Galerie offline. {% if schedule_state == 'expired' %}<b>Aktuell abgelaufen.</b>{% endif %}</span>
+          </div>
+        </div>
+        {% if schedule_state == 'scheduled' %}
+        <p style="margin:.75rem 0 0;font-size:.82rem"><span class="badge badge--amber">Geplant</span>
+          Die Galerie schaltet sich zum Startzeitpunkt selbst live.</p>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    {# Kiosk #}
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Kiosk</h2></div>
+      <div class="card-body">
+        <div class="form-group" {% if not event %}{% else %}{% endif %}
+             {% if not event %}style="margin-bottom:0"{% endif %}>
+          <label class="form-label" for="kiosk_text">Kiosk-Text</label>
+          <input type="text" id="kiosk_text" name="kiosk_text" class="form-control"
+                 value="{{ event.kiosk_text if event and event.kiosk_text else '' }}"
+                 placeholder="Scannt den QR-Code und seht eure Fotos!">
+          <span class="form-hint">Text unter dem QR-Code auf der Kiosk-Seite</span>
+        </div>
+        {% if event %}
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Kiosk-URL</label>
+          <div class="adm-copyrow" style="display:flex;gap:.5rem;align-items:center">
+            <input type="text" class="form-control" readonly
+                   value="{{ request.host_url }}kiosk/{{ event.slug }}" id="kioskUrl"
+                   style="font-size:.8125rem;color:var(--c-text-muted)">
+            <button type="button" class="btn btn--secondary btn--sm" onclick="copyText('kioskUrl')">Kopieren</button>
+            <a href="/kiosk/{{ event.slug }}" target="_blank" class="btn btn--ghost btn--sm">Öffnen</a>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if event %}
+    {# Eigene Texte je Event — überschreiben die Übersetzung, leer = Standardtext #}
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Texte dieser Galerie</h2></div>
+      <div class="card-body">
+        <p class="form-hint" style="margin-top:0;margin-bottom:1rem">
+          Jeder Text der Galerie lässt sich hier für dieses eine Event austauschen — genau wie an der Box.
+          Leeres Feld heißt: Standardtext benutzen. Der graue Text im Feld zeigt, was sonst dort steht.
+        </p>
+        {% for lang, lang_label in [('de', 'Deutsch'), ('en', 'Englisch')] %}
+        <details {% if lang == 'de' %}open{% endif %} style="margin-bottom:1rem">
+          <summary style="cursor:pointer;font-weight:600;margin-bottom:.75rem">{{ lang_label }}</summary>
+          {% for key, label in text_keys %}
+          <div class="form-group">
+            <label class="form-label" for="text_{{ lang }}_{{ key }}">{{ label }}</label>
+            <input class="form-control" id="text_{{ lang }}_{{ key }}" name="text_{{ lang }}_{{ key }}"
+                   value="{{ (event_texts.get(lang) or {}).get(key, '') }}"
+                   placeholder="{{ default_text(key, lang) }}">
+          </div>
+          {% endfor %}
+        </details>
+        {% endfor %}
+        <div class="form-group">
+          <label class="form-label" for="texts_extra_json">Weitere Texte (JSON)</label>
+          <textarea class="form-control" id="texts_extra_json" name="texts_extra_json" rows="4"
+                    spellcheck="false" placeholder='{"de": {"gallery.btn.share": "Weitersagen"}}'>{{ texts_extra }}</textarea>
+          <p class="form-hint">Für alles, was oben nicht steht. Die Schlüssel stehen in <code>app/i18n/de.py</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    {# Branding pro Event — überschreibt Logo und Akzentfarbe der Installation #}
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Branding dieser Galerie</h2></div>
+      <div class="card-body">
+        <p class="form-hint" style="margin-top:0;margin-bottom:1rem">
+          Gilt für diese Galerie, die Durchgangs-Seite, Freigabe-Links, Slideshow und Kiosk.
+          Leer lassen = Einstellung der Installation, und wenn auch die leer ist, das Standard-Theme.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="brand_accent">Akzentfarbe</label>
+          <div style="display:flex;gap:.6rem;align-items:center">
+            <input type="color" id="brand_accent_picker" class="form-control"
+                   style="width:52px;padding:4px;height:38px;flex:0 0 auto"
+                   value="{{ brand.accent or '#c98a2e' }}"
+                   oninput="document.getElementById('brand_accent').value = this.value">
+            <input type="text" id="brand_accent" name="brand_accent" class="form-control"
+                   value="{{ brand.accent }}" placeholder="#c98a2e" style="max-width:160px"
+                   oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)) document.getElementById('brand_accent_picker').value = this.value">
+            {% if brand.accent %}
+            <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+                         background:{{ brand.accent }};color:{{ brand.accent_on }};font-size:.8125rem;font-weight:600">
+              Buttons sehen so aus
+            </span>
+            {% endif %}
+          </div>
+          <span class="form-hint">
+            Hex-Wert, z.&nbsp;B. <code>#c98a2e</code>. Die Textfarbe darauf wird automatisch berechnet — unlesbar kann es nicht werden.
+          </span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+          <div class="form-group">
+            <label class="form-label" for="brand_bg">Hintergrundfarbe</label>
+            <div style="display:flex;gap:.6rem;align-items:center">
+              <input type="color" id="brand_bg_picker" class="form-control"
+                     style="width:52px;padding:4px;height:38px;flex:0 0 auto"
+                     value="{{ brand.bg or '#ffffff' }}"
+                     oninput="document.getElementById('brand_bg').value = this.value">
+              <input type="text" id="brand_bg" name="brand_bg" class="form-control"
+                     value="{{ brand.bg }}" placeholder="leer = Standard" style="max-width:140px">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="brand_text">Textfarbe</label>
+            <div style="display:flex;gap:.6rem;align-items:center">
+              <input type="color" id="brand_text_picker" class="form-control"
+                     style="width:52px;padding:4px;height:38px;flex:0 0 auto"
+                     value="{{ brand.text or '#1a1206' }}"
+                     oninput="document.getElementById('brand_text').value = this.value">
+              <input type="text" id="brand_text" name="brand_text" class="form-control"
+                     value="{{ brand.text }}" placeholder="leer = berechnet" style="max-width:140px">
+            </div>
+            <span class="form-hint">Leer lassen: passend zum Hintergrund gerechnet.</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="brand_font">Schrift</label>
+            <select id="brand_font" name="brand_font" class="form-control">
+              <option value="">Standard (Systemschrift)</option>
+              {% for fid, flabel in font_choices %}
+              <option value="{{ fid }}" {% if brand.font == fid %}selected{% endif %}>{{ flabel }}</option>
+              {% endfor %}
+            </select>
+            <span class="form-hint">Geräteschriften — kein Nachladen, kein Google-Fonts-Aufruf.</span>
+          </div>
+        </div>
+
+        {% if contrast_warnings %}
+        <div class="alert alert--warning" style="margin-bottom:1rem">
+          {% for w in contrast_warnings %}
+          <div>Kontrast {{ w.ratio }}:1 — empfohlen sind {{ w.need }}:1
+            ({{ 'Text auf Hintergrund' if w.kind == 'text_on_bg' else 'Akzent auf Hintergrund' }}).
+            Speichern geht trotzdem.</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+          <label class="form-label" for="brand_banner">Bannerbild (über der Galerie)</label>
+          {% if brand.banner_url %}
+          <div style="margin-bottom:.6rem;display:flex;align-items:flex-start;gap:1rem">
+            <img src="{{ brand.banner_url }}" alt="Banner"
+                 style="max-height:70px;border-radius:var(--r-sm);border:1px solid var(--color-border)">
+            <label class="toggle" style="margin:0">
+              <input type="checkbox" name="remove_brand_banner" value="1">
+              <span class="toggle-track"></span>
+              Entfernen
+            </label>
+          </div>
+          {% endif %}
+          <input type="file" id="brand_banner" name="brand_banner" class="form-control" accept="image/*">
+          <span class="form-hint">Breites Bild, max. 2400 px. Erscheint auf der Galerie-Seite.</span>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="brand_logo">Logo dieser Galerie</label>
+          {% if brand.logo_url %}
+          <div style="margin-bottom:.6rem;display:flex;align-items:center;gap:1rem">
+            <img src="{{ brand.logo_url }}" alt="Event-Logo"
+                 style="max-height:48px;max-width:200px;border-radius:var(--r-sm);background:var(--color-surface-3);padding:6px">
+            <label class="toggle" style="margin:0">
+              <input type="checkbox" name="remove_brand_logo" value="1">
+              <span class="toggle-track"></span>
+              Entfernen
+            </label>
+          </div>
+          {% endif %}
+          <input type="file" id="brand_logo" name="brand_logo" class="form-control" accept="image/*">
+          <span class="form-hint">PNG mit Transparenz empfohlen. Wird auf max. 800 px begrenzt.</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+
+    {# Sharepic je Event — überschreibt die globale Gestaltung #}
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Sharepic dieser Galerie</h2></div>
+      <div class="card-body">
+        <p class="form-hint" style="margin-top:0;margin-bottom:1rem">
+          Das 9:16-Bild für WhatsApp-Status und Story. Leer oder „wie global" heißt: Es gilt, was
+          unter <b>Einstellungen → QR &amp; Sharepic</b> steht.
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label" for="sp_background">Hintergrund</label>
+            <select id="sp_background" name="sp_background" class="form-control">
+              <option value="">wie global</option>
+              {% for v, l in [('blur','unscharfes Foto aus der Galerie'),('image','eigenes Bild'),('color','eigene Farbe'),('dark','dunkel'),('light','hell')] %}
+              <option value="{{ v }}" {% if sharepic_event.background == v %}selected{% endif %}>{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sp_bg_image">Eigenes Hintergrundbild</label>
+            {% if sharepic_event.bg_path %}
+            <label class="toggle" style="margin:0 0 .5rem">
+              <input type="checkbox" name="sp_remove_bg" value="1"><span class="toggle-track"></span> Bild entfernen
+            </label>
+            {% endif %}
+            <input type="file" id="sp_bg_image" name="sp_bg_image" class="form-control" accept="image/*">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sp_bg_color">Hintergrundfarbe</label>
+            <input type="text" id="sp_bg_color" name="sp_bg_color" class="form-control"
+                   value="{{ sharepic_event.bg_color or '' }}" placeholder="leer = wie global">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label" for="sp_blur">Unschärfe</label>
+            <input type="number" id="sp_blur" name="sp_blur" class="form-control" min="0" max="40"
+                   value="{{ sharepic_event.blur if sharepic_event.blur is defined else '' }}" placeholder="wie global">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sp_dim">Abdunkeln (%)</label>
+            <input type="number" id="sp_dim" name="sp_dim" class="form-control" min="0" max="85" step="5"
+                   value="{{ sharepic_event.dim if sharepic_event.dim is defined else '' }}" placeholder="wie global">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sp_eyebrow">Zeile über dem Titel</label>
+            <input type="text" id="sp_eyebrow" name="sp_eyebrow" class="form-control"
+                   value="{{ sharepic_event.eyebrow or '' }}" placeholder="wie global">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label" for="sp_align">Ausrichtung des Titels</label>
+            <select id="sp_align" name="sp_align" class="form-control">
+              <option value="">wie global</option>
+              {% for v, l in [('center','mittig'),('left','linksbündig'),('right','rechtsbündig')] %}
+              <option value="{{ v }}" {% if sharepic_event.align == v %}selected{% endif %}>{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sp_title">Titel statt Eventname</label>
+            <input type="text" id="sp_title" name="sp_title" class="form-control"
+                   value="{{ sharepic_event.title or '' }}" placeholder="leer = Name des Events">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="sp_hint">Hinweis unter dem QR</label>
+            <input type="text" id="sp_hint" name="sp_hint" class="form-control"
+                   value="{{ sharepic_event.hint or '' }}" placeholder="wie global">
+          </div>
+        </div>
+        {% if event %}
+        <div style="display:flex;gap:1rem;align-items:flex-start;margin-top:1rem">
+          <img src="/gallery/{{ event.slug }}/sharepic.png?t={{ range(1,99999)|random }}" alt="Sharepic-Vorschau"
+               loading="lazy" style="width:150px;border-radius:var(--r-sm);border:1px solid var(--color-border)">
+          <p class="form-hint" style="margin:0">So sieht es gerade aus.
+            <a href="/gallery/{{ event.slug }}/sharepic.png?download=1">Herunterladen</a></p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+
+    {# Was die Box bei diesem Event anbietet — überschreibt ihre eigene Einstellung #}
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Box bei diesem Event</h2></div>
+      <div class="card-body">
+        <p class="form-hint" style="margin-top:0;margin-bottom:1rem">
+          Eine Box fährt an drei Wochenenden zu drei Kunden. Was hier steht, gilt für dieses Event und
+          überschreibt die Einstellung der Box; nichts angehakt heißt: Es bleibt bei der Box.
+        </p>
+        {% if event %}
+        {# Layouts für dieses Event: app/layout_wahl.py. Pictures rendered by the gallery. #}
+        <section class="lw" id="layouts" aria-labelledby="lw-title">
+          <input type="hidden" name="ev_layouts_form" value="1">
+          <div class="lw-head">
+            <h3 class="lw-title" id="lw-title">{{ t('layouts.title') }}</h3>
+            <span class="lw-count" id="lwCount" aria-live="polite" data-some="{{ t('layouts.count_some') }}" data-none="{{ t('layouts.count_none') }}"></span>
+          </div>
+          <p class="form-hint" style="margin:0 0 .75rem">{{ t('layouts.hint') }}</p>
+          {% set evt = booth_event.collage_templates or [] %}
+          {% set evb = booth_event.collage_builtins or [] %}
+          {% for gruppe, titel, leer in [('eigene', t('layouts.group_own'), true), ('schlicht', t('layouts.group_plain'), false), ('mitgeliefert', t('layouts.group_builtin'), false)] %}
+          {% set n_an = layout_offer[gruppe]|selectattr('id', 'in', evt + evb)|list|length %}
+          <details class="lw-fold" {% if gruppe == 'eigene' or n_an %}open{% endif %}>
+          <summary class="lw-group">{{ titel }} <span class="lw-group-n">{{ layout_offer[gruppe]|length }}{% if n_an %} · {{ t('layouts.count_some', n=n_an) }}{% endif %}</span></summary>
+          {% if layout_offer[gruppe] %}
+          <div class="lw-grid">
+            {% for l in layout_offer[gruppe] %}
+            {% set an = (l.kind == 't' and l.id in evt) or (l.kind == 'b' and l.id in evb) %}
+            <label class="lw-card">
+              <input class="lw-check" type="checkbox" name="{{ 'ev_collage_templates' if l.kind == 't' else 'ev_collage_builtins' }}" value="{{ l.id }}" {% if an %}checked{% endif %}>
+              <span class="lw-pic {{ 'lw-pic--quer' if l.orientation == 'landscape' else '' }}">
+                <img src="/admin/events/{{ event.id }}/layouts/{{ l.kind }}/{{ l.id }}.png" alt=""
+                     loading="lazy" decoding="async" onerror="this.parentNode.classList.add('lw-pic--fehlt')">
+                <span class="lw-fail">{{ t('layouts.preview_missing') }}</span>
+              </span>
+              <span class="lw-name">{{ l.name }}</span>
+              <span class="lw-meta">{{ t('layouts.photos_one') if l.shots == 1 else t('layouts.photos_n', n=l.shots) }} · {{ t('layouts.landscape') if l.orientation == 'landscape' else t('layouts.portrait') }}{% if l.paper %} · {{ l.paper|replace('x', '×')|replace('-', ' ') }}{% endif %}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% elif leer %}
+          <p class="lw-empty">{{ t('layouts.empty') }} <a href="/admin/vorlagen/bibliothek">{{ t('layouts.empty_link') }}</a></p>
+          {% endif %}
+          </details>
+          {% endfor %}
+          <p class="form-hint" style="margin:.5rem 0 0">{{ t('layouts.plain_hint') }}</p>
+        </section>
+        {# Rahmen für Boomerang & Video: app/frame_store.py. Ticked = exactly these at the booth. #}
+        {% if motion_offer is defined %}
+        <section class="lw" id="rahmen" aria-labelledby="rw-title">
+          <input type="hidden" name="ev_frames_form" value="1">
+          <h3 class="lw-title" id="rw-title">{{ t('frames.title') }}</h3>
+          <p class="form-hint" style="margin:0 0 .75rem">{{ t('frames.hint') }}</p>
+          {% for clip in ['boomerang', 'video'] %}{% set wahl = ev_frames.get(clip) or {} %}
+          {% set gewaehlt = (wahl.frame_templates or []) + (wahl.frame_builtins or []) %}
+          <details class="lw-fold" {% if gewaehlt %}open{% endif %}>
+            <summary class="lw-group">{{ t('frames.for_boomerang') if clip == 'boomerang' else t('frames.for_video') }}{% if gewaehlt %} <span class="lw-group-n">· {{ t('layouts.count_some', n=gewaehlt|length) }}</span>{% endif %}</summary>
+            <div class="lw-grid">
+              {% for e in motion_offer.eigene + motion_offer.mitgeliefert %}{% if clip in e.modes %}
+              <label class="lw-card">
+                <input class="lw-check" type="checkbox" name="ev_frames_{{ clip }}" value="{{ e.id }}" {% if e.id in gewaehlt %}checked{% endif %}>
+                <span class="lw-pic {{ 'lw-pic--quer' if e.format == '16:9' else '' }}">
+                  <img src="/admin/rahmen/bild/{{ e.id }}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('lw-pic--fehlt')">
+                  <span class="lw-fail">{{ t('layouts.preview_missing') }}</span>
+                </span>
+                <span class="lw-name">{{ e.name }}</span>
+                <span class="lw-meta">{{ e.format }}{% if e.kind == 'own' %} · {{ t('frames.own') }}{% endif %}</span>
+              </label>{% endif %}{% endfor %}
+            </div>
+            <label style="display:flex;gap:.4rem;align-items:center;margin:.5rem 0 0;font-size:.85rem">
+              <input type="checkbox" name="ev_frames_{{ clip }}_none" {% if not gewaehlt or wahl.frame_none %}checked{% endif %}> {{ t('frames.none') }}</label>
+          </details>
+          {% endfor %}
+        </section>
+        {% endif %}
+        <style>
+          .lw{margin:0 0 1.25rem}
+          .lw-head{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem}
+          .lw-title{font-size:.875rem;font-weight:600;margin:0 0 .35rem}
+          .lw-count{font-size:.8125rem;color:var(--color-text-muted)}
+          .lw-group{font-size:.8125rem;font-weight:600;color:var(--color-text-muted);margin:1rem 0 .5rem;
+            cursor:pointer;min-height:32px;display:flex;align-items:center;gap:.4rem}
+          .lw-group-n{font-weight:400}
+          .lw-group::-webkit-details-marker{display:none}
+          .lw-group::before{content:"";width:.45rem;height:.45rem;border-right:1.5px solid currentColor;
+            border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-right:.15rem}
+          .lw-fold[open] > .lw-group::before{transform:rotate(45deg)}
+          .lw-group:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px;border-radius:4px}
+          .lw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem}
+          .lw-card{position:relative;display:flex;flex-direction:column;gap:.3rem;padding:.5rem;margin:0;
+            border:1px solid var(--color-border);border-radius:var(--r-md);cursor:pointer;min-width:0;text-align:left;align-items:stretch}
+          /* The phone rule for checkbox rows (admin.css: flex, centred, 8 px apart) is for
+             lines of text; a card keeps its column and the grid's own gap. */
+          #layouts .lw-grid > .lw-card{display:flex;flex-direction:column;align-items:stretch;margin:0}
+          .lw-card:has(.lw-check:checked){border-color:var(--color-primary);box-shadow:0 0 0 1px var(--color-primary)}
+          .lw-check{position:absolute;top:.6rem;left:.6rem;width:20px;height:20px;margin:0;z-index:1}
+          .lw-check:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+          .lw-pic{position:relative;display:block;aspect-ratio:2/3;background:var(--color-surface-2, #eee);
+            border-radius:calc(var(--r-md) - 2px);overflow:hidden}
+          .lw-pic--quer{aspect-ratio:3/2}
+          .lw-pic img{display:block;width:100%;height:100%;object-fit:contain}
+          .lw-pic::after{content:"";position:absolute;inset:0;border:1px solid var(--color-border);
+            border-radius:inherit;pointer-events:none}
+          .lw-fail{display:none;position:absolute;inset:0;align-items:center;justify-content:center;
+            padding:.5rem;text-align:center;font-size:.75rem;color:var(--color-text-muted)}
+          .lw-pic--fehlt img{display:none}
+          .lw-pic--fehlt .lw-fail{display:flex}
+          .lw-name{font-size:.8125rem;font-weight:500;line-height:1.3;overflow-wrap:anywhere}
+          .lw-meta{font-size:.75rem;color:var(--color-text-muted)}
+          .lw-empty{font-size:.8125rem;color:var(--color-text-muted);margin:0}
+        </style>
+        <script>
+        (function () {
+          var box = document.getElementById("layouts");
+          var out = document.getElementById("lwCount");
+          if (!box || !out) return;
+          function zaehle() {
+            var n = box.querySelectorAll(".lw-check:checked").length;
+            out.textContent = n ? out.dataset.some.replace("{n}", n) : out.dataset.none;
+          }
+          box.addEventListener("change", zaehle);
+          zaehle();
+        })();
+        </script>
+        {% endif %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label" for="ev_looks_mode">Filter</label>
+            <select id="ev_looks_mode" name="ev_looks_mode" class="form-control">
+              <option value="">wie an der Box</option>
+              {% for v, l in [('ask','der Gast wählt'),('auto','immer derselbe'),('off','kein Filter')] %}
+              <option value="{{ v }}" {% if booth_event.looks_mode == v %}selected{% endif %}>{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="ev_looks_max">Höchstens … Filter</label>
+            <input type="number" id="ev_looks_max" name="ev_looks_max" class="form-control" min="0" max="24"
+                   value="{{ booth_event.looks_max or '' }}" placeholder="wie an der Box">
+          </div>
+        </div>
+
+        {# Aussehen der Druckvorlagen für dieses Event #}
+        {% set evcs = booth_event.collage_style or {} %}
+        <hr style="border:0;border-top:1px solid var(--color-border);margin:1.25rem 0">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label" for="ev_cs_preset">Aussehen der Vorlagen</label>
+            <select id="ev_cs_preset" name="ev_cs_preset" class="form-control">
+              <option value="">wie an der Box</option>
+              {% for v, l in [('clean','Clean · dunkel'),('hell','Clean · hell'),('geburtstag','Geburtstag'),('hochzeit','Hochzeit'),('feier','Feier'),('firma','Firmenevent')] %}
+              <option value="{{ v }}" {% if evcs.preset == v %}selected{% endif %}>{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ev_collage_upload">Collage in der Galerie</label>
+            <select id="ev_collage_upload" name="ev_collage_upload" class="form-control">
+              <option value="">wie an der Box</option>
+              {% for v, l in [('collage','nur das Blatt'),('photos','nur die Einzelbilder'),('both','beides')] %}
+              <option value="{{ v }}" {% if booth_event.collage_upload == v %}selected{% endif %}>{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ev_cs_accent">Akzentfarbe</label>
+            <input type="text" id="ev_cs_accent" name="ev_cs_accent" class="form-control" maxlength="7"
+                   value="{{ evcs.accent or '' }}" placeholder="wie der Anlass">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ev_cs_headline">Erste Zeile</label>
+            <input type="text" id="ev_cs_headline" name="ev_cs_headline" class="form-control"
+                   value="{{ evcs.headline or '' }}" placeholder="{event_name}">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="ev_cs_subline">Zweite Zeile</label>
+            <input type="text" id="ev_cs_subline" name="ev_cs_subline" class="form-control"
+                   value="{{ evcs.subline or '' }}" placeholder="{date}">
+          </div>
+        </div>
+        <div id="evVorlagen" style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px"></div>
+        <span class="form-hint">Ohne Anlass bleibt alles, wie es an der Box eingestellt ist.</span>
+        <script src="/static/js/vorlagen.js"></script>
+        <script>
+        (function () {
+          var behaelter = document.getElementById("evVorlagen");
+          var form = behaelter.closest("form") || document;
+          function auswahl() {
+            var an = Array.prototype.slice.call(form.querySelectorAll('input[name="ev_collage_builtins"]:checked'))
+              .map(function (i) { return i.value; });
+            return an.length ? an : null;
+          }
+          function neu() {
+            if (!form.querySelector('[name="ev_cs_preset"]').value) { behaelter.innerHTML = ""; return; }
+            window.pbVorlagen.zeichne(behaelter, { form: form, praefix: "ev_cs_", auswahl: auswahl(), breite: 130 });
+          }
+          form.addEventListener("input", function (e) {
+            if (e.target.name && (e.target.name.indexOf("ev_cs_") === 0 || e.target.name === "ev_collage_builtins")) neu();
+          });
+          form.addEventListener("change", function (e) {
+            if (e.target.name && (e.target.name.indexOf("ev_cs_") === 0 || e.target.name === "ev_collage_builtins")) neu();
+          });
+          neu();
+        })();
+        </script>
+      </div>
+    </div>
+
+    {# Save button #}
+    <div class="adm-savebar" style="margin-bottom:1.5rem">
+      <a href="/admin/events" class="btn btn--ghost adm-desk-only">← Zurück zur Liste</a>
+      <button type="submit" class="btn btn--primary" id="saveBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        {{ 'Änderungen speichern' if event else 'Event erstellen' }}
+      </button>
+    </div>
+  </form>
+
+  {# Die kleinen Formulare zum Abschalten alter Adressen stehen außerhalb des
+     großen Formulars — verschachtelte Formulare gibt es in HTML nicht. Die
+     Knöpfe oben zeigen über form="alias-N" hierher. #}
+  {% for alias in slug_aliases or [] %}
+  <form id="alias-{{ loop.index }}" method="post" action="/admin/events/{{ event.id }}/alias/delete" style="display:none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="alias" value="{{ alias }}">
+  </form>
+  {% endfor %}
+
+  {% if event %}
+  <style>
+    .adm-cover-form{position:absolute;right:3px;bottom:3px;margin:0}
+    .adm-cover{width:20px;height:20px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;cursor:pointer;background:rgba(0,0,0,.55);color:rgba(255,255,255,.75)}
+    .adm-cover.is-cover{background:var(--color-primary);color:#fff}
+    .adm-pick{position:absolute;left:4px;top:4px;display:grid;place-items:center;width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,.9)}
+    .adm-tag{position:absolute;left:4px;bottom:4px;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);cursor:pointer;padding:0}
+    .adm-tag[data-tag="red"]{background:#e5484d}.adm-tag[data-tag="orange"]{background:#e8830c}.adm-tag[data-tag="green"]{background:#46a758}.adm-tag[data-tag="final"]{background:#3a3733}
+    .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 22px}
+    .gs-grid fieldset{border:0;margin:0;padding:0}
+    .gs-grid legend{font-weight:600;font-size:.875rem;margin-bottom:8px}
+    .gs-check{display:flex;gap:8px;align-items:flex-start;font-size:.875rem;margin:0 0 8px;line-height:1.35}
+    .gs-seg{display:inline-flex;border:1px solid var(--color-border);border-radius:10px;overflow:hidden;margin-bottom:10px}
+    .gs-seg label{padding:7px 12px;font-size:.8125rem;cursor:pointer;border-right:1px solid var(--color-border)}
+    .gs-seg label:last-child{border-right:0}
+    .gs-seg input{position:absolute;opacity:0;pointer-events:none}
+    .gs-seg label:has(input:checked){background:var(--color-text,#111);color:var(--color-surface,#fff)}
+    .sl-table{width:100%;border-collapse:collapse;font-size:.8125rem}
+    .sl-table th,.sl-table td{text-align:left;padding:8px 6px;border-top:1px solid var(--color-border);vertical-align:top}
+    .sl-status{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.72rem;background:#e8f5ec;color:#1d6b35}
+    .sl-status.expired,.sl-status.revoked{background:#f3f3f3;color:var(--color-text-muted)}
+  </style>
+  <div class="card" style="margin:1.25rem 0" id="galerie-einstellungen">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Galerie-Einstellungen</h2></div>
+    <div class="card-body">
+      <form method="post" action="/admin/events/{{ event.id }}/gallery-settings" id="gallerySettingsForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="gs-presets" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px">
+          <button type="button" class="btn btn-sm btn-secondary" data-preset="schlicht"
+                  title="Schaltet aus: {{ preset_clean_labels }}">Schlichte Galerie</button>
+          <button type="button" class="btn btn-sm btn-secondary" data-preset="alles">Alles anzeigen</button>
+          <span style="font-size:.78rem;color:var(--color-text-secondary)">Setzt die Kästchen unten — gespeichert wird erst mit „Galerie-Einstellungen speichern“. Downloads bleiben, wie sie sind.</span>
+        </div>
+        <div class="gs-grid">
+          <fieldset><legend>Modus beim Öffnen</legend>
+            <div class="gs-seg">{% for v,l in [('presentation','Präsentation'),('proofing','Abstimmung')] %}<label><input type="radio" name="mode" value="{{ v }}" {% if gs.mode == v %}checked{% endif %}>{{ l }}</label>{% endfor %}</div>
+            <label class="gs-check"><input type="checkbox" name="allow_mode_switch" {% if gs.allow_mode_switch %}checked{% endif %}> Gäste dürfen zwischen den Modi wechseln</label>
+            <label class="form-label">Zugangs-PIN für Abstimmung (4–6 Ziffern, optional)</label>
+            <input class="form-control" name="mode_pin" value="{{ gs.mode_pin }}" inputmode="numeric" maxlength="6">
+          </fieldset>
+          <fieldset><legend>Darstellung</legend>
+            <div class="gs-design" role="group" aria-label="Design-Vorlage" style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px">
+              {% for key, label in design_preset_labels.items() %}<button type="button" class="btn btn-sm btn-secondary" data-design-preset="{{ key }}">{{ label }}</button>{% endfor %}
+            </div>
+            <input type="hidden" name="tint" value="{{ gs.tint }}">
+            <div class="gs-seg">{% for v,l in [('masonry','Ziegel'),('grid','Raster'),('list','Liste'),('polaroid','Polaroid')] %}<label><input type="radio" name="layout" value="{{ v }}" {% if gs.layout == v %}checked{% endif %}>{{ l }}</label>{% endfor %}</div><br>
+            <div class="gs-seg">{% for v,l in [('s','Klein'),('m','Mittel'),('l','Groß')] %}<label><input type="radio" name="thumb_size" value="{{ v }}" {% if gs.thumb_size == v %}checked{% endif %}>{{ l }}</label>{% endfor %}</div>
+            <div class="gs-seg">{% for v,l in [('s','eng'),('m','normal'),('l','weit')] %}<label><input type="radio" name="gap" value="{{ v }}" {% if gs.gap == v %}checked{% endif %}>{{ l }}</label>{% endfor %}</div><br>
+            <div class="gs-seg">{% for v,l in [('round','Rund'),('square','Eckig')] %}<label><input type="radio" name="corners" value="{{ v }}" {% if gs.corners == v %}checked{% endif %}>{{ l }}</label>{% endfor %}</div>
+            <div class="gs-seg">{% for v,l in [('auto','Auto'),('light','Hell'),('dark','Dunkel')] %}<label><input type="radio" name="theme" value="{{ v }}" {% if gs.theme == v %}checked{% endif %}>{{ l }}</label>{% endfor %}</div>
+            <label class="form-label">Alternative Überschrift</label><input class="form-control" name="opener_title" value="{{ gs.opener_title }}" maxlength="120">
+            <label class="gs-check" style="margin-top:8px"><input type="checkbox" name="opener" {% if gs.opener %}checked{% endif %}> {{ t('cover.opener') }}</label>
+            <label class="form-label" for="gs_sub">{{ t('cover.subtitle') }}</label><input class="form-control" id="gs_sub" name="opener_subtitle" value="{{ gs.opener_subtitle }}" maxlength="120">
+            <label class="form-label" for="gs_tf">{{ t('cover.font') }}</label>
+            <select class="form-control" id="gs_tf" name="title_font">
+              {% for v, label in [('', t('cover.font_page')), ('display', t('cover.font_display')), ('serif', t('cover.font_serif')), ('geometric', t('cover.font_geometric')), ('system', t('cover.font_system'))] %}<option value="{{ v }}" {% if gs.title_font == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </fieldset>
+          <fieldset><legend>Abstimmung</legend>
+            <label class="gs-check"><input type="checkbox" name="color_tags" {% if gs.color_tags %}checked{% endif %}> Farbmarkierungen (rot, orange, grün, final)</label>
+            <label class="gs-check"><input type="checkbox" name="hide_red_in_presentation" {% if gs.hide_red_in_presentation %}checked{% endif %}> {{ t('gs.hide_red') }}</label>
+            <label class="gs-check"><input type="checkbox" name="likes" {% if gs.likes %}checked{% endif %}> Likes</label>
+            <label class="gs-check"><input type="checkbox" name="selection" {% if gs.selection %}checked{% endif %}> „Meine Auswahl“ als ZIP</label>
+            <label class="gs-check"><input type="checkbox" name="comments" {% if gs.comments %}checked{% endif %}> {{ t('comments.admin.switch') }}</label>
+            <label class="gs-check"><input type="checkbox" name="layout_approval" {% if gs.layout_approval %}checked{% endif %}> Layout-Freigabe durch Kunden</label>
+            <label class="form-label" for="gs_selection_max" style="margin-top:6px">{{ t('picks.admin.max_label') }}</label>
+            <input class="form-control" id="gs_selection_max" name="selection_max" type="number" min="0" max="10000" value="{{ gs.selection_max }}" placeholder="{{ t('picks.admin.max_none') }}" style="max-width:140px">
+            <label class="gs-check"><input type="checkbox" name="guest_upload" {% if gs.guest_upload %}checked{% endif %}> Gäste können Fotos hochladen</label>
+            <label class="form-label" for="gs_grace">Nachfrist für Uploads (Tage nach dem Eventdatum)</label>
+            <input class="form-control" id="gs_grace" name="upload_grace_days" type="number" min="0" max="365" inputmode="numeric"
+                   value="{{ gs.upload_grace_days }}" placeholder="ohne Frist" style="max-width:140px">
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:4px 0 10px">Leer: Upload bleibt offen wie bisher. Danach sehen Gäste statt des Formulars einen freundlichen Hinweis.{% if not event.date %} Dieses Event hat kein Datum — eine Frist greift erst mit Datum.{% endif %} PIN und Tisch-Schild: <a href="#gast-upload">unten</a>.</p>
+            <label class="gs-check"><input type="checkbox" name="live_badge" {% if gs.live_badge %}checked{% endif %}> „Live“-Zeichen und „neue Fotos“-Hinweis, solange das Event läuft</label>
+            <label class="gs-check"><input type="checkbox" name="show_source_filter" {% if gs.show_source_filter %}checked{% endif %}> Gäste filtern nach Quelle (Box, Gast-Upload, Admin-Upload, Import)</label>
+            <label class="gs-check"><input type="checkbox" name="show_file_info" {% if gs.show_file_info %}checked{% endif %}> Dateiname &amp; -größe zeigen</label>
+            <label class="gs-check"><input type="checkbox" name="show_date" {% if gs.show_date %}checked{% endif %}> Aufnahmezeit zeigen</label>
+            <label class="gs-check"><input type="checkbox" name="exif" {% if gs.exif %}checked{% endif %}> {{ t('exif.admin.switch') }}</label>
+          </fieldset>
+          <fieldset><legend>Teilen &amp; Download</legend>
+            <label class="gs-check"><input type="checkbox" name="share_native" {% if gs.share_native %}checked{% endif %}> Teilen-Menü am Handy</label>
+            <label class="gs-check"><input type="checkbox" name="share_link_copy" {% if gs.share_link_copy %}checked{% endif %}> Link kopieren</label>
+            <label class="gs-check"><input type="checkbox" name="share_sharepic" {% if gs.share_sharepic %}checked{% endif %}> Sharepic-Button</label>
+            <label class="gs-check"><input type="checkbox" name="download_single" {% if gs.download_single %}checked{% endif %}> Einzelne Fotos laden</label>
+            <label class="gs-check"><input type="checkbox" name="download_zip" {% if gs.download_zip %}checked{% endif %}> „Alles herunterladen“ (ZIP)</label>
+            <label class="gs-check"><input type="checkbox" name="print_qr" {% if gs.print_qr %}checked{% endif %}> Knopf „QR-Code drucken“ in der Galerie</label>
+            <label class="gs-check"><input type="checkbox" name="notify_signup" {% if gs.notify_signup %}checked{% endif %}> Anmeldung „Bei neuen Fotos benachrichtigen“</label>
+            <label class="gs-check"><input type="checkbox" name="run_frame_choice" {% if gs.run_frame_choice %}checked{% endif %}> „Mit Rahmen“ / „Ohne Rahmen“ auf der Seite des Durchgangs</label>
+            <label class="gs-check"><input type="checkbox" name="my_shots_link" {% if gs.my_shots_link %}checked{% endif %}> Link „Meine Aufnahmen“ (Durchgang und Galerie)</label>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:10px 0 6px">Welche Größen der Gast wählen darf:</p>
+            <label class="gs-check"><input type="checkbox" name="download_640" {% if gs.download_640 %}checked{% endif %}> 640 px — fürs Handy</label>
+            <label class="gs-check"><input type="checkbox" name="download_1024" {% if gs.download_1024 %}checked{% endif %}> 1024 px — Social Media</label>
+            <label class="gs-check"><input type="checkbox" name="download_2048" {% if gs.download_2048 %}checked{% endif %}> 2048 px — Rechner, kleiner Druck</label>
+            <label class="gs-check"><input type="checkbox" name="download_original" {% if gs.download_original %}checked{% endif %}> Original — volle Auflösung</label>
+          </fieldset>
+          <fieldset><legend>Zweiter Bildschirm</legend>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:0 0 10px">Beamer, iPad auf dem Tresen, zweiter Rechner neben der Box — alles über den Browser, ohne App.</p>
+            <label class="form-label">Reihenfolge der Anzeige</label>
+            <div class="gs-seg">{% for v,l in [('chrono','Chronologisch'),('random','Zufällig')] %}<label><input type="radio" name="show_order" value="{{ v }}" {% if gs.show_order == v %}checked{% endif %}>{{ l }}</label>{% endfor %}</div>
+            <label class="gs-check" style="margin-top:10px"><input type="checkbox" name="kiosk" {% if gs.kiosk %}checked{% endif %}> Kiosk für Gäste freischalten</label>
+            <label class="gs-check"><input type="checkbox" name="kiosk_share" {% if gs.kiosk_share %}checked{% endif %}> Gäste dürfen ein Foto aufs eigene Gerät holen</label>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:6px 0 10px">Teilen-Blatt (auf dem iPad AirDrop), Download und ein QR-Code zum einzelnen Foto. Der Download folgt der Einstellung „Einzelne Fotos laden".</p>
+            {% if gs.kiosk %}
+            <p style="margin:0 0 6px"><code style="font-size:.75rem">{{ base_url }}/schau/{{ event.slug }}</code>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="navigator.clipboard.writeText('{{ base_url }}/schau/{{ event.slug }}');this.textContent='kopiert'">kopieren</button>
+              <a class="btn btn-sm btn-secondary" href="/schau/{{ event.slug }}" target="_blank" rel="noopener">öffnen</a></p>
+            <p style="margin:0"><code style="font-size:.75rem">{{ base_url }}/slideshow/{{ event.slug }}</code> — für den Beamer</p>
+            {% endif %}
+          </fieldset>
+          <fieldset id="einbetten"><legend>Einbetten</legend>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:0 0 8px">Die Galerie auf der eigenen Website des Gastgebers zeigen. Code kopieren und dort einfügen:</p>
+            {% set embed_url = base_url ~ '/gallery/' ~ event.slug ~ '?embed=1' %}
+            <textarea class="form-control" id="embedCode" readonly rows="3" style="font-family:var(--font-mono,monospace);font-size:.75rem">&lt;iframe src="{{ embed_url }}" title="{{ event.name }}" style="width:100%;height:80vh;border:0" loading="lazy" allow="fullscreen"&gt;&lt;/iframe&gt;</textarea>
+            <p style="margin:6px 0 10px"><button type="button" class="btn btn-sm btn-secondary" onclick="navigator.clipboard.writeText(document.getElementById('embedCode').value);this.textContent='kopiert'">Code kopieren</button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="navigator.clipboard.writeText({{ ('<a href=&quot;' ~ base_url ~ '/gallery/' ~ event.slug ~ '&quot;>Zur Fotogalerie</a>')|tojson|forceescape }});this.textContent='kopiert'">Link-Knopf kopieren</button></p>
+            <label class="gs-check"><input type="checkbox" name="embed" {% if gs.embed %}checked{% endif %}> {{ t('embed.allow') }}</label>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:2px 0 10px">{{ t('embed.allow_hint') }}</p>
+            <label class="form-label" for="gs_embed">{{ t('embed.origins_label') }}</label>
+            <textarea class="form-control" id="gs_embed" name="embed_origins" rows="2" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="{{ t('embed.origins_placeholder') }}">{{ gs.embed_origins|replace(' ', '\n') }}</textarea>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:6px 0 0">{{ t('embed.origins_hint') }}</p>
+          </fieldset>
+          <fieldset><legend>Dateinamen</legend>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:0 0 10px">Wie die Datei
+              heißt, die der Gast bekommt — beim einzelnen Download, in „Meine Auswahl", im ZIP, über
+              Freigabe-Links und an den Ablagezielen der Box (USB, Ordner, FTP, SFTP).
+              Die Dateien auf der Platte bleiben unberührt.</p>
+            <label class="form-label" for="gs_file_naming">{{ t('naming.label') }}</label>
+            <select class="form-control" id="gs_file_naming" name="file_naming">
+              <option value="" {% if not gs.file_naming %}selected{% endif %}>{{ t('naming.inherit', rule=(t('naming.event_datetime') if naming_default == 'event_datetime' else t('naming.original'))) }}</option>
+              <option value="original" {% if gs.file_naming == 'original' %}selected{% endif %}>{{ t('naming.original') }}</option>
+              <option value="event_datetime" {% if gs.file_naming == 'event_datetime' %}selected{% endif %}>{{ t('naming.event_datetime') }}</option>
+            </select>
+            <p class="form-hint" style="margin:6px 0 12px">{{ t('naming.example') }} <code>{{ naming_example }}</code></p>
+            <label class="form-label" for="musterFeld">{{ t('naming.pattern') }}</label>
+            <input class="form-control" name="download_pattern" value="{{ gs.download_pattern }}"
+                   placeholder="{{ muster_vorgabe or muster_beispiel }}" maxlength="120"
+                   id="musterFeld" oninput="musterVorschau()">
+            <p class="form-hint" style="margin:8px 0 0">Ergibt: <code id="musterAusgabe">{{ muster_vorschau }}</code></p>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:8px 0 0">
+              {% for schluessel, was, _bsp in muster_platzhalter %}<code>{{ schluessel }}</code> {{ was }}{% if not loop.last %} · {% endif %}{% endfor %}
+            </p>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:8px 0 0">Leer lassen
+              heißt: {% if muster_vorgabe %}das Muster der Instanz (<code>{{ muster_vorgabe }}</code>){% else %}der Name aus der Box{% endif %}.</p>
+          </fieldset>
+          <fieldset><legend>Bewertung</legend>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:0 0 10px">Eine ruhige
+              Karte unter den Bildern und auf der Seite des eigenen Durchgangs — dem Augenblick, in dem
+              der Gast seine Fotos in der Hand hat. Wer einmal „nein, danke“ sagt, wird nicht wieder gefragt.</p>
+            <div class="gs-seg">{% for v,l in [('erben','Wie eingestellt'),('an','An'),('aus','Aus')] %}<label><input type="radio" name="review_mode" value="{{ v }}" {% if gs.review_mode == v %}checked{% endif %}>{{ l }}</label>{% endfor %}</div>
+            <label class="form-label" style="margin-top:10px">Adresse der Bewertungsseite</label>
+            <input class="form-control" name="review_url" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ gs.review_url }}"
+                   placeholder="{{ review_default_url or 'https://g.page/r/…' }}" maxlength="300" inputmode="url">
+            <label class="form-label" style="margin-top:10px">Text der Bitte</label>
+            <input class="form-control" name="review_text" value="{{ gs.review_text }}"
+                   placeholder="{{ review_default_text }}" maxlength="200">
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:8px 0 0">Beide Felder leer
+              heißt: nimm, was unter <a href="/admin/settings/tracking">Einstellungen</a> steht.
+              {% if review_klicks %}<br>Diesem Link sind bisher <b>{{ review_klicks.gesamt }}</b> Gäste gefolgt{% if review_klicks.monat %}, davon {{ review_klicks.monat }} in den letzten 30 Tagen{% endif %}.{% endif %}</p>
+          </fieldset>
+          <fieldset><legend>Freigabe &amp; Sicherheit</legend>
+            <label class="gs-check"><input type="checkbox" name="moderation" {% if gs.moderation %}checked{% endif %}> Neue Aufnahmen erst nach Freigabe zeigen</label>
+            {% if gs.moderation or pending_count %}
+            <p style="margin:0 0 10px">
+              <a class="btn btn--secondary btn--sm" href="/admin/events/{{ event.id }}/review">Prüfen{% if pending_count %} ({{ pending_count }}){% endif %}</a>
+            </p>
+            {% endif %}
+            <label class="gs-check"><input type="checkbox" name="guest_delete" {% if gs.guest_delete %}checked{% endif %}> Gäste dürfen ihren eigenen Durchgang löschen (QR-Code genügt)</label>
+            <label class="gs-check"><input type="checkbox" name="watermark" {% if gs.watermark %}checked{% endif %}> Wasserzeichen auf Vorschauen</label>
+            <input class="form-control" name="watermark_text" value="{{ gs.watermark_text }}" placeholder="Text, leer = Eventname" maxlength="60">
+            <hr style="border:0;border-top:1px solid var(--color-border);margin:14px 0">
+            <label class="gs-check"><input type="checkbox" name="link_password" {% if gs.link_password %}checked{% endif %}> Passwort im QR- und Sharepic-Link mitgeben</label>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:0 0 10px">Wer den Code gescannt hat, kommt ohne Tippen hinein. Wer nur die Adresse kennt, steht weiter vor dem Passwortfeld. Ohne Passwort ändert der Schalter nichts.</p>
+            <label class="gs-check"><input type="checkbox" name="access_request" {% if gs.access_request %}checked{% endif %}> Knopf „Zugriff anfragen" auf der Passwortseite</label>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:0 0 10px">Gäste hinterlassen ihre E-Mail-Adresse, du bekommst eine Nachricht und gibst mit einem Klick frei{% if not mail_ready %} — dafür muss der Postausgang eingerichtet sein{% endif %}.</p>
+            <label class="gs-check"><input type="checkbox" name="silent" {% if gs.silent %}checked{% endif %}> Stiller Betrieb: hochladen ja, zeigen nein</label>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:0 0 10px">Kein QR-Code an der Box, kein Sharepic, keine Gästemail, keine öffentliche Galerie. Du siehst alles, die Gäste nichts.{% if silent_global %} <b>Global eingeschaltet</b> — gilt gerade ohnehin für alle Galerien.{% endif %}</p>
+            <p style="font-size:.78rem;color:var(--color-text-secondary);margin:8px 0 0">Zeitplan (live ab / verfügbar bis), Passwort und Sichtbarkeit stehen oben unter „Sichtbarkeit &amp; Zugang“, die Adresse (Slug) unter „Grunddaten“.</p>
+          </fieldset>
+        </div>
+        <button class="btn btn-primary" style="margin-top:14px">Galerie-Einstellungen speichern</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card" style="margin:1.25rem 0" id="gast-upload">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Gäste-Upload: PIN &amp; Tisch-Schild</h2></div>
+    <div class="card-body">
+      <p style="font-size:.8125rem;color:var(--color-text-secondary);margin:0 0 12px">
+        Mit PIN laden nur Gäste hoch, die sie vom Schild oder vom Gastgeber haben. Ohne PIN bleibt alles wie bisher.
+        {% if event.upload_pin_hash %}<b>Eine PIN ist gesetzt.</b> Sie ist nur als Prüfwert gespeichert.{% else %}Zurzeit ohne PIN.{% endif %}
+      </p>
+      <form method="post" action="/admin/events/{{ event.id }}/upload-pin" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+          <label class="form-label" for="up_pin">{{ 'Neue PIN' if event.upload_pin_hash else 'PIN' }} (4–8 Ziffern)</label>
+          <input class="form-control" id="up_pin" name="pin" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" autocomplete="off" style="max-width:160px">
+        </div>
+        <button class="btn btn-secondary" type="submit">PIN speichern</button>
+        {% if event.upload_pin_hash %}<button class="btn btn-secondary" type="submit" name="remove" value="1" formnovalidate>PIN entfernen</button>{% endif %}
+      </form>
+      <p style="margin:14px 0 0">
+        <a class="btn btn-sm btn-secondary" href="/admin/events/{{ event.id }}/table-sign?size=a6" target="_blank" rel="noopener">Tisch-Schild A6</a>
+        <a class="btn btn-sm btn-secondary" href="/admin/events/{{ event.id }}/table-sign?size=a5" target="_blank" rel="noopener">Tisch-Schild A5</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+  // Design presets (no. 66): set the existing fields only; saving stays a click.
+  (function () {
+    const form = document.getElementById("gallerySettingsForm");
+    const presets = {{ design_presets|tojson }};
+    if (!form) return;
+    form.querySelectorAll("[data-design-preset]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const p = presets[btn.dataset.designPreset] || {};
+        Object.keys(p).forEach(function (k) {
+          const radio = form.querySelector('input[type=radio][name="' + k + '"][value="' + p[k] + '"]');
+          if (radio) { radio.checked = true; return; }
+          const field = form.querySelector('[name="' + k + '"]');
+          if (field) field.value = p[k];
+        });
+        form.querySelectorAll("[data-design-preset]").forEach(function (b) { b.setAttribute("aria-pressed", b === btn ? "true" : "false"); });
+        form.dispatchEvent(new Event("change", {bubbles: true}));
+      });
+    });
+  })();
+  // "Schlichte Galerie" / "Alles anzeigen": only ticks boxes, saving stays a click.
+  (function () {
+    const form = document.getElementById("gallerySettingsForm");
+    const keys = {{ (preset_clean or [])|tojson }};
+    if (!form) return;
+    form.querySelectorAll("[data-preset]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const on = btn.dataset.preset === "alles";
+        keys.forEach(function (k) { const box = form.querySelector('input[type=checkbox][name="' + k + '"]'); if (box) box.checked = on; });
+        form.dispatchEvent(new Event("change", {bubbles: true}));
+      });
+    });
+  })();
+  // Dieselben Beispielwerte wie in app/dateinamen.py — wer dort etwas ergänzt,
+  // ergänzt es hier. Ein Muster, das man erst nach dem Speichern sieht, ist
+  // ein Muster, das man dreimal speichert.
+  const MUSTER_WERTE = {{ muster_werte|tojson }};
+  function musterVorschau() {
+    const feld = document.getElementById("musterFeld");
+    const aus = document.getElementById("musterAusgabe");
+    if (!feld || !aus) return;
+    let wert = feld.value.trim();
+    if (!wert) { aus.textContent = {{ (muster_vorgabe_vorschau or 'abcd2345xy_1.jpg')|tojson }}; return; }
+    if (/[\/\\]|\.\./.test(wert)) { aus.textContent = "— das geht so nicht —"; return; }
+    for (const [k, v] of Object.entries(MUSTER_WERTE)) wert = wert.split(k).join(v);
+    wert = wert.replace(/[^A-Za-z0-9 ._-]+/g, "-").replace(/^[ .-]+|[ .-]+$/g, "");
+    aus.textContent = (wert || "abcd2345xy_1") + ".jpg";
+  }
+  </script>
+
+  <div class="card" style="margin:1.25rem 0" id="zugang">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Zugriffsanfragen</h2></div>
+    <div class="card-body">
+      {% if not gs.access_request %}
+        <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0">
+          Ausgeschaltet. Der Knopf „Zugriff anfragen" steht in den Galerie-Einstellungen unter „Freigabe &amp; Sicherheit"
+          und erscheint nur, wenn die Galerie ein Passwort hat und der Postausgang eingerichtet ist.
+        </p>
+      {% elif not access_requests %}
+        <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0">Keine offenen Anfragen.</p>
+      {% else %}
+        <table class="sl-table table--stack">
+          <thead><tr><th>Wer</th><th>Nachricht</th><th>Angefragt</th><th></th></tr></thead>
+          {% for r in access_requests %}
+          <tr>
+            <td class="td-main"><b>{{ r.name or '—' }}</b><br><a href="mailto:{{ r.email }}">{{ r.email }}</a></td>
+            <td data-label="Nachricht" style="max-width:28rem">{{ r.note or '' }}</td>
+            <td data-label="Angefragt">{{ r.created_at[:16] }}</td>
+            <td class="td-actions" style="white-space:nowrap">
+              <form method="post" action="/admin/events/{{ event.id }}/access/{{ r.id }}/grant" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-sm btn-primary">freigeben</button>
+              </form>
+              <form method="post" action="/admin/events/{{ event.id }}/access/{{ r.id }}/deny" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-sm btn-secondary">ablehnen</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+        <p style="font-size:.78rem;color:var(--color-text-secondary);margin:10px 0 0">Freigeben schickt dem Gast einen Link, der die Galerie ohne Passwort öffnet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include "admin/events/_folders.html" %}
+  {% include "admin/events/_clients.html" %}
+  {% if gs.layout_approval %}{% include "admin/events/_layout.html" %}{% endif %}
+  {% include "admin/events/_comments.html" %}
+
+  <div class="card" style="margin:1.25rem 0" id="freigaben">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Freigabe-Links</h2></div>
+    <div class="card-body">
+      <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0 0 12px">Eigener Link für die ganze Galerie oder ausgewählte Fotos (unten in der Fotoliste ankreuzen). Standard: 30 Tage gültig, jederzeit abschaltbar, optional mit Passphrase. Gezählt werden Aufrufe, Downloads und wiederkehrende Besucher — die IP nur gehasht.</p>
+      <form method="post" action="/admin/events/{{ event.id }}/share-links" onsubmit="this.media_ids.value=[...document.querySelectorAll('.share-pick:checked')].map(c=>c.value).join(',')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="media_ids">
+        <div class="gs-grid">
+          <div><label class="form-label">Titel</label><input class="form-control" name="title" placeholder="z. B. Fotos für die Familie"></div>
+          <div><label class="form-label">Gültig (Tage, 0 = unbegrenzt)</label><input class="form-control" name="days" type="number" min="0" max="3650" value="30"></div>
+          <div><label class="form-label">Passphrase (optional)</label><input class="form-control" name="password" autocomplete="new-password"></div>
+        </div>
+        <label class="form-label" style="margin-top:10px">Notiz für Empfänger</label><textarea class="form-control" name="note" rows="2"></textarea>
+        <label class="gs-check" style="margin-top:10px"><input type="checkbox" name="allow_download" checked> Download erlauben</label>
+        <button class="btn btn-secondary">Link erstellen <span id="pickCount"></span></button>
+      </form>
+      {% if share_links %}
+      <table class="sl-table table--stack" style="margin-top:16px">
+        <thead><tr><th>Link</th><th>Umfang</th><th>Gültig bis</th><th>Aufrufe</th><th>Besucher</th><th>Downloads</th><th>Geräte</th><th></th></tr></thead>
+        {% for l in share_links %}
+        <tr>
+          <td class="td-main"><span class="sl-status {{ l.status }}">{{ {'ok':'aktiv','expired':'abgelaufen','revoked':'abgeschaltet'}[l.status] }}</span><br><b>{{ l.title or 'Ohne Titel' }}</b>{% if l.password_hash %} · Passphrase{% endif %}<br><code style="font-size:.75rem">{{ base_url }}/l/{{ l.slug }}</code> <button type="button" class="btn btn-sm btn-secondary" onclick="navigator.clipboard.writeText('{{ base_url }}/l/{{ l.slug }}');this.textContent='kopiert'">kopieren</button></td>
+          <td data-label="Umfang">{{ l.count ~ ' Fotos' if l.count else 'ganze Galerie' }}</td>
+          <td data-label="Gültig bis">{{ l.expires_at[:10] if l.expires_at else 'unbegrenzt' }}</td>
+          <td data-label="Aufrufe">{{ l.views }}</td><td data-label="Besucher">{{ l.visitors }}</td><td data-label="Downloads">{{ l.downloads }}</td>
+          <td data-label="Geräte">{% for d in l.devices %}{{ d.device }} ({{ d.n }}){% if not loop.last %}<br>{% endif %}{% else %}–{% endfor %}<br><small>{{ ('zuletzt ' ~ l.last_seen_at[:16]) if l.last_seen_at else '' }}</small></td>
+          <td class="td-actions">{% if l.status == 'ok' %}<form method="post" action="/admin/events/{{ event.id }}/share-links/{{ l.id }}/revoke" onsubmit="return confirm('Link abschalten?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-sm btn-secondary">abschalten</button></form>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    </div>
+  </div>
+  <script>
+    const TAG_ORDER = ['', 'red', 'orange', 'green', 'final'];
+    async function cycleTag(btn){
+      const next = TAG_ORDER[(TAG_ORDER.indexOf(btn.dataset.tag) + 1) % TAG_ORDER.length];
+      const r = await fetch('/api/photo/' + btn.dataset.id + '/tag', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tag: next})});
+      if (r.ok) btn.dataset.tag = next;
+    }
+    document.addEventListener('change', e => { if (e.target.classList.contains('share-pick')) { const n = document.querySelectorAll('.share-pick:checked').length; document.getElementById('pickCount').textContent = n ? '(' + n + ' Fotos)' : ''; } });
+  </script>
+  {% endif %}
+  {% if event %}
+  <div class="card" style="margin:1.25rem 0" id="qr-ziel">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Weiterleitung &amp; QR-Ziel</h2></div>
+    <div class="card-body">
+      <form method="post" action="/admin/events/{{ event.id }}/qr-target">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <h3 style="font-size:.875rem;font-weight:600;margin:0 0 .5rem">Galerie-Link</h3>
+        <p style="font-size:.8125rem;color:var(--color-text-secondary);margin:0 0 .75rem">
+          Gilt für <code>/gallery/{{ event.slug }}</code>, alte Adressen, die Passwortseite und die Freigabe-Links
+          dieses Events. Leer lassen = Gäste sehen die Galerie hier. Du selbst kommst angemeldet weiter in die
+          Galerie und in alle Einstellungen.
+        </p>
+        <div class="form-group"><label class="form-label" for="redirect_url">Galerie-Link leitet weiter auf …</label>
+          <input class="form-control" id="redirect_url" name="redirect_url" type="url" inputmode="url" autocapitalize="off" spellcheck="false"
+                 maxlength="500" value="{{ event.redirect_url or '' }}" placeholder="https://www.picdrop.com/…">
+          <p class="form-hint" style="margin:6px 0 0">Nur vollständige Adressen mit <code>https://</code> oder <code>http://</code>.</p></div>
+        <label class="gs-check" style="display:flex;gap:8px;margin:0 0 1.25rem"><input type="checkbox" name="redirect_all" value="1"
+          {% if event.redirect_url and event.qr_target == 'external' and event.external_url == event.redirect_url %}checked{% endif %}>
+          <span><b>Alles weiterleiten</b> — die QR-Codes der Box zeigen dann auf dieselbe Adresse (setzt unten „Weiterleiten“).</span></label>
+
+        <h3 style="font-size:.875rem;font-weight:600;margin:0 0 .5rem">QR-Codes der Box</h3>
+        <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0 0 12px">Jeder QR-Code der Box zeigt auf <code>/p/…</code> dieser Galerie, also auf die Aufnahmen genau eines Durchgangs. Hier entscheidest du jederzeit, wohin er führt — auch für bereits gedruckte Karten.</p>
+        <div class="form-group">
+          <label style="display:flex;gap:8px;margin-bottom:6px"><input type="radio" name="qr_target" value="gallery" {% if (event.qr_target or 'gallery') == 'gallery' %}checked{% endif %}> Eigene Galerie (Seite mit genau diesen Aufnahmen)</label>
+          <label style="display:flex;gap:8px;margin-bottom:6px"><input type="radio" name="qr_target" value="external" {% if event.qr_target == 'external' %}checked{% endif %}> Weiterleiten, z. B. zur Picdrop-Galerie</label>
+          <label style="display:flex;gap:8px"><input type="radio" name="qr_target" value="status" {% if event.qr_target == 'status' %}checked{% endif %}> Statusseite (Galerie offline, gelöscht, in Wartung)</label>
+        </div>
+        <div class="form-group"><label class="form-label">Weiterleitungs-Adresse (<code>{uid}</code> wird ersetzt)</label>
+          <input class="form-control" name="external_url" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ event.external_url or '' }}" placeholder="https://www.picdrop.com/…"></div>
+        <div class="form-group"><label class="form-label">Text der Statusseite</label>
+          <textarea class="form-control" name="status_message" rows="2" placeholder="Die Galerie ist nicht mehr online. Bei Fragen: …">{{ event.status_message or '' }}</textarea></div>
+
+        {% if event.qr_target == 'external' %}
+        <div class="alert alert--warning" style="margin-bottom:1rem">
+          Achtung: Der QR-Code zeigt damit <b>nicht mehr</b> auf die eigene Galerie. Gäste landen direkt
+          auf der Weiterleitungs-Adresse — Download, Teilen und „Meine Aufnahmen“ passieren dann dort.
+        </div>
+        {% endif %}
+
+        <h3 style="font-size:.875rem;font-weight:600;margin:1.25rem 0 .5rem">Kampagnen-Parameter (UTM)</h3>
+        <p style="font-size:.8125rem;color:var(--color-text-secondary);margin:0 0 .75rem">
+          Werden an jede QR-Adresse angehängt. In Umami (oder jeder anderen Statistik) siehst du damit,
+          welcher QR-Code Besucher bringt — Aushang, Karte, Box-Bildschirm. Leer lassen = Standard:
+          <code>utm_source=photobox</code>, <code>utm_medium=qr</code>, <code>utm_campaign={{ event.slug }}</code>.
+          Trägt die Ziel-Adresse denselben Parameter schon, bleibt ihrer stehen.
+        </p>
+        <div class="gs-grid">
+          <div><label class="form-label" for="utm_source">utm_source</label>
+            <input class="form-control" id="utm_source" name="utm_source" maxlength="80"
+                   value="{{ event.utm_source or '' }}" placeholder="photobox"></div>
+          <div><label class="form-label" for="utm_medium">utm_medium</label>
+            <input class="form-control" id="utm_medium" name="utm_medium" maxlength="80"
+                   value="{{ event.utm_medium or '' }}" placeholder="qr"></div>
+          <div><label class="form-label" for="utm_campaign">utm_campaign</label>
+            <input class="form-control" id="utm_campaign" name="utm_campaign" maxlength="80"
+                   value="{{ event.utm_campaign or '' }}" placeholder="{{ event.slug }}"></div>
+          <div><label class="form-label" for="utm_content">utm_content</label>
+            <input class="form-control" id="utm_content" name="utm_content" maxlength="80"
+                   value="{{ event.utm_content or '' }}" placeholder="z. B. aushang-eingang"></div>
+        </div>
+        <p style="font-size:.8125rem;color:var(--color-text-secondary);margin:.75rem 0 1rem">
+          Beispiel-Adresse eines Codes: <code style="word-break:break-all">{{ qr_example }}</code>
+        </p>
+        <button class="btn btn-secondary">QR-Ziel speichern</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Cover + Photos (only for existing events) #}
+  {% if event %}
+
+  {# Cover image card #}
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="card-header">
+      <h2 style="font-size:.9375rem;font-weight:600;margin:0">Cover-Bild</h2>
+    </div>
+    <div class="card-body">
+      {% if event.cover_url %}
+      <div style="display:flex;gap:1rem;align-items:flex-start">
+        <img src="{{ event.cover_url }}" alt="Cover"
+             style="width:160px;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--c-border)">
+        <div style="display:flex;flex-direction:column;gap:.5rem;padding-top:.25rem">
+          <label class="btn btn--secondary btn--sm" style="cursor:pointer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Neues Cover wählen
+            <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="uploadCover(this)">
+          </label>
+          <button type="button" class="btn btn--ghost btn--sm" style="color:var(--c-danger)"
+                  onclick="deleteCover()">Cover entfernen</button>
+        </div>
+      </div>
+      {% else %}
+      <div id="coverDropzone"
+           style="border:2px dashed var(--c-border);border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s"
+           onclick="document.getElementById('coverInput').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--c-green-500)';this.style.background='var(--c-green-50)'"
+           ondragleave="this.style.borderColor='';this.style.background=''"
+           ondrop="handleCoverDrop(event)">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-muted)" stroke-width="1.5" style="margin:0 auto .75rem;display:block"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <div style="font-size:.9375rem;color:var(--c-text-secondary);margin-bottom:.25rem">Cover-Bild hochladen</div>
+        <div style="font-size:.8125rem;color:var(--c-text-muted)">oder hierher ziehen · JPG, PNG, WebP</div>
+        <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="uploadCover(this)">
+      </div>
+      {% endif %}
+      <div id="coverProgress" style="display:none;margin-top:.75rem">
+        <div style="height:4px;background:var(--c-surface-3);border-radius:2px">
+          <div id="coverProgressBar" style="height:4px;background:var(--c-green-500);border-radius:2px;width:0%;transition:width .3s"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Photos card #}
+  <div class="card" style="margin-bottom:1.25rem" data-section-summary="{{ photos | length }} Aufnahme{{ 'n' if photos | length != 1 }}">
+    <div class="card-header">
+      <h2 style="font-size:.9375rem;font-weight:600;margin:0" id="fotos">
+        Fotos
+        <span id="photoCount" style="font-weight:400;color:var(--c-text-muted);font-size:.8125rem;margin-left:.5rem">({{ photos | length }})</span>
+      </h2>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        {% if photos|length > 1 %}<a href="/admin/events/{{ event.id }}/aussortieren" class="btn btn--ghost btn--sm">Aussortieren</a>{% endif %}
+        <a href="/gallery/{{ event.slug }}/download.zip" class="btn btn--ghost btn--sm">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          ZIP
+        </a>
+        <label class="btn btn--primary btn--sm" style="cursor:pointer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Fotos hochladen
+          <input type="file" id="photoUploadInput" accept="image/*,video/*" multiple style="display:none">
+        </label>
+      </div>
+    </div>
+
+    {# Mehrere Boxen auf einem Event: filtern, was von welcher kam #}
+    {% if event_boxen and (event_boxen | length > 1 or ohne_box) %}
+    <div style="padding:.6rem 1rem;border-bottom:1px solid var(--c-border);display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+      <span style="font-size:.8125rem;color:var(--c-text-muted);margin-right:.2rem">Box:</span>
+      <a class="btn btn--sm {{ 'btn--primary' if not box_filter else 'btn--ghost' }}"
+         href="{{ url_for('admin.edit_event', event_id=event.id) }}#fotos">alle</a>
+      {% for b in event_boxen %}
+      <a class="btn btn--sm {{ 'btn--primary' if box_filter == b.id|string else 'btn--ghost' }}"
+         href="{{ url_for('admin.edit_event', event_id=event.id, box=b.id) }}#fotos">{{ b.name }} ({{ b.anzahl }})</a>
+      {% endfor %}
+      {% if ohne_box %}<span style="font-size:.8125rem;color:var(--c-text-muted)">· {{ ohne_box }} ohne Box (hochgeladen)</span>{% endif %}
+    </div>
+    {% endif %}
+
+    {# Upload progress area #}
+    <div id="uploadStatus" style="display:none;padding:.75rem 1rem;background:var(--c-surface-2);border-bottom:1px solid var(--c-border)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.5rem">
+        <span id="uploadStatusText" style="font-size:.8125rem;color:var(--c-text-secondary)">Lade hoch…</span>
+        <span id="uploadStatusCount" style="font-size:.8125rem;color:var(--c-text-muted)"></span>
+      </div>
+      <div style="height:6px;background:var(--c-surface-3);border-radius:3px">
+        <div id="uploadProgressBar" style="height:6px;background:var(--c-green-500);border-radius:3px;width:0%;transition:width .2s"></div>
+      </div>
+    </div>
+
+    {# Drop zone overlay + photo grid #}
+    <div id="photoDropzone"
+         style="min-height:120px;position:relative"
+         ondragover="event.preventDefault();document.getElementById('photoDropOverlay').style.display='flex'"
+         ondragleave="document.getElementById('photoDropOverlay').style.display='none'"
+         ondrop="handlePhotoDrop(event)">
+
+      {# Drop overlay #}
+      <div id="photoDropOverlay"
+           style="display:none;position:absolute;inset:0;background:rgba(22,163,74,.08);border:2px dashed var(--c-green-500);border-radius:0 0 12px 12px;z-index:10;align-items:center;justify-content:center;flex-direction:column;gap:.5rem">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--c-green-600)" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span style="color:var(--c-green-700);font-weight:600">Fotos hier ablegen</span>
+      </div>
+
+      {% if photos %}
+        {% set srcs = media_sources(photos) %}
+        {% if srcs.chips|length > 1 %}
+        <div class="adm-src" role="group" aria-label="Quelle" style="display:flex;flex-wrap:wrap;gap:6px;padding:.75rem .75rem 0">
+          <button type="button" class="btn btn-sm btn-secondary is-on" data-src-filter="" aria-pressed="true">Alle ({{ photos|length }})</button>
+          {% for c in srcs.chips %}<button type="button" class="btn btn-sm btn-secondary" data-src-filter="{{ c.key }}" aria-pressed="false">{{ c.label }} ({{ c.count }})</button>{% endfor %}
+        </div>
+        <style>.adm-src .btn{min-height:44px}.adm-src .btn.is-on{background:var(--color-text,#111);color:var(--color-surface,#fff)}</style>
+        <script>
+        document.querySelectorAll('.adm-src [data-src-filter]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var want = b.dataset.srcFilter;
+            document.querySelectorAll('.adm-src [data-src-filter]').forEach(function (o) {
+              o.classList.toggle('is-on', o === b); o.setAttribute('aria-pressed', o === b ? 'true' : 'false');
+            });
+            document.querySelectorAll('#photoGrid .photo-thumb').forEach(function (t) {
+              t.style.display = (!want || t.dataset.source === want) ? '' : 'none';
+            });
+          });
+        });
+        </script>
+        {% endif %}
+        <div id="photoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem;padding:.75rem">
+          {% for photo in photos %}
+            <div class="photo-thumb" data-id="{{ photo.id }}" data-source="{{ srcs.of.get(photo.id, '') }}"
+                 title="{{ srcs.labels.get(srcs.of.get(photo.id, ''), '') }}"
+                 style="position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--c-surface-3)">
+              <img src="/data/{{ photo.path_thumb or photo.path_webp }}" alt=""
+                   loading="lazy"
+                   style="width:100%;height:100%;object-fit:cover">
+              <form method="post" action="/admin/events/{{ event.id }}/cover" class="adm-cover-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="media_id" value="{{ photo.id }}">
+                <button class="adm-cover{% if event.cover_path and event.cover_path in (photo.path_webp, photo.path_thumb) %} is-cover{% endif %}" title="{{ t('cover.pick') }}" aria-label="{{ t('cover.pick') }}">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+                </button>
+              </form>
+              <label class="adm-pick" title="Für Freigabe-Link auswählen"><input type="checkbox" class="share-pick" value="{{ photo.id }}"></label>
+              <button type="button" class="adm-tag" data-id="{{ photo.id }}" data-tag="{{ photo.color_tag or '' }}" title="Farbmarkierung" onclick="cycleTag(this)"></button>
+              <button type="button" onclick="deletePhoto({{ photo.id }}, this)" class="adm-del" aria-label="Foto löschen" title="Foto löschen"
+                      style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.65);border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">
+                ×
+              </button>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div id="emptyState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;color:var(--c-text-muted)">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:.75rem"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <div style="font-size:.9375rem;margin-bottom:.25rem">Noch keine Fotos hochgeladen</div>
+          <div style="font-size:.8125rem">Klick auf „Fotos hochladen" oder ziehe Dateien hierher</div>
+        </div>
+        <div id="photoGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem;padding:.75rem"></div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% endif %}{# end if event #}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if event %}
+<script>
+const EVENT_ID = {{ event.id }};
+const CSRF = '{{ csrf_token }}';
+
+function copyText(id) {
+  navigator.clipboard.writeText(document.getElementById(id).value)
+    .then(() => { const btn = event.target; btn.textContent = 'Kopiert!'; setTimeout(() => btn.textContent = 'Kopieren', 2000); });
+}
+
+function autoSlug(name) {
+  const slugInput = document.getElementById('slug');
+  if (slugInput.dataset.manual) return;
+  slugInput.value = name.toLowerCase().replace(/[äöüß]/g, c => ({ä:'ae',ö:'oe',ü:'ue',ß:'ss'})[c])
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+document.getElementById('slug')?.addEventListener('input', () => {
+  document.getElementById('slug').dataset.manual = '1';
+});
+
+// ─── Cover Upload ───────────────────────────────────
+async function uploadCover(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const bar = document.getElementById('coverProgressBar');
+  const progress = document.getElementById('coverProgress');
+  progress.style.display = 'block';
+  bar.style.width = '30%';
+  const fd = new FormData();
+  fd.append('cover', file);
+  fd.append('csrf_token', CSRF);
+  fd.append('action', 'save');
+  // Also include required form fields
+  const form = document.getElementById('eventForm');
+  fd.append('name', document.getElementById('name').value || '');
+  fd.append('slug', document.getElementById('slug').value || '');
+  const r = await fetch(window.location.pathname, {method:'POST', body:fd});
+  bar.style.width = '100%';
+  setTimeout(() => location.reload(), 400);
+}
+function handleCoverDrop(e) {
+  e.preventDefault();
+  document.getElementById('coverDropzone').style.borderColor = '';
+  document.getElementById('coverDropzone').style.background = '';
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const input = document.getElementById('coverInput');
+  input.files = dt.files;
+  uploadCover(input);
+}
+async function deleteCover() {
+  if (!confirm('Cover-Bild entfernen?')) return;
+  const fd = new FormData();
+  fd.append('csrf_token', CSRF);
+  fd.append('action', 'delete_cover');
+  await fetch(window.location.pathname, {method:'POST', body:fd});
+  location.reload();
+}
+
+// ─── Photo Upload ────────────────────────────────────
+document.getElementById('photoUploadInput').addEventListener('change', e => {
+  uploadFiles(Array.from(e.target.files));
+  e.target.value = '';
+});
+function handlePhotoDrop(e) {
+  e.preventDefault();
+  document.getElementById('photoDropOverlay').style.display = 'none';
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+  if (files.length) uploadFiles(files);
+}
+
+async function uploadFiles(files) {
+  if (!files.length) return;
+  const status = document.getElementById('uploadStatus');
+  const statusText = document.getElementById('uploadStatusText');
+  const statusCount = document.getElementById('uploadStatusCount');
+  const bar = document.getElementById('uploadProgressBar');
+  status.style.display = 'block';
+  let done = 0;
+  for (const file of files) {
+    statusText.textContent = `Lade hoch: ${file.name}`;
+    statusCount.textContent = `${done + 1} / ${files.length}`;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('event_id', EVENT_ID);
+    const r = await fetch('/api/admin-upload', {method:'POST', body:fd,
+                                                 headers: {'X-CSRF-Token': {{ csrf_token|tojson }}}});
+    const resp = await r.json();
+    if (resp.ok) {
+      done++;
+      bar.style.width = `${(done / files.length) * 100}%`;
+      // Add thumbnail to grid
+      addPhotoThumb(resp.id, resp.thumb_url || '');
+    }
+  }
+  statusText.textContent = `${done} Foto${done !== 1 ? 's' : ''} hochgeladen!`;
+  statusText.style.color = 'var(--c-green-600)';
+  bar.style.background = 'var(--c-green-500)';
+  // Update count
+  const countEl = document.getElementById('photoCount');
+  const current = parseInt(countEl.textContent.replace(/\D/g,'')) || 0;
+  countEl.textContent = `(${current + done})`;
+  setTimeout(() => { status.style.display = 'none'; bar.style.width = '0'; statusText.style.color = ''; }, 3000);
+}
+
+function addPhotoThumb(id, thumbUrl) {
+  const grid = document.getElementById('photoGrid');
+  const empty = document.getElementById('emptyState');
+  if (empty) empty.style.display = 'none';
+  grid.style.display = 'grid';
+  const div = document.createElement('div');
+  div.className = 'photo-thumb';
+  div.dataset.id = id;
+  div.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--c-surface-3)';
+  div.innerHTML = `
+    <img src="${thumbUrl ? '/data/' + encodeURI(String(thumbUrl)).replace(/"/g, '%22') : ''}" alt="" loading="lazy"
+         style="width:100%;height:100%;object-fit:cover">
+    <button type="button" onclick="deletePhoto(${Number(id)}, this)" class="adm-del" aria-label="Foto löschen" title="Foto löschen"
+            style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.65);border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">
+      ×
+    </button>`;
+  grid.prepend(div);
+}
+
+async function deletePhoto(id, btn) {
+  if (!confirm('Foto löschen?')) return;
+  const r = await fetch(`/admin/media/${id}/delete`, {method:'POST', body: new URLSearchParams({csrf_token: CSRF})});
+  if (r.ok) {
+    btn.closest('.photo-thumb').remove();
+    const countEl = document.getElementById('photoCount');
+    const current = parseInt(countEl.textContent.replace(/\D/g,'')) || 1;
+    countEl.textContent = `(${current - 1})`;
+  }
+}
+</script>
+{% else %}
+<script>
+function autoSlug(name) {
+  const slugInput = document.getElementById('slug');
+  if (slugInput.dataset.manual) return;
+  slugInput.value = name.toLowerCase().replace(/[äöüß]/g, c => ({ä:'ae',ö:'oe',ü:'ue',ß:'ss'})[c])
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+document.getElementById('slug')?.addEventListener('input', () => {
+  document.getElementById('slug').dataset.manual = '1';
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,53 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+# OS
+.DS_Store
+# Runtime data (SQLite + media live in the mounted volume)
+data/
+# …but not the built-in template catalogue the gallery ships with
+!app/static/data/
+!app/static/data/collage_templates.json
+*.sqlite3
+*.db
+# Logs / uploader state
+*.log
+uploader_state.db
+__pycache__/
+booth/.venv/
+*.part
+*.egg-info/
+sync/.venv/
+
+# Windows-Bau
+packaging/windows/dist/
+packaging/windows/.buildenv/
+packaging/windows/.work/
+packaging/windows/.legal/
+packaging/windows/installer/build/
+# The owner's publisher card (address for the About page); the example is committed.
+packaging/windows/publisher.json
+booth/boothcore/web/static/legal/
+
+# Canon EDSDK — steht unter NDA und gehört Canon. Gehört nie ins Repo, auch
+# nicht versehentlich über einen Ordner neben dem Programm.
+EDSDK/
+**/EDSDK/
+*.dll
+libEDSDK.so
+
+# Bau-Ergebnisse (macOS)
+packaging/macos/.venv/
+packaging/macos/build/
+packaging/macos/dist/
+*.dmg
+
+# Python package archives — builds fetch their tools from pip
+*.whl
+*.egg
+
+# Written by the PyInstaller specs at build time, never committed.
+BUILD_COMMIT

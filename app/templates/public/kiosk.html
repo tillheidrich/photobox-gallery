@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="{{ g.lang or 'de' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{{ event.name }} – Kiosk</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-event.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+  {% include "public/_brand_style.html" %}
+  <style>
+    * { cursor: none; }
+  </style>
+</head>
+<body class="kiosk-body">
+
+<!-- Slideshow Background -->
+{% if slideshow_photos %}
+<div class="kiosk-slideshow" id="slideshow">
+  {% for photo in slideshow_photos[:20] %}
+  <div class="kiosk-slide {% if loop.first %}active{% endif %}"
+       style="background-image:url('{{ photo.url_thumb or photo.url }}')"></div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="kiosk-slideshow" style="background:radial-gradient(ellipse at center, oklch(0.22 0.008 75), oklch(0.14 0.006 75))"></div>
+{% endif %}
+
+<div class="kiosk-overlay"></div>
+
+<div class="kiosk-content">
+  {% if brand and brand.logo_url %}<img src="{{ brand.logo_url }}" alt="" style="max-height:64px;margin:0 auto 22px">{% endif %}
+  <div class="kiosk-qr">
+    <img src="{{ url_for('public.gallery_qr_image', slug=event.slug) }}" alt="{{ t('a11y.gallery_qr', event=event.name) }}" width="200" height="200">
+  </div>
+  <div class="kiosk-title">{{ event.name }}</div>
+  <div class="kiosk-hint">{{ t('kiosk.scan_hint') }}</div>
+  {% if event.kiosk_text %}
+  <div style="margin-top:1rem; opacity:.65; font-size:0.9rem">{{ event.kiosk_text }}</div>
+  {% endif %}
+</div>
+
+<script>
+// Frueher stand hier <meta http-equiv="refresh" content="60">. Das laedt
+// die Seite hart neu, ohne Ruecksicht darauf, ob gerade jemand liest oder
+// der Schirm ueberhaupt sichtbar ist -- und es laesst sich nicht anhalten
+// (WCAG 2.2.1). Der Neuladen-Zweck bleibt: die Wand soll neue Fotos
+// zeigen. Aber nur, wenn sie sichtbar ist und niemand etwas im Griff hat.
+(function () {
+  var FRIST = 60000;
+  var faellig = Date.now() + FRIST;
+  function pruefe() {
+    if (Date.now() < faellig) return;
+    var f = document.activeElement;
+    if (document.visibilityState !== 'visible' || (f && f !== document.body)) {
+      faellig = Date.now() + 10000;   // spaeter nochmal fragen
+      return;
+    }
+    location.reload();
+  }
+  setInterval(pruefe, 2000);
+})();
+
+const slides = document.querySelectorAll('.kiosk-slide');
+if (slides.length > 1) {
+  let current = 0;
+  setInterval(() => {
+    slides[current].classList.remove('active');
+    current = (current + 1) % slides.length;
+    slides[current].classList.add('active');
+  }, 5000);
+}
+</script>
+</body>
+</html>

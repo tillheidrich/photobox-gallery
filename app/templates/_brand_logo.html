@@ -1,0 +1,8 @@
+{#- The installation's logo for any page (admin sidebar, login, client area,
+    gallery header). Two pictures when there is a logo for dark surfaces; the
+    rules in design.css show the one that fits data-theme. -#}
+{% macro brand_logo(style="", alt="Logo") -%}
+{%- set gl = global_logo() -%}
+<img class="brand-logo-light{% if not gl.dark %} brand-logo-only{% endif %}" src="{{ gl.light or gl.dark }}" alt="{{ alt }}"{% if style %} style="{{ style }}"{% endif %}>
+{%- if gl.dark and gl.light %}<img class="brand-logo-dark" src="{{ gl.dark }}" alt="{{ alt }}"{% if style %} style="{{ style }}"{% endif %}>{% endif -%}
+{%- endmacro %}

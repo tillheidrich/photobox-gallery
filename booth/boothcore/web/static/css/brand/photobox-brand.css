@@ -1,0 +1,290 @@
+/* ============================================================
+   Photobox Gallery — Markenebene „Abzug"
+   Eine Datei, vier Oberflächen: Galerie (Gast), Admin, Sync, Booth.
+   Enthält NUR Tokens. Komponenten liegen in den jeweiligen App-CSS.
+
+   Reihenfolge beim Einbinden:
+     1. photobox-fonts.css
+     2. photobox-brand.css      <- diese Datei
+     3. photobox-booth.css      (nur Kiosk)
+     4. photobox-event.css      (nur Galerie/Booth mit Event-Branding)
+     5. <app>.css               (Komponenten)
+
+   Regel für Tiefe: Fläche und Haarlinie. Schatten NUR, wenn etwas
+   über einem Foto schwebt (Lightbox, Blatt, Menü). Nie zur Dekoration.
+   ============================================================ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- Bernstein: die eine Akzentfarbe ---------------------- */
+  --pb-amber-50: oklch(0.972 0.018 78);   /* #fdf5e9 */
+  --pb-amber-100: oklch(0.944 0.038 80);   /* #faead1 */
+  --pb-amber-200: oklch(0.895 0.070 80);   /* #f5d8a8 */
+  --pb-amber-300: oklch(0.840 0.100 77);   /* #efc27e */
+  --pb-amber-400: oklch(0.785 0.122 74);   /* #e7ad59 */
+  --pb-amber-500: oklch(0.720 0.135 72);   /* #d89534 */
+  --pb-amber-600: oklch(0.640 0.135 70);   /* #bf7b0f */
+  --pb-amber-700: oklch(0.545 0.120 68);   /* #9d6000 */
+  --pb-amber-800: oklch(0.440 0.100 66);   /* #774500 */
+  --pb-amber-900: oklch(0.345 0.075 65);   /* #533003 */
+  --pb-amber-950: oklch(0.250 0.050 66);   /* #321c04 */
+
+  /* ---- Tusche & Papier: warme Neutrale (Hue 75) ------------- */
+  --pb-ink-0: oklch(0.995 0.002 75);  /* #fefdfc — papier */
+  --pb-ink-50: oklch(0.975 0.004 75);  /* #f8f6f4 */
+  --pb-ink-100: oklch(0.945 0.005 75);  /* #efece9 */
+  --pb-ink-200: oklch(0.900 0.006 75);  /* #e0ddda */
+  --pb-ink-300: oklch(0.840 0.007 75);  /* #cdcac6 */
+  --pb-ink-400: oklch(0.700 0.010 75);  /* #a29e98 */
+  --pb-ink-500: oklch(0.580 0.012 75);  /* #7f7973 */
+  --pb-ink-600: oklch(0.480 0.012 75);  /* #625d56 */
+  --pb-ink-700: oklch(0.380 0.011 75);  /* #46423c */
+  --pb-ink-800: oklch(0.280 0.010 75);  /* #2c2823 */
+  --pb-ink-900: oklch(0.220 0.009 75);  /* #1d1a16 */
+  --pb-ink-950: oklch(0.160 0.008 75);  /* #0f0d09 */
+  --pb-ink-1000: oklch(0.120 0.007 75);  /* #070504 — tief */
+
+  /* ---- Signal: NUR Aufnahme läuft und Zerstörendes ----------- */
+  --pb-signal:      oklch(0.580 0.190 28);   /* #d33c33 */
+  --pb-signal-dark: oklch(0.700 0.170 28);   /* #f66e60 */
+  --pb-gruen:       oklch(0.600 0.100 150);   /* #519160 */
+  --pb-gruen-dark:  oklch(0.740 0.110 155);   /* #6ebf8c */
+
+  /* ============================================================
+     Semantische Ebene — hier greift die App zu, nie auf die Skala.
+     ============================================================ */
+
+  /* Flächen: höher = heller. Keine Farbsprünge zwischen Ebenen. */
+  --pb-surface:        var(--pb-ink-0);      /* Karten, Blätter */
+  --pb-surface-sunken: var(--pb-ink-50);     /* Seitengrund */
+  --pb-surface-raised: var(--pb-ink-100);    /* Hover, Zeilen */
+  --pb-surface-inset:  var(--pb-ink-100);    /* Eingabefelder */
+
+  /* Linien */
+  --pb-line:        var(--pb-ink-200);
+  --pb-line-subtle: var(--pb-ink-100);
+  --pb-line-strong: var(--pb-ink-300);
+
+  /* Schrift */
+  /* Drei Schriftstufen, alle über 4.5:1 auf Papier (17.1 / 9.8 / 6.4).
+     ink-400 ist als Schrift verboten — 2.6:1, das liest niemand. */
+  --pb-text:        var(--pb-ink-900);
+  --pb-text-2:      var(--pb-ink-700);
+  --pb-text-muted:  var(--pb-ink-600);
+  --pb-text-invers: var(--pb-ink-0);
+  --pb-icon-muted:  var(--pb-ink-500);   /* NUR Striche und Linien, nie Text */
+
+  /* Akzent. --pb-accent ist der EINZIGE Wert, den Event-Branding
+     überschreiben darf. Alles andere leitet sich daraus ab. */
+  --pb-accent:        var(--pb-amber-500);   /* Marke, Markierung, große Flächen */
+  --pb-accent-solid:  var(--pb-amber-600);   /* gefüllte Bedienelemente auf Hell */
+  --pb-accent-hover:  var(--pb-amber-700);
+  --pb-accent-quiet:  var(--pb-amber-100);   /* Fläche hinter Akzent-Text */
+  --pb-accent-text:   var(--pb-amber-800);   /* Akzent als Schrift auf hell */
+  --pb-on-accent:     var(--pb-ink-950);     /* Schrift AUF der Akzentfläche */
+  --pb-link:          var(--pb-amber-700);
+  /* Warum zwei Akzentwerte: Bernstein-500 auf Papier sind 2.5:1 — als
+     Knopffläche zu wenig (AA verlangt 3:1 für Bedienelemente).
+     Bernstein-600 schafft 3.4:1, mit ink-950 darauf 5.6:1.
+     Bernstein-500 bleibt für Marke, Auswahlrahmen und große Flächen. */
+
+  /* Semantik */
+  --pb-danger:      var(--pb-signal);
+  --pb-danger-bg:   oklch(0.958 0.028 30);
+  --pb-warn:        var(--pb-amber-600);
+  --pb-warn-bg:     var(--pb-amber-50);
+  --pb-ok:          var(--pb-gruen);
+  --pb-ok-bg:       oklch(0.955 0.028 150);
+
+  /* Fokus — immer sichtbar, nie ausgeschaltet */
+  --pb-focus:       var(--pb-amber-700);
+  --pb-focus-ring:  0 0 0 3px oklch(0.72 0.135 72 / .38);
+
+  /* ---- Schrift ---------------------------------------------- */
+  --pb-font:  "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pb-font-display: "Archivo", var(--pb-font);
+  --pb-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", monospace;
+
+  --pb-text-2xs:  0.6875rem;  /* 11 — Abzeichen */
+  --pb-text-xs:   0.75rem;    /* 12 — Tabellenkopf, Hinweise */
+  --pb-text-sm:   0.8125rem;  /* 13 — Sekundärtext */
+  --pb-text-base: 0.9375rem;  /* 15 — Fließtext UI */
+  --pb-text-md:   1rem;       /* 16 — Fließtext Galerie */
+  --pb-text-lg:   1.125rem;   /* 18 */
+  --pb-text-xl:   1.375rem;   /* 22 — Abschnitt */
+  --pb-text-2xl:  1.75rem;    /* 28 — Seite */
+  --pb-text-3xl:  2.25rem;    /* 36 */
+  --pb-text-4xl:  3rem;       /* 48 — Eventtitel */
+
+  --pb-lh-tight: 1.15;
+  --pb-lh-snug:  1.35;
+  --pb-lh-base:  1.6;
+  --pb-track-tight: -0.02em;   /* Überschriften */
+  --pb-track-wide:   0.14em;   /* Augenbrauen, Versalien */
+
+  /* ---- Raum: Basis 4 ----------------------------------------- */
+  --pb-1: 4px;  --pb-2: 8px;  --pb-3: 12px; --pb-4: 16px;
+  --pb-5: 20px; --pb-6: 24px; --pb-8: 32px; --pb-10: 40px;
+  --pb-12: 48px; --pb-16: 64px; --pb-20: 80px; --pb-24: 96px;
+
+  /* ---- Form: aus dem Abzug abgeleitet, eher knapp als rund ---- */
+  --pb-r-sm: 6px; --pb-r-md: 9px; --pb-r-lg: 12px;
+  --pb-r-xl: 16px; --pb-r-2xl: 22px; --pb-r-full: 9999px;
+  --pb-r-bild: 4px;          /* Fotos: fast eckig, wie ein Abzug */
+
+  /* ---- Tiefe: nur für Schwebendes ---------------------------- */
+  --pb-shadow-sheet:   0 4px 14px oklch(0.30 0.02 75 / .07);
+  --pb-shadow-float:   0 14px 36px oklch(0.28 0.02 75 / .12);
+  --pb-shadow-overlay: 0 26px 60px oklch(0.24 0.02 75 / .20);
+
+  /* ---- Bewegung ---------------------------------------------- */
+  --pb-ease:      cubic-bezier(0.22, 1, 0.36, 1);
+  --pb-ease-in:   cubic-bezier(0.4, 0, 1, 1);
+  --pb-t-fast:    120ms var(--pb-ease);
+  --pb-t:         180ms var(--pb-ease);
+  --pb-t-slow:    320ms var(--pb-ease);
+
+  /* ---- Touch ------------------------------------------------- */
+  --pb-touch-min: 44px;      /* Web */
+  --pb-touch-kiosk: 76px;    /* Box, siehe photobox-booth.css */
+}
+
+/* ============================================================
+   Dunkel — warm, nie kalt, nie reines Schwarz.
+   Zwei Wege: Systemwunsch und ausdrückliche Wahl.
+   ============================================================ */
+:root[data-theme="dark"] { --pb-dark: 1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --pb-dark: 1; } }
+
+:root[data-theme="dark"] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+
+:root[data-theme="dark"] {
+  --pb-surface:        var(--pb-ink-900);
+  --pb-surface-sunken: var(--pb-ink-950);
+  --pb-surface-raised: var(--pb-ink-800);
+  --pb-surface-inset:  var(--pb-ink-950);
+
+  --pb-line:        oklch(0.310 0.008 75);
+  --pb-line-subtle: oklch(0.255 0.007 75);
+  --pb-line-strong: oklch(0.390 0.009 75);
+
+  --pb-text:        oklch(0.945 0.005 75);   /* 15.1:1 */
+  --pb-text-2:      oklch(0.790 0.008 75);   /* 9.0:1  */
+  --pb-text-muted:  oklch(0.660 0.009 75);   /* 5.4:1  */
+  --pb-text-invers: var(--pb-ink-950);
+  --pb-icon-muted:  oklch(0.560 0.009 75);
+
+  --pb-accent:        var(--pb-amber-400);
+  --pb-accent-solid:  var(--pb-amber-400);   /* auf dunkel reicht 400: 8.7:1 */
+  --pb-accent-hover:  var(--pb-amber-300);
+  --pb-accent-quiet:  oklch(0.300 0.050 72);
+  --pb-accent-text:   var(--pb-amber-300);
+  --pb-on-accent:     var(--pb-ink-950);
+  --pb-link:          var(--pb-amber-300);
+
+  --pb-danger:    var(--pb-signal-dark);
+  --pb-danger-bg: oklch(0.300 0.060 28);
+  --pb-warn:      var(--pb-amber-400);
+  --pb-warn-bg:   oklch(0.300 0.050 72);
+  --pb-ok:        var(--pb-gruen-dark);
+  --pb-ok-bg:     oklch(0.290 0.045 150);
+
+  --pb-focus:      var(--pb-amber-300);
+  --pb-focus-ring: 0 0 0 3px oklch(0.840 0.100 77 / .40);
+
+  --pb-shadow-sheet:   0 4px 14px oklch(0 0 0 / .35);
+  --pb-shadow-float:   0 14px 36px oklch(0 0 0 / .45);
+  --pb-shadow-overlay: 0 26px 60px oklch(0 0 0 / .60);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pb-surface:        var(--pb-ink-900);
+    --pb-surface-sunken: var(--pb-ink-950);
+    --pb-surface-raised: var(--pb-ink-800);
+    --pb-surface-inset:  var(--pb-ink-950);
+  
+    --pb-line:        oklch(0.310 0.008 75);
+    --pb-line-subtle: oklch(0.255 0.007 75);
+    --pb-line-strong: oklch(0.390 0.009 75);
+  
+    --pb-text:        oklch(0.945 0.005 75);
+    --pb-text-2:      oklch(0.750 0.008 75);
+    --pb-text-muted:  oklch(0.585 0.008 75);
+    --pb-text-invers: var(--pb-ink-950);
+  
+    --pb-accent:        var(--pb-amber-400);
+    --pb-accent-hover:  var(--pb-amber-300);
+    --pb-accent-quiet:  oklch(0.300 0.050 72);
+    --pb-accent-text:   var(--pb-amber-300);
+    --pb-on-accent:     var(--pb-amber-950);
+    --pb-link:          var(--pb-amber-300);
+  
+    --pb-danger:    var(--pb-signal-dark);
+    --pb-danger-bg: oklch(0.300 0.060 28);
+    --pb-warn:      var(--pb-amber-400);
+    --pb-warn-bg:   oklch(0.300 0.050 72);
+    --pb-ok:        var(--pb-gruen-dark);
+    --pb-ok-bg:     oklch(0.290 0.045 150);
+  
+    --pb-focus:      var(--pb-amber-300);
+    --pb-focus-ring: 0 0 0 3px oklch(0.840 0.100 77 / .40);
+  
+    --pb-shadow-sheet:   0 4px 14px oklch(0 0 0 / .35);
+    --pb-shadow-float:   0 14px 36px oklch(0 0 0 / .45);
+    --pb-shadow-overlay: 0 26px 60px oklch(0 0 0 / .60);
+  }
+}
+
+
+/* ============================================================
+   Grundlagen, die überall gelten
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--pb-font);
+  font-size: var(--pb-text-base);
+  line-height: var(--pb-lh-base);
+  color: var(--pb-text);
+  background: var(--pb-surface-sunken);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv05" 1, "cv08" 1;   /* Inter: offenes a, gerades l */
+}
+h1, h2, h3 { letter-spacing: var(--pb-track-tight); line-height: var(--pb-lh-tight); }
+img, video { max-width: 100%; height: auto; display: block; }
+a { color: var(--pb-link); text-underline-offset: 2px; }
+
+/* Zahlen laufen nie: Zähler, Größen, Uhrzeiten */
+.pb-zahl, time, [data-zahl] { font-variant-numeric: tabular-nums; }
+
+/* Fokus ist nicht verhandelbar */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--pb-focus);
+  outline-offset: 2px;
+  border-radius: var(--pb-r-sm);
+}
+
+/* Fotos tragen die Abzugs-Rundung, nie mehr */
+.pb-bild { border-radius: var(--pb-r-bild); background: var(--pb-surface-raised); }
+
+/* Der Akzent ist Bedeutung, nie Dekoration */
+::selection { background: var(--pb-accent); color: var(--pb-on-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Hoher Kontrast (Windows, BFSG) */
+@media (forced-colors: active) {
+  .pb-bild { border: 1px solid CanvasText; }
+}

@@ -1,0 +1,56 @@
+{% extends "layout_public.html" %}
+{% block title %}FAQ – {{ g.homepage_headline or 'Photobox Gallery' }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:760px">
+
+    <div style="margin-bottom:2rem">
+      <a href="/" class="btn btn--secondary btn--sm" style="margin-bottom:1.5rem">{{ t('common.back') }}</a>
+      <h1 style="font-size:2rem;font-weight:700;margin:0 0 0.5rem">FAQ & Hilfe</h1>
+      {% if intro_html %}
+      <div class="text-muted" style="line-height:1.7">{{ intro_html|safe }}</div>
+      {% endif %}
+    </div>
+
+    {% if items %}
+    <div class="faq-list">
+      {% for item in items %}
+      <details class="faq-item" {% if loop.first %}open{% endif %}>
+        <summary class="faq-question">
+          <span>{{ item.q }}</span>
+          <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </summary>
+        <div class="faq-answer">
+          {{ item.a_html|safe }}
+          {% if item.file_url %}
+          <div class="faq-attachment">
+            {% set ext = item.file_name.rsplit('.',1)[-1].lower() if item.file_name else '' %}
+            {% if ext in ['jpg','jpeg','png','gif'] %}
+            <img src="{{ item.file_url }}" alt="{{ item.file_name }}" style="max-width:100%;border-radius:8px;margin-top:1rem">
+            {% else %}
+            <a href="{{ item.file_url }}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:1rem">
+              Anhang: {{ item.file_name or 'herunterladen' }}
+            </a>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" width="48" height="48">
+        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+      </svg>
+      <h3>{{ t('faq.empty_title') }}</h3>
+      <p>{{ t('faq.empty_text') }}</p>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

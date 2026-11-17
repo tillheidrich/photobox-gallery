@@ -1,0 +1,108 @@
+{% extends "layout_public.html" %}
+{% block title %}{{ t('client.my_galleries') }} – {{ client.name }}{% endblock %}
+
+{% block content %}
+<section class="section client-home">
+  <div class="container">
+    <div class="section-header client-home-header">
+      <div>
+        <p class="client-home-eyebrow">{{ t('client.title') }}</p>
+        <h1 class="section-title">{{ client.name }}</h1>
+        <span class="text-muted text-sm">{{ galleries|length }} {{ t('home.gallery_count_many') if galleries|length != 1 else t('home.gallery_count_one') }}</span>
+      </div>
+      <form method="post" action="{{ '/client/logout' if request.path.startswith('/client') else '/kunde/abmelden' }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn--secondary btn--sm">{{ t('client.logout') }}</button>
+      </form>
+    </div>
+    {% if hub %}
+    {# Hub (no. 63): one block per gallery with the tiles that apply. #}
+    <style>
+      .hub-list{display:grid;gap:var(--sp-8,32px)}
+      .hub-gallery{display:grid;gap:12px}
+      .hub-head{display:flex;gap:14px;align-items:center;min-width:0}
+      .hub-head img,.hub-head .hub-ph{width:72px;height:72px;border-radius:12px;object-fit:cover;flex:none;background:var(--color-surface-3)}
+      .hub-head h2{font-size:1.125rem;margin:0;overflow-wrap:anywhere}
+      .hub-head p{margin:2px 0 0;color:var(--color-text-2);font-size:.875rem}
+      .hub-tiles{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));gap:10px}
+      .hub-tiles a{display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:64px;padding:12px 14px;border-radius:12px;
+        border:1px solid var(--color-border-subtle,var(--color-border));background:var(--color-surface);color:var(--color-text);text-decoration:none}
+      .hub-tiles a:hover{border-color:var(--color-text)}
+      .hub-tiles a:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+      .hub-tiles b{font-size:.9375rem;font-weight:600}
+      .hub-tiles span{font-size:.8125rem;color:var(--color-text-2);overflow-wrap:anywhere}
+      .hub-tiles li:first-child a{background:var(--color-text);color:var(--color-surface);border-color:var(--color-text)}
+      .hub-tiles li:first-child span{color:inherit;opacity:.8}
+    </style>
+    <div class="hub-list">
+      {% for e in galleries if hub.get(e.slug) %}
+      <section class="hub-gallery" aria-labelledby="hub-{{ e.slug }}">
+        <div class="hub-head">
+          {% if e.cover_url %}<img src="{{ e.cover_url }}" alt="">{% else %}<span class="hub-ph" aria-hidden="true"></span>{% endif %}
+          <div>
+            <h2 id="hub-{{ e.slug }}">{{ e.name }}</h2>
+            <p>{% if e.date_h %}{{ e.date_h }} · {% endif %}{% if e.new %}{{ t('client.new_count', n=e.new) }}{% elif e.never_seen %}{{ t('client.new_gallery') }}{% endif %}</p>
+          </div>
+        </div>
+        <ul class="hub-tiles" data-hub="{{ e.slug }}">
+          {% for tile in hub[e.slug] %}<li><a href="{{ tile.href }}" data-tile="{{ tile.key }}"{% if tile.key == 'contact' %} rel="noreferrer"{% endif %}><b>{{ tile.label }}</b><span>{{ tile.hint }}</span></a></li>{% endfor %}
+        </ul>
+      </section>
+      {% endfor %}
+    </div>
+    {% if galleries|selectattr('expired')|list %}<p class="text-muted text-sm" style="margin-top:var(--sp-8)">{{ t('gallery.expired_title') }}: {{ galleries|selectattr('expired')|map(attribute='name')|join(', ') }}</p>{% endif %}
+    {% else %}
+    {% if layouts %}
+    <div class="events-grid" role="list" style="margin-bottom:var(--sp-8)">
+      {% for l in layouts %}
+      <a href="/kunde/drucklayout/{{ l.slug }}" class="event-card" role="listitem" rel="noreferrer">
+        <div class="event-card-body">
+          <div class="event-card-title">{{ t('client.layout.title') }}</div>
+          <div class="event-card-meta">
+            <span>{{ l.name }}</span>
+            <span>{% if l.status == 'eingereicht' %}{{ t('client.layout.waiting') }}{% elif l.status == 'freigegeben' %}{{ t('client.layout.approved') }}{% elif l.status == 'zurueck' %}{{ t('client.layout.back') }}{% else %}{{ t('client.layout.text') }}{% endif %}</span>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if galleries %}
+    <div class="events-grid" role="list">
+      {% for e in galleries %}
+      {% if e.expired %}<div class="event-card is-expired" role="listitem" aria-disabled="true">
+      {% else %}<a href="/gallery/{{ e.slug }}" class="event-card" role="listitem">{% endif %}
+        <div class="event-card-cover">
+          {% if e.cover_url %}
+          <img src="{{ e.cover_url }}" alt="" loading="lazy">
+          {% else %}
+          <div class="event-card-cover-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>
+            </svg>
+          </div>
+          {% endif %}
+          {% if e.new and not e.expired %}<span class="client-new-badge">{{ t('client.new_count', n=e.new) }}</span>
+          {% elif e.never_seen and not e.expired %}<span class="client-new-badge">{{ t('client.new_gallery') }}</span>{% endif %}
+        </div>
+        <div class="event-card-body">
+          <div class="event-card-title">{{ e.name }}</div>
+          <div class="event-card-meta">
+            {% if e.date_h %}<span>{{ e.date_h }}</span>{% endif %}
+            <span class="tabular">{{ e.count }} {{ t('gallery.photo_count_many') if e.count != 1 else t('gallery.photo_count_one') }}</span>
+            {% if e.expired %}<span>{{ t('gallery.expired_title') }}</span>{% endif %}
+          </div>
+        </div>
+      {% if e.expired %}</div>{% else %}</a>{% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:var(--sp-16) 0">
+      <h2>{{ t('client.empty_title') }}</h2>
+      <p>{{ t('client.empty_text') }}</p>
+    </div>
+    {% endif %}
+    {% endif %}{# hub #}
+  </div>
+</section>
+{% endblock %}

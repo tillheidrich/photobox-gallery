@@ -1,0 +1,43 @@
+{% extends "layout_admin.html" %}
+{# Shown once, right after "Link erzeugen". The token is in this answer and nowhere else. #}
+{% block title %}Layout-Link · {{ event.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Layout-Link für {{ event.name }}</h1>
+    <p class="page-subtitle">Dieser Link erscheint nur jetzt. Kopier ihn und schick ihn deinem Kunden selbst.</p>
+  </div>
+</div>
+<div class="card" style="max-width:760px">
+  <div class="card-body" style="display:grid;gap:14px">
+    <label class="form-label" for="lf-link" style="margin:0">Link</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input class="form-control" id="lf-link" value="{{ link }}" readonly style="flex:1;min-width:260px;font-family:var(--font-mono);font-size:.8rem">
+      <button type="button" class="btn btn-primary" data-copy="lf-link">Link kopieren</button>
+    </div>
+    <label class="form-label" for="lf-text" style="margin:0">Text für Mail oder Messenger</label>
+    <textarea class="form-control" id="lf-text" rows="9" readonly>Hallo,
+
+für eure Fotobox könnt ihr euch das Drucklayout selbst aussuchen: Layout wählen, Namen, Datum und einen Spruch eintragen{% if inv.palettes or inv.fonts %}, Farben und Schrift aussuchen{% endif %}{% if inv.logo %}, auf Wunsch ein Logo hochladen{% endif %}. Ihr seht sofort, wie der Ausdruck aussieht. Wenn es passt, einfach abschicken, ich schaue drüber und gebe es für die Box frei.
+
+{{ link }}
+
+Der Link gilt bis {{ until }}. Bitte nicht weiterleiten, er ist nur für euch.
+
+Viele Grüße</textarea>
+    <div><button type="button" class="btn btn-secondary" data-copy="lf-text">Text kopieren</button></div>
+    <p style="margin:0"><a class="adm-back" href="/admin/events/{{ event.id }}/edit#layout-freigabe">Zurück zum Event</a></p>
+  </div>
+</div>
+<script>
+document.querySelectorAll("[data-copy]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    var el = document.getElementById(b.dataset.copy);
+    var text = el.value;
+    var done = function () { var alt = b.textContent; b.textContent = "Kopiert"; setTimeout(function () { b.textContent = alt; }, 1600); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { el.select(); document.execCommand("copy"); done(); });
+    else { el.select(); document.execCommand("copy"); done(); }
+  });
+});
+</script>
+{% endblock %}

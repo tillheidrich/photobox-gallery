@@ -1,0 +1,162 @@
+{
+ "frames": [
+  {
+   "kind": "motion_frame",
+   "id": "titel-unten",
+   "name": "Titel unten",
+   "format": "9:16",
+   "background": "#1b1b21",
+   "background_to": "#2e2e38",
+   "window": {
+    "x": 60,
+    "y": 120,
+    "w": 960,
+    "h": 1290,
+    "radius": 36,
+    "shadow": 24
+   },
+   "texts": [
+    {
+     "value": "{event_name}",
+     "x": 540,
+     "y": 1446,
+     "size": 80,
+     "bold": true,
+     "align": "center",
+     "color": "#ffffff",
+     "w": 960
+    },
+    {
+     "value": "{date}",
+     "x": 540,
+     "y": 1548,
+     "size": 42,
+     "bold": false,
+     "align": "center",
+     "color": "#c9c9d2"
+    }
+   ]
+  },
+  {
+   "kind": "motion_frame",
+   "id": "rahmen-hell",
+   "name": "Rahmen schlicht hell",
+   "format": "9:16",
+   "background": "#f3f0ea",
+   "window": {
+    "x": 72,
+    "y": 72,
+    "w": 936,
+    "h": 1380,
+    "radius": 20
+   },
+   "texts": [
+    {
+     "value": "{event_name}",
+     "x": 540,
+     "y": 1484,
+     "size": 64,
+     "bold": true,
+     "align": "center",
+     "color": "#26262a",
+     "w": 936
+    },
+    {
+     "value": "{date}",
+     "x": 540,
+     "y": 1568,
+     "size": 36,
+     "bold": false,
+     "align": "center",
+     "color": "#6c6a66"
+    }
+   ]
+  },
+  {
+   "kind": "motion_frame",
+   "id": "rahmen-dunkel",
+   "name": "Rahmen schlicht dunkel",
+   "format": "9:16",
+   "background": "#111114",
+   "window": {
+    "x": 76,
+    "y": 76,
+    "w": 928,
+    "h": 1372,
+    "radius": 20,
+    "border": {
+     "width": 4,
+     "color": "#f2f2f2"
+    }
+   },
+   "texts": [
+    {
+     "value": "{event_name}",
+     "x": 540,
+     "y": 1484,
+     "size": 64,
+     "bold": true,
+     "align": "center",
+     "color": "#f2f2f2",
+     "w": 928
+    },
+    {
+     "value": "{date}",
+     "x": 540,
+     "y": 1568,
+     "size": 36,
+     "bold": false,
+     "align": "center",
+     "color": "#a4a4ac"
+    }
+   ]
+  },
+  {
+   "kind": "motion_frame",
+   "id": "titel-links",
+   "name": "Titel links",
+   "format": "16:9",
+   "background": "#1a1c23",
+   "background_to": "#272b35",
+   "window": {
+    "x": 660,
+    "y": 60,
+    "w": 1200,
+    "h": 960,
+    "radius": 28,
+    "shadow": 20
+   },
+   "shapes": [
+    {
+     "kind": "rect",
+     "x": 80,
+     "y": 520,
+     "w": 120,
+     "h": 6,
+     "fill": "#d9b26a"
+    }
+   ],
+   "texts": [
+    {
+     "value": "{event_name}",
+     "x": 80,
+     "y": 380,
+     "size": 72,
+     "bold": true,
+     "align": "left",
+     "color": "#ffffff",
+     "w": 540
+    },
+    {
+     "value": "{date}",
+     "x": 80,
+     "y": 556,
+     "size": 40,
+     "bold": false,
+     "align": "left",
+     "color": "#c3c7cf"
+    }
+   ]
+  }
+ ]
+}

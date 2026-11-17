@@ -1,0 +1,143 @@
+{% extends "layout_public.html" %}
+{#- A run page and a share link belong to one guest: the link preview never shows photos. -#}
+{% block og %}{% if event %}{% with og = link_meta(event, True) %}{% include "public/_og.html" %}{% endwith %}{% endif %}{% endblock %}
+{% block title %}{{ event.name }}{% endblock %}
+{% block head %}
+{% include "public/_brand_style.html" %}
+<style>
+  .sess{max-width:760px;margin:0 auto;padding:28px 18px 72px}
+  .sess-eyebrow{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 6px}
+  .sess h1{font-size:clamp(1.6rem,5vw,2.4rem);letter-spacing:-.02em;margin:0 0 20px;line-height:1.1}
+  .sess-item{margin:0 0 22px;border-radius:18px;overflow:hidden;background:var(--c-surface-2,#f1f1f1)}
+  .sess-item img,.sess-item video{display:block;width:100%;height:auto}
+  .sess-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 0}
+  .sess-actions .btn{justify-content:center;min-height:50px;font-size:1rem}
+  .sess-actions .btn--primary{grid-column:1/-1}
+  .sess-pending{padding:48px 22px;text-align:center;border-radius:22px;background:var(--c-surface-2,#f4f4f5)}
+  .sess-dot{width:14px;height:14px;border-radius:50%;background:var(--color-primary,#e5484d);margin:0 auto 18px;animation:sp 1.2s infinite}
+  @keyframes sp{50%{opacity:.25;transform:scale(.8)}}
+  .sess-pending h2{margin:0 0 10px;font-size:1.4rem}
+  .sess-pending p{margin:0 auto;max-width:36ch;color:var(--c-text-secondary,#555);line-height:1.5}
+  .sess-more{display:block;text-align:center;margin-top:26px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="sess">
+  <p class="sess-eyebrow">{{ event.name }}</p>
+  {% if state == 'status' %}
+    <div class="sess-pending">
+      <h1>{{ status_title or t('session.status_title') }}</h1>
+      <p>{{ message or t('session.status_text') }}</p>
+    </div>
+  {% elif state == 'gone' %}
+    {#- Deleted or rejected — the guest is never told which. Nothing to wait for, no polling. -#}
+    <div class="sess-pending">
+      <h2>{{ t('session.gone_text') }}</h2>
+    </div>
+    {% if gallery_ok %}<a class="btn btn--ghost sess-more" href="{{ gallery_href or ('/gallery/' ~ event.slug ~ '?src=qr&' ~ utm_query(event)) }}">{{ t('session.to_gallery') }}</a>{% endif %}
+  {% elif state in ('pending', 'review') %}
+    <h1>{{ t('session.pending_title') }}</h1>
+    <div class="sess-pending" id="pending" data-url="{{ request.path }}/status.json" data-state="{{ state }}">
+      <div class="sess-dot" id="pendingDot"></div>
+      {% if state == 'review' %}
+      <h2>{{ t('session.review_text') }}</h2>
+      {% else %}
+      <h2>{{ t('session.pending_sub') }}</h2>
+      <p>{{ t('session.pending_text') }}</p>
+      {% endif %}
+      <button type="button" class="btn btn--secondary sess-more" id="checkAgain" hidden onclick="location.reload()">{{ t('session.check_again') }}</button>
+    </div>
+    {% if gallery_ok %}<a class="btn btn--ghost sess-more" href="{{ gallery_href or ('/gallery/' ~ event.slug ~ '?src=qr&' ~ utm_query(event)) }}">{{ t('session.to_gallery') }}</a>{% endif %}
+    <script>
+      (function(){
+        // Polls for at most ten minutes: a booth without network can take hours,
+        // and a phone left on the table should not ask forever. After that the
+        // guest decides with the button.
+        var el=document.getElementById('pending'), tries=0, started=Date.now(), LIMIT=600000;
+        function stop(){ var b=document.getElementById('checkAgain'), d=document.getElementById('pendingDot');
+          if(b){ b.hidden=false; } if(d){ d.style.animation='none'; } }
+        function next(ms){ if(Date.now()-started+ms>LIMIT){ stop(); } else { setTimeout(poll, ms); } }
+        function poll(){ tries++; fetch(el.dataset.url,{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){
+          var state=d.state || (d.ready ? 'ready' : el.dataset.state);
+          if(state!==el.dataset.state || d.ok===false){ location.reload(); } else { next(Math.min(15000, 3000 + tries*500)); }
+        }).catch(function(){ next(10000); }); }
+        next(3000);
+      })();
+    </script>
+  {% else %}
+    <h1>{{ t('session.ready_title') }}</h1>
+    {% for it in items %}
+    <figure class="sess-item" style="aspect-ratio:{{ it.width }}/{{ it.height }}">
+      {#- Only the first medium plays by itself. A collage, a GIF, a boomerang
+          and an original used to load and play at once on a phone; the
+          others now wait for a tap and load nothing but their poster. -#}
+      {% if it.is_video and loop.first %}
+        <video src="{{ it.src }}" {% if it.poster %}poster="{{ it.poster }}"{% endif %} autoplay loop muted playsinline controls></video>
+      {% elif it.is_video %}
+        <video src="{{ it.src }}" {% if it.poster %}poster="{{ it.poster }}"{% endif %} preload="none" loop muted playsinline controls></video>
+      {% else %}
+        <img src="{{ it.src }}"{% if it.srcset %} srcset="{{ it.srcset }}" sizes="(max-width: 760px) 100vw, 724px"{% endif %} alt="" width="{{ it.width }}" height="{{ it.height }}" {% if loop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async">
+      {% endif %}
+    </figure>
+    {#- Every action follows the gallery's switches (gallery_settings): sharing
+        (share sheet or copy link), single download, the original, "mit/ohne
+        Rahmen". The download route checks the same switches for a QR code. -#}
+    {% set can_share = gs.share_native or gs.share_link_copy %}
+    <div class="sess-actions" style="margin-top:-12px;margin-bottom:26px">
+      {% if can_share %}
+      <button class="btn btn--primary" onclick="shareItem({{ it.src|tojson|forceescape }},{{ it.filename|tojson|forceescape }},{{ it.share_token|tojson|forceescape }},{{ 'true' if it.is_video else 'false' }})">{{ t('gallery.share') }}</button>
+      {% endif %}
+      {% if not gs.download_single %}
+      {% elif it.is_video %}
+        <a class="btn btn--secondary" href="{{ it.src }}" download="{{ it.filename }}">{{ t('session.download') }}</a>
+      {% else %}
+        {#- Der Nachweis ist ``code`` („<uid>-<Unterschrift>"), nicht ``uid`` allein.
+            Mit der nackten Kennung gab ``parse_share_code`` sofort auf, und die
+            eigens gebaute Ausnahme „gültiger QR-Code dieses Durchgangs" lief nie
+            an: Beide Knöpfe antworteten bei einer geschützten Galerie mit 403.
+            Gefunden am 19.09.2026. -#}
+        {% set full = 'original' if gs.download_original else 'large' %}
+        {% if it.unframed_id %}
+        {#- The same shot twice: as it came out of the booth with its frame,
+            and the camera's picture without. Both in full size (or the
+            largest scaled size when the original is switched off). -#}
+        <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.id }}/download?size={{ full }}&code={{ code }}" title="{{ t('session.with_frame_hint') }}">{{ t('session.with_frame') }}</a>
+        <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.unframed_id }}/download?size={{ full }}&code={{ code }}" title="{{ t('session.without_frame_hint') }}">{{ t('session.without_frame') }}</a>
+        {% else %}
+        <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.id }}/download?size=large&code={{ code }}">{{ t('session.download') }}</a>
+        {% if gs.download_original %}
+        <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.id }}/download?size=original&code={{ code }}">{{ t('session.original') }}</a>
+        {% endif %}
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% if gallery_ok %}<a class="btn btn--ghost sess-more" href="{{ gallery_href or ('/gallery/' ~ event.slug ~ '?src=qr&' ~ utm_query(event)) }}">{{ t('session.to_gallery') }}</a>{% endif %}
+    {% if guest_delete %}
+    <form method="post" action="/p/{{ code }}/delete" class="sess-delete"
+          onsubmit="return confirm({{ t('session.delete_confirm')|tojson|forceescape }})">
+      <button type="submit" class="btn btn--ghost sess-delete-btn">{{ t('session.delete') }}</button>
+    </form>
+    {% endif %}
+    {% if gs.my_shots_link %}<a class="btn btn--ghost sess-more" href="/meine">{{ t('mine.title') }}</a>{% endif %}
+    {% include "public/_bewertung.html" %}
+    <script>
+      // Which ways of sharing this gallery allows (share_native, share_link_copy).
+      const SHARE = {{ {"native": gs.share_native, "copy": gs.share_link_copy}|tojson }};
+      async function shareItem(src, name, token, isVideo){
+        const link = location.origin + '/s/' + token;
+        try {
+          if (SHARE.native && navigator.canShare) {
+            const blob = await (await fetch(src)).blob();
+            const file = new File([blob], name, {type: blob.type});
+            if (navigator.canShare({files:[file]})) { await navigator.share({files:[file], title: document.title}); return; }
+          }
+          if (SHARE.native && navigator.share) { await navigator.share({url: link, title: document.title}); return; }
+        } catch(e) { if (e.name === 'AbortError') return; }
+        if (!SHARE.copy) return;
+        try { await navigator.clipboard.writeText(link); alert({{ t('gallery.link_copied')|tojson }}); } catch(e) { prompt({{ t('gallery.link_copied')|tojson }}, link); }
+      }
+    </script>
+  {% endif %}
+</div>
+{% endblock %}

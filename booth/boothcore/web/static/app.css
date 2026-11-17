@@ -1,0 +1,955 @@
+/* Die Schriften stehen in css/brand/photobox-fonts.css: Inter arbeitet,
+   Archivo zeigt. Beide liegen als Datei daneben — die Box läuft oft ohne
+   Internet und darf im datensparsamen Betrieb keine fremde Adresse
+   aufrufen. Lizenzen: docs/lizenzen/. */
+
+:root{
+  /* Title-safe distance for everything that hugs a corner: grows with the
+     screen, so a bezel or a TV with overscan cuts nothing off. */
+  --edge-x:max(28px,3.5vw); --edge-y:max(24px,3.5vh);
+  --bg:#0c0c0e; --panel:#17171b; --line:color-mix(in srgb,var(--text) 12%,transparent); --text:#f4f4f5; --muted:#a1a1aa;
+  /* Amber of the "Abzug" tokens (theme.accent) with dark text, 9.7:1. The kiosk
+     sets both from the profile; the booth admin page keeps this default. */
+  --accent:#e7ad59; --on-accent:#0f0d09; --radius:22px;
+  /* Form der Bedienelemente — die Box setzt das aus dem Profil (Abschnitt „Aussehen“) */
+  --btn-radius:999px; --btn-min-h:76px; --btn-font:26px; --btn-pad:34px;
+  --btn-weight:600; --btn-transform:none;
+  --bg-rgb:12,12,14;            /* Hintergrund als Zahlen, für halbdurchsichtige Schleier */
+  --panel-2:#26262c;            /* zweite Knöpfe, aus --panel aufgehellt */
+  --ease:cubic-bezier(.16,1,.3,1);
+  --font-stack:"Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  --ui-scale:1;                 /* Gesamtgröße der Bedienelemente, aus dem Profil */
+  /* Zwei Farben, die nicht der Akzentfarbe gehören: Gefahr und Schatten.
+     Die Box setzt sie je nach Schema (dunkel/hell) neu. */
+  --gefahr:#f66e60; --gefahr-flaeche:#7f2c30; --gefahr-schrift:#fde8e8;
+  --schatten:rgba(0,0,0,.8); --schatten-tief:rgba(0,0,0,.9);
+  font-family:var(--font-stack);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* Ziffern gleich breit: sonst zappelt der Countdown bei jedem Wechsel, und die
+   Statuszeile springt, sobald aus 9 offenen Uploads 10 werden. */
+.countdown,.countdown-full,.shotcount,.statusline,.pill,output,time{font-variant-numeric:tabular-nums}
+/* Überschriften brechen auf zwei etwa gleich lange Zeilen statt „Tippen &" / „lächeln". */
+h1,h2,.mode strong{text-wrap:balance;font-family:var(--font-display,var(--font-stack))}
+h1{letter-spacing:-.035em}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation}
+svg{width:1.2em;height:1.2em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+h1,h2,h3,p{margin:0}
+
+/* Sicherer Bereich: Der Bildschirm der Box ist nicht immer der, für den
+   entworfen wurde — getauschtes Panel, Fernseher mit Overscan, Gehäuserahmen.
+   Alle Bildschirme sitzen deshalb in diesem Kasten statt hart an der Kante. */
+.screen{position:fixed;top:var(--safe-top,0);right:var(--safe-right,0);
+  bottom:var(--safe-bottom,0);left:var(--safe-left,0);
+  opacity:0;pointer-events:none;transition:opacity .45s var(--ease)}
+body.no-cursor,body.no-cursor *{cursor:none!important}
+body.no-touch .screen{pointer-events:none}
+/* Hilfsrahmen zum Einstellen: zeigt, wo der sichere Bereich endet. */
+#safeGuide{position:fixed;top:var(--safe-top,0);right:var(--safe-right,0);
+  bottom:var(--safe-bottom,0);left:var(--safe-left,0);pointer-events:none;z-index:60;
+  border:2px dashed var(--accent);border-radius:8px}
+#safeGuide::after{content:attr(data-label);position:absolute;top:6px;left:8px;
+  font-size:13px;color:var(--accent);background:rgba(var(--bg-rgb),.75);padding:2px 8px;border-radius:6px}
+#app[data-screen="start"] #s-start,#app[data-screen="setup"] #s-setup,#app[data-screen="capture"] #s-capture,
+#app[data-screen="review"] #s-review,
+#app[data-screen="processing"] #s-processing,#app[data-screen="result"] #s-result,#app[data-screen="error"] #s-error,
+#app[data-screen="gallery"] #s-gallery,#app[data-screen="consent"] #s-consent{opacity:1;pointer-events:auto}
+
+/* Backdrop per screen (profile "backdrops"): picture or colour, then a dim.
+   The ::before comes first in the screen, so every positioned child of the
+   screen paints above it; the dim never takes a tap. */
+.screen[data-backdrop="1"]{background:var(--backdrop-color,var(--bg)) var(--backdrop-image,none) center/cover no-repeat}
+.screen[data-backdrop="1"]::before{content:"";position:absolute;inset:0;background:#000;opacity:var(--backdrop-dim,0);pointer-events:none}
+/* The full-screen countdown is a screen of its own over the live picture: it
+   takes the capture backdrop, the number stays on top of the dim. */
+#s-capture[data-backdrop="1"] .countdown-full{background:var(--backdrop-color,var(--bg)) var(--backdrop-image,none) center/cover no-repeat}
+#s-capture[data-backdrop="1"] .countdown-full::before{content:"";position:absolute;inset:0;background:#000;opacity:var(--backdrop-dim,0);pointer-events:none}
+.countdown-full b{position:relative}
+/* Start: a flat dim instead of the gradient (start.dim 0–80). */
+#s-start[data-shade="flat"] .start-shade{background:#000;opacity:var(--start-dim,0)}
+/* Own start picture (start.show_title, start.fit): no title over the burned-in
+   headline, and the picture stands still — filled and cropped, or whole. */
+#s-start[data-title="off"] .start-copy{display:none}
+#s-start[data-fit="cover"] .start-bg,#s-start[data-fit="contain"] .start-bg{inset:0;transform:none;animation:none}
+#s-start[data-fit="contain"] .start-bg{background-size:contain}
+#s-start[data-fit="contain"] .start-bg video{object-fit:contain}
+/* Status line switched off: only the operator notice is left, as a dot. */
+.statusline[data-quiet="1"]{padding:8px;gap:0}
+.statusline .betriebsmeldung--punkt i{width:16px;height:16px;margin:0}
+
+/* Buttons */
+.btn-primary,.btn-secondary,.btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:.6em;
+  min-height:var(--btn-min-h);padding:0 var(--btn-pad);border-radius:var(--btn-radius);
+  font-size:var(--btn-font);font-weight:var(--btn-weight);text-transform:var(--btn-transform);
+  letter-spacing:-.01em;transition:transform .25s var(--ease),background .25s,opacity .25s}
+#app[data-uppercase="1"] .btn-primary,#app[data-uppercase="1"] .btn-secondary{letter-spacing:.06em}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-secondary{background:var(--panel-2);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--text) 8%,transparent)}
+#app[data-secondary="outline"] .btn-secondary{background:none;box-shadow:inset 0 0 0 2px var(--accent);color:var(--accent)}
+/* Auch der leise Knopf bleibt ein Touch-Ziel: 76 px ist das Minimum an
+   der Box — nasse oder ungenaue Finger, ein Glas in der anderen Hand. */
+.btn-ghost{min-height:max(76px,calc(var(--btn-min-h) * .79));padding:0 24px 0 16px;
+  font-size:calc(var(--btn-font) * .85);color:var(--muted)}
+.btn-primary:active,.btn-secondary:active,.btn-ghost:active,.mode:active,.chip:active,.look:active{transform:scale(.97)}
+button[disabled]{opacity:.35;pointer-events:none}
+
+/* START */
+.start-bg{position:absolute;inset:-20px;background:var(--bg) center/cover no-repeat;transform:scale(1.02);animation:drift 30s ease-in-out infinite alternate}
+.start-bg video{width:100%;height:100%;object-fit:cover}
+.start-bg.is-live{filter:blur(28px) saturate(1.1) brightness(.6)}
+@keyframes drift{to{transform:scale(1.08) translate3d(-1%,-1%,0)}}
+.start-shade{position:absolute;inset:0;background:linear-gradient(100deg,rgba(var(--bg-rgb),.88) 0%,rgba(var(--bg-rgb),.55) 55%,rgba(var(--bg-rgb),.25) 100%)}
+.start-copy{position:absolute;left:7vw;top:18vh;max-width:56vw}
+.eyebrow{font-size:22px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:22px}
+.start-copy h1{font-size:clamp(56px,7.4vw,128px);line-height:.95;letter-spacing:-.035em;font-weight:700}
+.lede{margin-top:26px;font-size:30px;color:color-mix(in srgb,var(--text) 82%,transparent);max-width:30ch;line-height:1.3}
+/* Ränder in Prozent des Bildschirms, nicht des Fensters: Sobald unter
+   „Bildschirm" ein sicherer Rand eingestellt ist, rücken die Kacheln mit,
+   statt zusätzlich 7 vw zu verlieren. */
+.modes{position:absolute;left:7%;right:7%;bottom:9%;display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:22px}
+.modes.n1{grid-template-columns:minmax(0,560px)}
+.modes.n4{grid-template-columns:1.25fr 1fr 1fr 1fr}
+.modes.n5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.modes.n6{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:16px}
+.modes.n5 .mode,.modes.n6 .mode{min-height:150px;padding:22px 24px}
+/* Fünf Kacheln nebeneinander und ein langes Wort wie „Boomerang": Die
+   Beschriftung richtet sich nach der Kachelbreite, sonst steht sie über dem
+   Rand — besonders, wenn unter „Bildschirm" vergrößert wurde. */
+.modes.n5 .mode strong,.modes.n6 .mode strong{font-size:clamp(20px,2.2vw,30px);margin-top:14px}
+/* Die Beschriftung richtet sich nach der Kachel, nicht nach dem Fenster:
+   „Boomerang" passt so auch, wenn fünf Kacheln nebeneinander stehen und unter
+   „Bildschirm" ein Rand eingestellt ist. Ältere Browser ohne Container-Abfragen
+   behalten die Zeile darüber. */
+.modes.n5 .mode,.modes.n6 .mode{container-type:inline-size}
+.modes.n5 .mode strong,.modes.n6 .mode strong{font-size:clamp(17px,12cqw,30px)}
+.mode strong{min-width:0;overflow-wrap:anywhere}
+.modes.n5 .mode span,.modes.n6 .mode span{font-size:18px}
+.modes.n2{grid-template-columns:1.3fr 1fr}
+.mode{position:relative;text-align:left;min-height:190px;padding:30px 32px;border-radius:min(var(--btn-radius),36px);
+  background:color-mix(in srgb, var(--panel) 78%, transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 12%,transparent),inset 0 1px 0 color-mix(in srgb,var(--text) 14%,transparent);
+  transition:transform .3s var(--ease),background .3s;opacity:0;animation:rise .7s var(--ease) forwards;animation-delay:calc(var(--i)*90ms + 150ms)}
+.mode:first-child{background:var(--accent);color:var(--on-accent);box-shadow:none}
+.mode svg{width:44px;height:44px;stroke-width:1.6}
+.mode{container-type:inline-size}
+/* A button centres what it holds. Tiles of one row then show their icons and
+   titles at different heights as soon as one description wraps. */
+.mode{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start}
+.mode svg{flex-shrink:0}
+.mode strong{display:block;margin-top:26px;font-size:38px;letter-spacing:-.02em;
+  font-weight:var(--btn-weight);text-transform:var(--btn-transform)}
+/* Die Beschriftung richtet sich nach der Kachel, nicht nach dem Fenster. */
+.mode strong{font-size:clamp(22px,11cqw,38px)}
+.mode span{display:block;margin-top:6px;font-size:21px;opacity:.75}
+/* On the accent tile .75 opacity left the hint at 3.6:1 (light scheme). */
+.mode:first-child span{opacity:1}
+@keyframes rise{from{opacity:0;transform:translate3d(0,24px,0)}to{opacity:1;transform:none}}
+/* Der unsichtbare Punkt für die Verwaltung wandert mit: Wird der Bildschirm
+   getauscht und oben rechts abgeschnitten, setzt man ihn in eine andere Ecke,
+   statt ihn zu verlieren. */
+.hotspot{position:absolute;width:110px;height:110px;left:0;top:0}
+/* Top right the tool row (gallery, steps, language) starts 64 px down: the
+   corner is wide and flat there and ends above it, otherwise "EN" lands on
+   the hotspot. booth/tests/test_language_button_reachable.py */
+#app[data-corner="top-right"] .hotspot{left:auto;right:0;top:0;width:160px;height:56px}
+#app[data-corner="bottom-left"] .hotspot{left:0;right:auto;top:auto;bottom:0}
+#app[data-corner="bottom-right"] .hotspot{left:auto;right:0;top:auto;bottom:0}
+/* access.lock_icon: the corner becomes a visible lock. 56 px for a finger,
+   8 px from the edge, so top right it ends where the tool row starts. Quiet
+   until an operator notice colours it. booth/tests/test_lock_icon_and_mouse.py */
+.hotspot svg{display:none}
+.hotspot[data-icon="1"] svg{display:block;width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#app[data-corner] .hotspot[data-icon="1"]{width:56px;height:56px;display:grid;place-items:center;border-radius:50%;color:var(--text);opacity:.42;transition:opacity .15s,background-color .15s}
+#app[data-corner="top-left"] .hotspot[data-icon="1"]{top:8px;left:8px}
+#app[data-corner="top-right"] .hotspot[data-icon="1"]{top:8px;right:8px}
+#app[data-corner="bottom-left"] .hotspot[data-icon="1"]{bottom:8px;left:8px}
+#app[data-corner="bottom-right"] .hotspot[data-icon="1"]{bottom:8px;right:8px}
+.hotspot[data-icon="1"]:hover,.hotspot[data-icon="1"]:focus-visible{opacity:1;background:color-mix(in srgb,var(--text) 12%,transparent)}
+.hotspot[data-icon="1"][data-notice="1"]{color:#f5a524;opacity:1}
+/* Display only, never a control: taps fall through, so the line can never
+   take a tap meant for the admin corner or anything else underneath. */
+.statusline{position:absolute;right:var(--edge-x);top:var(--edge-y);display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 16px;font-size:clamp(16px,2.08vh,24px);color:var(--muted);
+  padding:8px 18px;border-radius:24px;background:rgba(var(--bg-rgb),.62);backdrop-filter:blur(8px);
+  pointer-events:none;max-width:calc(100% - 2*var(--edge-x))}
+.statusline i{display:inline-block;width:.5em;height:.5em;border-radius:50%;margin-right:7px;background:#52525b;vertical-align:1px}
+.statusline i.ok{background:#3dd68c}.statusline i.warn{background:#f5a524}.statusline i.bad{background:var(--gefahr)}
+
+/* BAR */
+.bar{position:absolute;left:0;right:0;top:0;height:var(--bar-h,96px);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 28px}
+.bar h2{font-size:30px;letter-spacing:-.02em}
+.bar>.btn-ghost{justify-self:start}
+/* layout.back_size: "Zurück" larger for guests who stand back or sit (list
+   item 29). The bar grows with it, so nothing below is covered. m = as before. */
+#app[data-back-size="l"]{--bar-h:112px}
+#app[data-back-size="l"] .bar>.btn-ghost{min-height:96px;padding:0 32px 0 22px;font-size:var(--btn-font);color:var(--text)}
+#app[data-back-size="xl"]{--bar-h:136px}
+#app[data-back-size="xl"] .bar>.btn-ghost{min-height:118px;padding:0 40px 0 26px;font-size:calc(var(--btn-font) * 1.25);color:var(--text);
+  background:var(--panel-2)}
+
+/* SETUP */
+.setup{position:absolute;inset:var(--bar-h,96px) 0 0;display:grid;grid-template-columns:1.25fr 1fr;
+  grid-template-rows:minmax(0,1fr);gap:4vw;padding:10px 5vw 5vh}
+.setup-preview{display:grid;place-items:center;min-height:0;overflow:hidden}
+.frame{position:relative;height:100%;max-height:100%;max-width:100%;aspect-ratio:4/5;border-radius:var(--radius);overflow:hidden;
+  background:var(--panel);box-shadow:0 30px 80px -30px var(--schatten)}
+/* Size and place of the live picture come from app.js (placeLive, one
+   function for set-up and countdown): the box takes the result's aspect and
+   the picture is laid so that exactly the part the result keeps fills it.
+   "contain" is only the fallback before the first frame — it never crops. */
+.live{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain}
+.live.mirror{transform:scaleX(-1)}
+/* The result keeps the whole picture: a collage slot shows the sheet around
+   it, a boomerang/film (layout "blur") its blurred, darkened backdrop. */
+.frame[data-bars="sheet"]{background:#f4f2ee}
+.frame[data-bars="blur"]{background:radial-gradient(ellipse at center,#3a3d48,#15161b)}
+/* Viele Vorlagen sind der Normalfall, nicht die Ausnahme: zehn Collagen und
+   ein Dutzend Hintergruende sind im Querformat hoeher als der Bildschirm.
+   Die Auswahl scrollt deshalb, „Los geht's“ bleibt immer sichtbar. */
+.setup-options{display:flex;flex-direction:column;gap:22px;justify-content:center;min-height:0;min-width:0}
+/* min-width:0 down the column: a sideways row of layout cards must scroll
+   inside it, not widen the column and squeeze the live picture away. */
+.setup-scroll,.setup-scroll>.group{min-width:0}
+.setup-scroll{display:flex;flex-direction:column;gap:34px;justify-content:safe center;
+  min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:4px;margin-right:-4px}
+.group h3{font-size:18px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;font-weight:600}
+.chips{display:grid;grid-template-columns:1fr;gap:12px}
+.chip{display:flex;align-items:center;gap:16px;min-height:calc(var(--btn-min-h) * 1.1);padding:0 26px;
+  border-radius:min(var(--btn-radius),28px);background:var(--panel);font-size:calc(var(--btn-font) * .92);
+  font-weight:var(--btn-weight);text-transform:var(--btn-transform);
+  box-shadow:inset 0 0 0 2px transparent;transition:box-shadow .25s,transform .25s var(--ease),background .25s}
+.chip[aria-pressed="true"]{box-shadow:inset 0 0 0 3px var(--accent);background:var(--panel-2)}
+.chip .ar{display:block;border:2.5px solid currentColor;border-radius:5px;height:40px}
+.chip small{display:block;font-size:clamp(17px,1.9vh,22px);font-weight:500;color:var(--muted)}
+.chip div{text-align:left}
+/* Layout cards: the printed sheet as a picture (layoutbilder.py). One row
+   that scrolls sideways; the next card is cut off at the edge and an arrow
+   stands over it, so a long list never looks like all there is. Each card
+   is a big target (picture plus two lines of text, far over 88 px). */
+.picker{position:relative;--thumb-h:clamp(120px,22vh,300px)}
+/* Two rows of cards (a boomerang with its print sheet: format and layout)
+   share the column: smaller pictures, so both rows and "Los" fit at 1280x800. */
+.setup-scroll[data-pickers="2"]{gap:22px}
+.setup-scroll[data-pickers="2"] .picker{--thumb-h:clamp(84px,12vh,190px)}
+/* A narrow 9:16 picture at that height would cut its name ("Hochform…"). */
+.setup-scroll[data-pickers="2"] .lcard-text{min-width:max(100%,8.5em)}
+.cards{display:flex;gap:clamp(12px,1.2vw,20px);overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity;scroll-padding-inline:6px;padding:6px 6px 12px;margin:-6px -6px 0;scrollbar-width:none}
+.cards::-webkit-scrollbar{display:none}
+.picker[data-more~="r"] .cards,.picker[data-more="lr"] .cards{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 56px),transparent)}
+.picker[data-more="l"] .cards{-webkit-mask-image:linear-gradient(to left,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to left,#000 calc(100% - 56px),transparent)}
+.picker[data-more="lr"] .cards{-webkit-mask-image:linear-gradient(to right,transparent,#000 56px,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to right,transparent,#000 56px,#000 calc(100% - 56px),transparent)}
+.lcard{position:relative;flex:0 0 auto;scroll-snap-align:start;display:flex;flex-direction:column;align-items:stretch;gap:12px;
+  padding:12px 12px 14px;border-radius:min(var(--radius),22px);background:var(--panel);color:var(--text);text-align:left;
+  box-shadow:inset 0 0 0 2px transparent;transition:box-shadow .25s,transform .25s var(--ease),background .25s}
+.lcard[aria-pressed="true"]{background:var(--panel-2);box-shadow:inset 0 0 0 3px var(--accent)}
+.lcard:focus-visible{outline:3px solid var(--text);outline-offset:3px}
+.lcard:active{transform:scale(.97)}
+.lcard-pic{position:relative;display:block;height:var(--thumb-h);aspect-ratio:var(--ar);max-width:calc(var(--thumb-h) * 1.6);
+  border-radius:8px;overflow:hidden;background:color-mix(in srgb,var(--text) 7%,var(--panel));
+  box-shadow:0 1px 0 color-mix(in srgb,var(--text) 8%,transparent),0 14px 30px -18px var(--schatten)}
+.lcard-pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .35s var(--ease)}
+.lcard.is-loaded .lcard-pic img{opacity:1}
+.lcard-skel{position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,color-mix(in srgb,var(--text) 12%,transparent) 50%,transparent 70%) 0 0/250% 100%;
+  animation:lcard-skel 1.3s linear infinite}
+.lcard.is-loaded .lcard-skel,.lcard.is-outline .lcard-skel{display:none}
+@keyframes lcard-skel{from{background-position:125% 0}to{background-position:-125% 0}}
+.lcard-outline,.lcard-outline-slot{position:absolute;inset:0;width:100%;height:100%}
+.lcard-outline rect{fill:color-mix(in srgb,var(--text) 16%,transparent);stroke:color-mix(in srgb,var(--text) 30%,transparent);stroke-width:6}
+.lcard-outline text{fill:var(--muted);font-family:var(--font-stack);font-weight:700;text-anchor:middle}
+/* The text never makes a card wider than its picture. */
+.lcard-text{display:block;width:0;min-width:100%}
+.lcard-text b{display:block;font-size:clamp(17px,2.1vh,22px);font-weight:600;line-height:1.25;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.lcard-text small{display:block;margin-top:3px;font-size:clamp(15px,1.75vh,19px);font-weight:500;color:var(--muted);line-height:1.3}
+.lcard-check{position:absolute;top:20px;right:20px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  background:var(--accent);color:var(--on-accent);box-shadow:0 4px 14px -4px var(--schatten);opacity:0;transform:scale(.6);
+  transition:opacity .2s,transform .25s var(--ease)}
+.lcard-check svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.lcard[aria-pressed="true"] .lcard-check{opacity:1;transform:none}
+.picker-arrow{position:absolute;z-index:2;top:calc(6px + var(--thumb-h) / 2);transform:translateY(-50%);width:60px;height:60px;
+  border-radius:50%;display:grid;place-items:center;background:var(--text);color:var(--bg);
+  box-shadow:0 10px 26px -8px var(--schatten-tief)}
+.picker-arrow::before{content:"";position:absolute;inset:-14px}  /* 88 px to hit, 60 px to see */
+.picker-arrow svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.picker-arrow.prev{left:4px}.picker-arrow.next{right:4px}
+.picker-arrow[hidden]{display:none}
+.swatches{display:flex;gap:14px;flex-wrap:wrap}
+.swatch{width:96px;height:96px;border-radius:min(var(--btn-radius),24px);background:var(--panel) center/cover;box-shadow:inset 0 0 0 3px transparent;transition:box-shadow .25s,transform .25s var(--ease)}
+.swatch[aria-pressed="true"]{box-shadow:inset 0 0 0 4px var(--accent),inset 0 0 0 7px var(--bg)}
+.btn-go{margin-top:6px;flex-shrink:0;min-height:calc(var(--btn-min-h) * 1.37);font-size:calc(var(--btn-font) * 1.3);justify-content:space-between;padding:0 40px}
+.btn-go svg{width:40px;height:40px}
+
+/* CAPTURE */
+.capture{position:absolute;inset:0;display:grid;place-items:center;padding:4vh}
+.frame--big{height:92vh}
+.countdown{position:absolute;inset:0;display:grid;place-items:center;font-size:min(42vh,420px);font-weight:700;letter-spacing:-.05em;
+  color:#fff;text-shadow:0 10px 60px rgba(0,0,0,.45);pointer-events:none}
+.countdown b{display:block;animation:pop 1s var(--ease) both}
+/* Countdown design (countdown.size, .color, .display). "l" is the size above. */
+.countdown[data-size="m"]{font-size:min(29vh,294px)}
+.countdown[data-size="xl"]{font-size:min(55vh,546px)}
+.countdown-full[data-size="m"]{font-size:min(42vh,448px)}
+.countdown-full[data-size="xl"]{font-size:min(75vh,800px)}
+.countdown[data-color="1"],.countdown-full[data-color="1"]{color:var(--cd-color)}
+/* Ring: number inside, ring and number share one grid cell. */
+.countdown[data-display="ring"]>*,.countdown-full[data-display="ring"]>*{grid-area:1/1}
+.cd-ring{width:1em;height:1em;transform:rotate(-90deg);overflow:visible;
+  fill:none;stroke-width:5;stroke-linecap:round;filter:drop-shadow(0 6px 30px rgba(0,0,0,.35))}
+.cd-track{stroke:color-mix(in srgb,currentColor 22%,transparent)}
+.cd-arc{stroke:var(--cd-color,var(--accent));stroke-dasharray:100;stroke-dashoffset:0;
+  transition:stroke-dashoffset 1s linear}
+[data-display="ring"] b{font-size:.56em;position:relative}
+@media (prefers-reduced-motion:reduce){.cd-arc{transition:none}}
+@keyframes pop{0%{opacity:0;transform:scale(1.6)}25%{opacity:1;transform:scale(1)}85%{opacity:1}100%{opacity:0;transform:scale(.85)}}
+.flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none}
+.flash.hold{opacity:1}
+.flash.on{animation:flash .6s ease-out}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+/* Bildschirmblitz: leuchtet, statt zu schimmern — deckend, über allem, und
+   ohne Übergang, weil Licht nicht einblendet. */
+.screen-flash{position:fixed;inset:0;z-index:30;background:#fff;pointer-events:none;display:grid;place-items:center;text-align:center;padding:0 var(--edge-x);color:#111;font-family:var(--font-display,var(--font-stack));font-weight:700;letter-spacing:-.03em;line-height:1.02;font-size:clamp(72px,17vh,220px);text-wrap:balance}
+.rec{position:absolute;left:50%;top:28px;transform:translateX(-50%);display:none;align-items:center;gap:16px;padding:10px 30px 10px 12px;border-radius:99px;
+  background:rgba(var(--bg-rgb),.6);backdrop-filter:blur(10px);font-size:30px;font-weight:600;white-space:nowrap}
+.rec.on{display:flex}
+/* The ring empties over the recording; the seconds left stand inside it. */
+.rec-dial{position:relative;display:grid;place-items:center;width:64px;height:64px;flex:0 0 auto}
+.rec-ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);fill:none;stroke-width:4;stroke-linecap:round}
+.rec-track{stroke:color-mix(in srgb,var(--text) 22%,transparent)}
+.rec-arc{stroke:var(--accent);stroke-dasharray:100;stroke-dashoffset:0}
+.rec-left{position:relative;font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+@media (prefers-reduced-motion:reduce){.rec-arc{transition:none}}
+@keyframes blink{50%{opacity:.25}}
+.shotcount{position:absolute;right:var(--edge-x);top:var(--edge-y);padding:10px 20px;border-radius:99px;background:rgba(var(--bg-rgb),.6);font-size:24px;font-weight:600}
+.shotcount:empty{display:none}
+.shot-review{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s}
+.shot-review.on{opacity:1}
+
+/* Way out during countdown and recording: quiet, in the corner the shot
+   counter does not use, above live picture, countdown and "Bitte lächeln",
+   below the screen flash (whose light must stay a plain surface). */
+.capture-cancel{position:absolute;left:var(--edge-x);top:var(--edge-y);z-index:25;width:76px;height:76px;border-radius:50%;
+  display:grid;place-items:center;color:var(--text);background:rgba(var(--bg-rgb),.55);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 18%,transparent)}
+.capture-cancel svg{width:34px;height:34px}
+.capture-cancel:active{transform:scale(.94)}
+
+/* DURCHSEHEN — Serie prüfen, einzelne Aufnahme wiederholen */
+.review{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:2.4vh;padding:4vh 4vw}
+.review h2{font-size:clamp(30px,4.6vh,52px);font-weight:700}
+.review-hint{font-size:clamp(17px,2.2vh,24px);color:var(--muted)}
+.review-shots{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(12px,1.6vw,24px);max-width:100%}
+.review-shot{position:relative;flex:0 1 clamp(150px,20vw,300px);aspect-ratio:4/3;border:0;padding:0;border-radius:14px;overflow:hidden;
+  background:var(--panel);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--text) 16%,transparent);cursor:pointer;
+  transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+.review-shot img{width:100%;height:100%;object-fit:cover;display:block}
+.review-shot span{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:8px 10px;font-size:clamp(14px,1.8vh,19px);font-weight:600;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.72))}
+.review-shot span b{display:grid;place-items:center;min-width:1.7em;height:1.7em;border-radius:99px;background:rgba(255,255,255,.22)}
+.review-shot:active{transform:scale(.97)}
+.review-shot:hover{box-shadow:inset 0 0 0 3px var(--accent)}
+.review-actions{display:flex;gap:16px}
+.review .timer{width:min(520px,70vw)}
+
+/* PROCESSING */
+/* The run's last picture in the shape of the result (--proc-ar: the format or
+   the collage slot), softly dimmed, with a ring turning around the mode's
+   icon on top. Before the picture has loaded, and when there is none, only
+   the ring shows: never an empty box in a shape the result does not have.
+   It used to be a 4:5 skeleton for every format ("trotz Querformat ein
+   hochkant Bild in dunkel"). booth/tests/test_processing_screen.py */
+.processing{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:clamp(24px,3.4vh,40px)}
+.proc-stage{display:grid;place-items:center}
+.proc-stage>*{grid-area:1/1}
+.proc-still{--proc-ar:1.5;position:relative;width:min(72vw,calc(60vh * var(--proc-ar)));aspect-ratio:var(--proc-ar);border-radius:var(--radius);overflow:hidden;box-shadow:0 40px 90px -35px var(--schatten-tief);opacity:0;transform:scale(.97);transition:opacity .5s var(--ease),transform .8s var(--ease)}
+.proc-still.is-ready{opacity:1;transform:none}
+.proc-still[hidden]{display:none}
+.proc-still img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.proc-still-bg{object-fit:cover;filter:blur(26px) brightness(.6);transform:scale(1.12)}
+.proc-still-img{object-fit:cover}
+.proc-still::after{content:"";position:absolute;inset:0;background:rgba(var(--bg-rgb),.5)}
+.proc-badge{position:relative;width:clamp(150px,17vh,232px);aspect-ratio:1;display:grid;place-items:center;border-radius:50%;
+  background:color-mix(in srgb,var(--panel) 72%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 12%,transparent),0 30px 70px -30px var(--schatten-tief)}
+.proc-badge>*{grid-area:1/1}
+.proc-ring{width:100%;height:100%;fill:none;stroke-width:3;animation:proc-spin 1.8s linear infinite}
+.proc-track{stroke:color-mix(in srgb,var(--text) 14%,transparent)}
+.proc-arc{stroke:var(--accent);stroke-linecap:round;stroke-dasharray:26 74}
+.proc-icon{display:grid;place-items:center;color:var(--text)}
+.proc-icon svg{width:clamp(80px,8.5vh,116px);height:clamp(80px,8.5vh,116px);stroke-width:1.4;animation:proc-breathe 2.6s var(--ease) infinite}
+@keyframes proc-spin{to{transform:rotate(360deg)}}
+@keyframes proc-breathe{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.proc-arc{stroke-dasharray:none;opacity:.7}}
+@keyframes shimmer{to{background-position:-150% 0}}
+.processing p{font-size:clamp(28px,3vh,40px);font-weight:600;color:color-mix(in srgb,var(--text) 88%,transparent);text-align:center;max-width:32ch}
+
+/* RESULT */
+/* The side column grows with the width from about 1530 px on (Full HD: ~650 px)
+   and never drops below the old 520 px, so 1280x800 looks as before; 1024x768
+   has its own rule further down. booth/tests/test_result_uses_the_width.py */
+.result{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(520px,34vw,720px);gap:3vw;padding:4vh 3vw 4vh 4vw}
+.result-media{display:grid;place-items:center;min-height:0;position:relative}
+.result-media>*{grid-area:1/1}
+.result-skel{width:min(62vh,760px);aspect-ratio:4/5;border-radius:14px;background:linear-gradient(100deg,var(--panel) 30%,var(--panel-2) 50%,var(--panel) 70%) 0 0/300% 100%;animation:shimmer 1.4s linear infinite}
+.result-media img.is-loading{opacity:0}
+.look:not(.is-ready) img{opacity:0}
+.look:not(.is-ready){background:linear-gradient(100deg,var(--panel) 30%,var(--panel-2) 50%,var(--panel) 70%) 0 0/300% 100%;animation:shimmer 1.4s linear infinite}
+.look img{transition:opacity .25s var(--ease)}
+/* The film gets a box of its own shape (--film-ar, set from the film once it
+   is known), as large as the column allows. A fixed height with max-width
+   made the box wider or narrower than the film whenever the column was the
+   limit, and the player drew bars inside it. booth/tests/test_boomerang_fills_by_default.py */
+.result-media video{--film-ar:9/16;--film-h:88vh;width:min(100%,calc(var(--film-h) * var(--film-ar)));height:auto;aspect-ratio:var(--film-ar);background:var(--panel)}
+.result-media img,.result-media video{max-width:100%;max-height:92vh;border-radius:14px;box-shadow:0 40px 90px -35px var(--schatten-tief);animation:rise .6s var(--ease)}
+/* Die Spalte darf nie höher werden als der Schirm. Vorher war sie zentriert
+   und ohne Deckel: Mit allen Looks ragte sie oben UND unten heraus — bei
+   1920x1080, dem häufigsten Boxformat, waren „Fertig" und „Löschen" nicht
+   mehr erreichbar. Gefallen ist es erst beim Nachmessen im Hochformat, weil
+   dort niemand hinsieht; im Querformat war es genauso kaputt. */
+.result-side{display:flex;flex-direction:column;gap:22px;justify-content:center;
+  min-height:0;max-height:100%;overflow:hidden}
+/* Room for the focus ring (6 px + 5 px offset) inside the clipped column. */
+.result-side{padding:12px;margin:-12px}
+/* Bild oder Filmchen — nur bei einer Collage, zu der ein GIF gehört. */
+.anim-toggle{display:flex;gap:8px;padding:6px;border-radius:999px;background:var(--panel)}
+.anim-toggle button{flex:1;border:0;border-radius:999px;padding:12px 10px;font-size:17px;font-weight:600;
+  color:var(--text);background:transparent;transition:background .2s var(--ease)}
+.anim-toggle button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+/* Die Auswahl rollt, der Rest bleibt stehen. Die Knöpfe darunter sind das
+   Wichtigste auf dem Schirm — sie dürfen nie das sein, was verschwindet.
+   One row of square tiles that the guest swipes sideways. It used to be a
+   three-column grid: in the squeezed side column its rows had no height of
+   their own, the tiles (overflow hidden, so no automatic minimum) slid over
+   each other and the guest saw stripes. Here every tile is a full square
+   with its name. The row is the one part of the column that gives way: its
+   tiles take their size from the row's height (container units), so when a
+   mail button or a long print note needs room the tiles get smaller instead
+   of the buttons being pushed off the screen. Browsers without container
+   units keep the fixed --look-size. */
+.looks{--look-size:clamp(92px,12.5vh,140px);
+  display:grid;grid-auto-flow:column;grid-auto-columns:max-content;grid-template-rows:minmax(0,1fr);
+  gap:10px;flex:0 1 calc(var(--look-size) + 8px);min-height:0;container-type:size;
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;touch-action:pan-x;
+  scroll-snap-type:x proximity;scrollbar-width:thin;padding-bottom:8px}
+.look{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:1;background:var(--panel);box-shadow:inset 0 0 0 3px transparent;transition:transform .25s var(--ease);
+  width:var(--look-size);width:100cqh;max-height:100%;scroll-snap-align:start}
+.look img{width:100%;height:100%;object-fit:cover;display:block}
+.look span{position:absolute;left:0;right:0;bottom:0;padding:18px 6px 6px;font-size:clamp(14px,1.75vh,20px);line-height:1.15;font-weight:600;color:#fff;
+  hyphens:auto;overflow-wrap:break-word;background:linear-gradient(transparent,rgba(0,0,0,.8))}
+.look[aria-pressed="true"]{outline:4px solid var(--accent);outline-offset:-4px}
+.share{display:grid;grid-template-columns:clamp(180px,13vw,260px) 1fr;gap:22px;align-items:center;padding:20px;border-radius:var(--radius);background:var(--panel);flex-shrink:0}
+.share img{width:clamp(180px,13vw,260px);height:clamp(180px,13vw,260px);border-radius:12px;background:#fff;padding:8px}
+.share strong{font-size:26px}.share p{margin-top:8px;font-size:19px;color:var(--muted);line-height:1.35}
+.print{display:grid;grid-template-columns:auto 1fr;gap:14px;flex-shrink:0}
+.stepper{display:flex;align-items:center;border-radius:999px;background:var(--panel)}
+.stepper button{width:72px;height:76px;font-size:36px}
+.stepper output{min-width:34px;text-align:center;font-size:28px;font-weight:700}
+.print-note{font-size:18px;color:var(--muted);min-height:1em}
+.timer{height:5px;border-radius:9px;background:var(--panel);overflow:hidden}
+.timer span{display:block;height:100%;width:100%;background:color-mix(in srgb,var(--text) 32%,transparent);transform-origin:left}
+
+/* ERROR */
+.error{position:absolute;inset:0;display:grid;place-content:center;gap:24px;justify-items:start;padding:0 12vw}
+.error h2{font-size:72px;letter-spacing:-.03em}.error p{font-size:30px;color:var(--muted);max-width:36ch}
+
+.toast{position:fixed;left:50%;bottom:40px;transform:translate(-50%,30px);opacity:0;padding:18px 30px;border-radius:99px;background:var(--text);color:var(--bg);font-size:22px;font-weight:600;
+  transition:all .4s var(--ease);pointer-events:none;z-index:40}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:1100px){
+  .setup{grid-template-columns:1fr;grid-template-rows:auto auto;overflow:auto}.setup-preview{height:44vh}
+  .result{grid-template-columns:1fr;overflow:auto}.result-media img,.result-media video{max-height:50vh}
+  .result-media video{--film-h:50vh}
+  .start-copy{top:10vh;max-width:86vw}
+}
+/* Mode tiles one under the other only on a narrow portrait screen. On
+   1024x768 (a booth started without its monitor, 17.11.2026) five stacked
+   tiles were 1000 px tall: the first ones stood above the top edge and over
+   the title, unreachable. A small landscape window keeps them side by side,
+   smaller. booth/tests/test_start_screen_fits_small_windows.py */
+@media (max-width:1100px) and (orientation:portrait){
+  .modes{grid-template-columns:1fr!important;bottom:4vh}.mode{min-height:120px}.mode strong{margin-top:10px}
+}
+@media (orientation:landscape) and (max-width:1100px),(orientation:landscape) and (max-height:820px){
+  .modes{bottom:5vh;gap:14px}
+  .modes.n6{row-gap:12px}
+  .mode{min-height:clamp(112px,19vh,150px);padding:18px 20px}
+  .mode svg{width:34px;height:34px}
+  .mode strong{margin-top:12px;font-size:clamp(18px,10cqw,30px)}
+  .modes.n5 .mode strong,.modes.n6 .mode strong{font-size:clamp(19px,13cqw,28px)}
+  .mode span{font-size:16px}
+  .start-copy h1{font-size:clamp(44px,6.4vw,96px)}
+  .start-copy .lede{font-size:22px;margin-top:14px}
+}
+/* However many tiles an operator switches on: if they do not fit under the
+   title, the row scrolls inside itself instead of growing over the top edge. */
+#s-start:not([data-layout="custom"]) .modes{max-height:calc(100% - var(--edge-y) - 9vh);overflow-y:auto;overscroll-behavior:contain}
+/* A small landscape screen (1024x768) is not a portrait one. Stacked, the
+   picture shrank to half the height and the side column was clipped below
+   the edge — "Fertig" was not reachable. Side by side with a narrower
+   column, the picture is larger than it was stacked and every button fits. */
+/* The setup screen had the same fault on 1024x768 and a worse one: stacked
+   into one row of a one-row grid, the 44vh picture lay over the format
+   choices. Side by side, like the result screen. */
+@media (max-width:1100px) and (orientation:landscape){
+  .setup{grid-template-columns:1fr minmax(0,440px);grid-template-rows:minmax(0,1fr);gap:24px;padding:10px 24px 3vh 3vw;overflow:visible}
+  .setup-preview{height:auto}
+  .result{grid-template-columns:1fr minmax(0,440px);gap:24px;padding:3vh 24px 3vh 3vw;overflow:visible}
+  .result-media img,.result-media video{max-height:92vh}
+  .result-side{gap:16px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  /* the digits end their animation invisible; without motion they must simply stand there */
+  .countdown b,.countdown-full b{animation:none!important;opacity:1!important;transform:none!important}}
+
+/* Start: Layout- und Größenvarianten (im Galerie-Admin einstellbar) */
+#s-start[data-size="m"] .mode{min-height:150px;padding:22px 24px}#s-start[data-size="m"] .mode strong{font-size:30px;margin-top:16px}
+#s-start[data-size="xl"] .mode{min-height:250px}#s-start[data-size="xl"] .mode strong{font-size:48px}
+#s-start[data-layout="left"] .modes,#s-start[data-layout="right"] .modes{top:18vh;bottom:9vh;width:34vw;grid-template-columns:1fr!important;align-content:end}
+#s-start[data-layout="left"] .modes{left:7vw;right:auto}
+#s-start[data-layout="left"] .start-copy{left:auto;right:7vw;text-align:right;max-width:46vw}
+#s-start[data-layout="right"] .modes{right:7vw;left:auto}
+#s-start[data-layout="right"] .start-copy{max-width:46vw}
+#s-start[data-layout="center"] .start-copy{left:0;right:0;margin:auto;text-align:center;max-width:80vw;top:16vh}
+#s-start[data-layout="center"] .start-copy .lede{margin-left:auto;margin-right:auto}
+#s-start[data-layout="center"] .modes{left:50%;right:auto;transform:translateX(-50%);width:min(86vw,1400px)}
+#s-start[data-layout="center"] .start-shade{background:radial-gradient(ellipse at center,rgba(var(--bg-rgb),.5),rgba(var(--bg-rgb),.88))}
+/* Startbildschirm: Anleitung, letzte Aufnahme, QR, Logo.
+   Alle vier sitzen fest, lassen sich im freien Layout aber überall hinziehen
+   (.is-placed setzt dann left/top/width). */
+.start-steps{position:absolute;left:7%;bottom:9%;margin:0;padding:22px 28px;list-style:none;counter-reset:schritt;
+  border-radius:var(--radius);max-width:min(46vw,620px);
+  background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(14px);
+  box-shadow:inset 0 0 0 1px var(--line)}
+.start-steps li{counter-increment:schritt;display:flex;gap:12px;align-items:baseline;
+  font-size:clamp(17px,1.9vw,26px);line-height:1.45;padding:3px 0}
+.start-steps li::before{content:counter(schritt) ".";font-weight:700;color:var(--accent);min-width:1.6em}
+.start-steps .start-steps-title{counter-increment:none;font-weight:700;font-size:clamp(19px,2.1vw,29px);
+  font-family:var(--font-display,var(--font-stack));padding-bottom:6px}
+.start-steps .start-steps-title::before{content:"";min-width:0}
+.start-last{position:absolute;left:var(--edge-x);top:var(--edge-y);width:clamp(96px,10vw,180px);aspect-ratio:1;
+  border-radius:14px;overflow:hidden;box-shadow:0 18px 40px -20px var(--schatten),inset 0 0 0 2px var(--line)}
+.start-last img{width:100%;height:100%;object-fit:cover;display:block}
+/* Der QR sitzt zwischen den Pillen oben und den Kacheln unten — nicht unten
+   rechts, dort stehen die Modus-Knöpfe. */
+.start-qr{position:absolute;right:3%;top:19%;display:grid;justify-items:center;gap:10px;
+  padding:16px;border-radius:var(--radius);background:#fff}
+.start-qr img{width:clamp(120px,13vw,220px);height:auto;display:block}
+.start-qr span{font-size:clamp(14px,1.4vw,19px);font-weight:600;color:#111;max-width:20ch;text-align:center}
+.start-logo{position:absolute;right:4%;bottom:3%;width:18%;height:auto;object-fit:contain;pointer-events:none}
+/* Platz schaffen, statt übereinanderzulegen: Ist die Anleitung an, rücken die
+   Modus-Kacheln nach rechts; steht ein Logo unten rechts, rücken sie ein. */
+#s-start[data-last="1"] .start-copy{top:23vh}
+/* Schmalere Kacheln brauchen kleinere Beschriftung — sonst zerreißt
+   „Boomerang" mitten im Wort. */
+#s-start[data-steps="1"] .mode strong{hyphens:auto}
+#s-start[data-steps="1"] .modes{left:36%}
+#s-start[data-steps="1"] .start-steps{max-width:26vw}
+#s-start[data-steps="1"] .start-copy{max-width:40vw}
+#s-start[data-logo="1"] .modes{right:20%}
+#s-start .is-placed{left:0;top:0;right:auto;bottom:auto;margin:0}
+.start-tools{position:absolute;right:var(--edge-x);top:calc(var(--edge-y) + clamp(58px,7.2vh,82px));display:flex;gap:12px}
+.pill{display:inline-flex;align-items:center;gap:10px;min-height:64px;padding:0 24px;border-radius:min(var(--btn-radius),99px);
+  font-size:21px;font-weight:var(--btn-weight);color:var(--text);
+  background:color-mix(in srgb,var(--panel) 72%,transparent);backdrop-filter:blur(14px);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 14%,transparent)}
+.pill:active{transform:scale(.97)}
+/* start.gallery_style "prominent": the gallery button as a filled button in
+   the accent colour, larger, still beside the language and without a picture
+   (list items 15, 35). The pill stays the default. */
+#s-start[data-gallery-style="prominent"] #galleryBtn{min-height:84px;padding:0 34px 0 28px;font-size:27px;gap:12px;
+  background:var(--accent);color:var(--on-accent);box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+#s-start[data-gallery-style="prominent"] #galleryBtn svg{width:30px;height:30px}
+/* start.corner_size: gallery button, language button and lock sized together
+   (owner, 15.11.2026, on a 14" touch screen: "deutlich größer"). m = the
+   rules above, untouched; l is the default. The lock takes the pills'
+   background, so it reads on a photo or a video. The xl lock shrinks on a
+   1280 px screen so a bottom corner stays clear of the mode tiles (left 7 %).
+   booth/tests/test_corner_controls_size.py */
+#s-start[data-corner-size="l"]{--cs-h:76px;--cs-font:24px;--cs-icon:30px;--cs-pad:28px;--cs-gap:14px;--cs-lock:76px;--cs-lock-icon:38px;--cs-prom-h:88px;--cs-prom-font:29px;--cs-prom-icon:34px}
+#s-start[data-corner-size="xl"]{--cs-h:92px;--cs-font:28px;--cs-icon:34px;--cs-pad:34px;--cs-gap:16px;--cs-lock:clamp(76px,6.3vw,96px);--cs-lock-icon:46px;--cs-prom-h:100px;--cs-prom-font:32px;--cs-prom-icon:38px}
+/* The height of the tool row and where it ends, for the lock beside it and
+   for the title and the QR code below it. */
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"]){--cs-row:var(--cs-h);--cs-row-bottom:calc(var(--edge-y) + clamp(58px,7.2vh,82px) + var(--cs-row))}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"])[data-gallery-style="prominent"]:has(#galleryBtn:not([hidden])){--cs-row:var(--cs-prom-h)}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .start-tools{gap:var(--cs-gap)}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .start-tools .pill{min-height:var(--cs-h);padding:0 var(--cs-pad);font-size:var(--cs-font);gap:12px}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .start-tools .pill svg{width:var(--cs-icon);height:var(--cs-icon)}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"])[data-gallery-style="prominent"] #galleryBtn{min-height:var(--cs-prom-h);padding:0 calc(var(--cs-pad) + 8px) 0 var(--cs-pad);font-size:var(--cs-prom-font)}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"])[data-gallery-style="prominent"] #galleryBtn svg{width:var(--cs-prom-icon);height:var(--cs-prom-icon)}
+#app[data-corner] #s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .hotspot[data-icon="1"]{width:var(--cs-lock);height:var(--cs-lock);opacity:1;border-radius:min(var(--btn-radius),99px);color:var(--text);background:color-mix(in srgb,var(--panel) 72%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 14%,transparent)}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .hotspot[data-icon="1"] svg{width:var(--cs-lock-icon);height:var(--cs-lock-icon);stroke-width:1.9}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .hotspot[data-icon="1"]:hover{background:color-mix(in srgb,var(--panel) 92%,var(--text))}
+#app[data-corner] #s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .hotspot[data-icon="1"][data-notice="1"]{color:#f5a524}
+/* Top right the lock stands at the end of the tool row, as high as the row,
+   instead of above it: one row of three, nothing on top of "EN". */
+#app[data-corner="top-right"] #s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .hotspot[data-icon="1"]{top:calc(var(--edge-y) + clamp(58px,7.2vh,82px));right:var(--edge-x);width:var(--cs-row);height:var(--cs-row)}
+#app[data-corner="top-right"] #s-start:is([data-corner-size="l"],[data-corner-size="xl"]):has(.hotspot[data-icon="1"]) .start-tools{right:calc(var(--edge-x) + var(--cs-row) + var(--cs-gap))}
+/* The lock no longer sits above the status line: the line keeps its place. */
+#app[data-corner="top-right"] #s-start:is([data-corner-size="l"],[data-corner-size="xl"]):has(.hotspot[data-icon="1"]) .statusline{right:var(--edge-x)}
+/* The bigger row never reaches the title or the QR code: they start below it.
+   At 1920x1200 with l that is where they were anyway (216 px). */
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .start-copy{top:max(18vh,calc(var(--cs-row-bottom) + 16px))}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"])[data-last="1"] .start-copy{top:max(23vh,calc(var(--cs-row-bottom) + 16px))}
+#s-start:is([data-corner-size="l"],[data-corner-size="xl"]) .start-qr{top:max(19%,calc(var(--cs-row-bottom) + 16px))}
+.disclaimer{font-size:18px;color:var(--muted);line-height:1.4;max-width:46ch}
+
+/* Countdown als eigener Bildschirm */
+.countdown-full{position:fixed;inset:0;display:none;place-items:center;background:var(--bg);font-size:min(60vh,640px);font-weight:700;letter-spacing:-.05em}
+.countdown-full.on{display:grid}.countdown-full b{animation:pop 1s var(--ease) both}
+
+/* Ergebnis-Aktionen */
+.result-actions{display:flex;justify-content:space-between;gap:10px;flex-shrink:0}
+.btn-ghost.danger{color:var(--gefahr)}
+/* Rückfrage: Wer etwas wegwirft, klickt nicht auf die Akzentfarbe */
+.btn-primary.danger{background:var(--gefahr-flaeche);color:var(--gefahr-schrift)}
+.share{text-align:left;width:100%}
+.share:active{transform:scale(.99)}
+
+/* Galerie */
+.bar-count{justify-self:end;font-size:22px;color:var(--muted);font-variant-numeric:tabular-nums;padding-right:10px}
+.gallery{position:absolute;inset:var(--bar-h,96px) 0 0;overflow-y:auto;padding:8px 3vw 6vh;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;align-content:start;
+  -webkit-overflow-scrolling:touch;touch-action:pan-y}
+/* Rows as high as their tiles: without this a second row was sized from the
+   scroll box's height, not from the 4:5 tiles, and the tiles of the second row
+   lay over the first (seen with more shots than fit in one row). */
+.gallery{grid-auto-rows:max-content}
+.tile{align-self:start}
+/* layout.gallery_size: fewer, larger tiles (list item 29). m = as before. */
+#app[data-gallery-size="l"] .gallery{grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px}
+#app[data-gallery-size="xl"] .gallery{grid-template-columns:repeat(auto-fill,minmax(min(480px,44vw),1fr));gap:22px}
+.tile{position:relative;aspect-ratio:4/5;border-radius:16px;overflow:hidden;background:var(--panel);opacity:0;animation:rise .5s var(--ease) forwards;animation-delay:calc(var(--i)*35ms)}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile-play{position:absolute;right:12px;bottom:12px;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:rgba(var(--bg-rgb),.6)}
+.tile-play svg{width:26px;height:26px;stroke:none}
+.gallery-skel{aspect-ratio:4/5;border-radius:16px;background:linear-gradient(100deg,var(--panel) 30%,var(--panel-2) 50%,var(--panel) 70%) 0 0/300% 100%;animation:shimmer 1.4s linear infinite}
+.gallery-empty{grid-column:1/-1;padding:12vh 0;text-align:center;font-size:30px;color:var(--muted)}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;z-index:20;display:grid;place-content:center;justify-items:center;gap:26px;background:rgba(var(--bg-rgb),.94);animation:rise .35s var(--ease)}
+.overlay h2{font-size:48px;letter-spacing:-.02em;text-align:center;max-width:22ch}
+.overlay p{font-size:30px}
+.overlay code{font-size:22px;color:var(--muted)}
+/* Vollbild: Das Foto bekommt die Fläche, der Rest tritt zurück. */
+.overlay--voll{padding:0}
+/* Das Bild füllt die Fläche, lässt oben rechts aber Platz für das Kreuz. */
+/* Flex statt Grid: In einer automatisch hohen Grid-Zeile bezieht sich
+   max-height:100% auf sich selbst und wirkt gar nicht — das Bild stünde über
+   den Rand hinaus. */
+.voll-media{position:absolute;inset:3vh 3vw;display:flex;align-items:center;justify-content:center}
+.voll-media img,.voll-media video{cursor:zoom-out}
+.voll-media img,.voll-media video{max-width:100%;max-height:100%;border-radius:12px;
+  box-shadow:0 40px 90px -35px var(--schatten-tief)}
+#qrBig{width:min(62vh,720px);height:min(62vh,720px);background:#fff;padding:22px;border-radius:26px}
+.overlay-close{position:absolute;right:30px;top:30px;z-index:2;width:84px;height:84px;border-radius:50%;background:var(--panel);display:grid;place-items:center}
+.overlay-close svg{width:40px;height:40px}
+.overlay-actions{display:flex;gap:18px}
+/* Bildschirmtastatur: Touch-Ziele groß genug für Finger, ohne Zoom */
+.overlay--keyboard{align-content:center;gap:18px;padding:30px}
+.kb-field{min-width:min(70vw,720px);min-height:78px;padding:16px 26px;border-radius:18px;background:var(--panel);
+  font-size:34px;letter-spacing:.01em;text-align:center;word-break:break-all;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--text) 8%,transparent)}
+.kb-field[data-placeholder]:empty::before{content:attr(data-placeholder);color:var(--muted)}
+.kb{display:grid;gap:10px;justify-items:center}
+.kb-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.kb-key{min-width:74px;height:78px;padding:0 16px;border-radius:14px;background:var(--panel);font-size:30px;
+  transition:transform .12s var(--ease),background .12s}
+.kb-key:active{transform:scale(.94);background:var(--accent);color:var(--on-accent)}
+.kb-key--wide{min-width:120px;font-size:26px}
+.kb-row--quick .kb-key{background:var(--panel-2)}
+/* Drawing on the picture: picture left as large as the screen allows, tools
+   in a column on the right, like the result screen. Below the picture they
+   took two rows and left a 1280x800 panel a picture of 400 px. The kiosk
+   sizes .draw-frame to the picture (layoutDraw), so the canvas lies exactly
+   on it at every screen size. */
+.overlay--draw{place-content:stretch;justify-items:stretch;grid-template-columns:minmax(0,1fr) clamp(300px,26vw,480px);
+  grid-template-rows:minmax(0,1fr);gap:clamp(16px,2.5vw,48px);padding:clamp(16px,3vh,48px) 3vw}
+.draw-side{display:flex;flex-direction:column;justify-content:center;gap:clamp(10px,1.6vh,20px);
+  min-height:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain}
+.overlay--draw h2{font-size:clamp(26px,3.2vh,44px);text-align:left;max-width:none}
+.draw-side>.btn-primary,.draw-side>.btn-secondary{width:100%;flex-shrink:0}
+.draw-edit{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px}
+.draw-stage{min-height:0;min-width:0;display:flex;align-items:center;justify-content:center}
+.draw-frame{position:relative;flex:none;border-radius:12px;overflow:hidden;background:var(--panel);
+  box-shadow:0 40px 90px -35px var(--schatten-tief)}
+.draw-frame img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+#drawCanvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.draw-colors,.draw-widths{display:grid;grid-template-columns:repeat(3,76px);justify-content:space-around;gap:6px;padding:6px;
+  border-radius:44px;background:var(--panel);flex-shrink:0}
+/* Same touch size as the copies stepper: a finger, maybe a glass in the other hand. */
+.draw-color,.draw-width{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;
+  transition:transform .12s var(--ease),background .12s}
+.draw-color:active,.draw-width:active{transform:scale(.94)}
+.draw-color i{width:48px;height:48px;border-radius:50%;background:var(--c);
+  box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--text) 24%,transparent)}
+.draw-width i{display:block;border-radius:50%;background:var(--text)}
+.draw-width[data-draw-width="0"] i{width:8px;height:8px}
+.draw-width[data-draw-width="1"] i{width:16px;height:16px}
+.draw-width[data-draw-width="2"] i{width:30px;height:30px}
+.draw-color[aria-pressed="true"],.draw-width[aria-pressed="true"]{background:var(--panel-2);box-shadow:inset 0 0 0 4px var(--accent)}
+.draw-color:focus-visible,.draw-width:focus-visible{border-radius:50%}
+/* Opaque: the result screen behind would shine through between the tools. */
+#drawOverlay{background:var(--bg)}
+/* A portrait screen: picture on top, tools below. */
+@media (orientation:portrait){
+  .overlay--draw{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+  .draw-side{max-width:640px;width:100%;justify-self:center}
+}
+.overlay--lock{z-index:30;background:var(--bg)}
+.overlay--lock img{max-width:60vw;max-height:50vh;border-radius:20px}
+.notice{position:fixed;left:50%;top:26px;transform:translateX(-50%);z-index:15;display:flex;align-items:center;gap:14px;padding:16px 28px;border-radius:99px;
+  background:#2a1215;color:#ffd7d9;font-size:22px;box-shadow:inset 0 0 0 1px rgba(229,72,77,.4);max-width:80vw}
+.notice i{width:12px;height:12px;border-radius:50%;background:var(--accent);animation:blink 1.2s infinite;flex:none}
+/* On the start screen app.js (placeNotice) puts the notice in the first free
+   band that covers no corner control, no title and no tile; it may wrap there. */
+.notice--placed{transform:none;border-radius:28px;max-width:none;line-height:1.3;pointer-events:none}
+@media (max-width:1100px),(max-height:820px){.notice{font-size:20px;padding:14px 24px}}
+
+/* Freie Anordnung */
+#s-start[data-layout="custom"] .modes{inset:0;display:block;transform:none;width:auto}
+#s-start[data-layout="custom"] .mode{position:absolute;width:24%}
+#s-start[data-layout="custom"] .is-placed{position:fixed!important;right:auto!important;bottom:auto!important;margin:0!important;transform:none!important}
+
+/* Live-Bild im Vollbild */
+.crop-guide{display:none}
+#s-capture[data-live="fullscreen"] .capture{padding:0}
+#s-capture[data-live="fullscreen"] .frame--big{position:fixed;inset:0;height:100vh;width:100vw;max-width:none;aspect-ratio:auto;border-radius:0;box-shadow:none}
+#s-capture[data-live="fullscreen"] .crop-guide{display:block;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:var(--gw,100%);height:var(--gh,100%);border:2px solid rgba(255,255,255,.55);border-radius:4px;pointer-events:none;
+  box-shadow:0 0 0 100vmax rgba(var(--bg-rgb),.45);z-index:1}
+#s-capture[data-live="fullscreen"] .crop-guide[hidden]{display:none}
+#s-capture[data-live="fullscreen"] .countdown,#s-capture[data-live="fullscreen"] .rec{z-index:2}
+#s-capture .shotcount{z-index:4}
+.shotcount.has-pose{right:auto;left:50%;transform:translateX(-50%);font-size:clamp(28px,3.8vh,46px);padding:14px 32px;white-space:nowrap;max-width:calc(100% - 2*var(--edge-x));overflow:hidden;text-overflow:ellipsis}
+#s-capture[data-live="fullscreen"] .shot-review{object-fit:contain;background:var(--bg);z-index:3}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+/* Die Marke für die Knopfbedienung. Kräftiger als der Tastaturfokus: Sie muss
+   aus zwei Metern zu sehen sein, nicht aus fünfzig Zentimetern. */
+.is-fokus{outline:6px solid var(--accent);outline-offset:5px;border-radius:inherit;
+  box-shadow:0 0 0 12px color-mix(in srgb,var(--accent) 22%,transparent)}
+/* Rows that scroll sideways (cards, looks, gallery) clip what lies outside
+   them: there the ring is drawn on the element's own edge, not beside it. */
+.cards .lcard.is-fokus,.looks .is-fokus,.gallery .is-fokus,.swatches .is-fokus{outline:5px solid var(--accent);outline-offset:0}
+@media (prefers-reduced-motion: no-preference){
+  .is-fokus{animation:fokuspuls 1.6s ease-in-out infinite}
+  @keyframes fokuspuls{50%{box-shadow:0 0 0 18px color-mix(in srgb,var(--accent) 12%,transparent)}}
+}
+
+/* Shot strip (multi-shot modes) */
+.shot-strip{position:absolute;left:0;right:0;bottom:5%;z-index:4;display:flex;justify-content:center;gap:14px;padding:0 6%}
+.shot-strip .shot-box{position:relative;flex:0 1 clamp(84px,11vw,190px);aspect-ratio:4/3;border-radius:10px;overflow:hidden;
+  background:color-mix(in srgb,var(--panel) 82%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--text) 18%,transparent);display:grid;place-items:center;
+  transition:box-shadow .25s var(--ease),transform .25s var(--ease)}
+.shot-strip .shot-box b{font-size:clamp(16px,2.6vh,34px);color:color-mix(in srgb,var(--text) 65%,transparent);font-weight:700}
+.shot-strip .shot-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s var(--ease)}
+.shot-strip .is-done img{opacity:1}
+.shot-strip .is-done b{opacity:0}
+.shot-strip .is-active{box-shadow:inset 0 0 0 3px var(--accent);transform:translateY(-4px)}
+
+/* Bildschirmschoner: deckt den Startbildschirm ab, ganze Fläche ist die Schaltfläche */
+/* Bildschirmschoner — Quelle, Abdunklung und Lage des Hinweises kommen aus dem Profil */
+.attract{position:fixed;inset:0;z-index:18;background:var(--attract-color,#000)}
+.attract-layer{position:absolute;inset:0;background:var(--attract-color,#0c0c0e) center/var(--attract-fit,cover) no-repeat;
+  opacity:0;transition:opacity 1.1s var(--ease)}
+.attract-layer.on{opacity:1}
+.attract-layer video{width:100%;height:100%;object-fit:var(--attract-fit,cover)}
+.attract-dim{position:absolute;inset:0;background:#000;opacity:var(--attract-dim,0);pointer-events:none}
+.attract[data-plain="1"] .attract-dim{opacity:0}
+.attract-title{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;text-align:center;
+  color:var(--attract-text,#fff);font-size:clamp(44px,8vw,132px);line-height:1.05;letter-spacing:-.03em;
+  text-shadow:0 10px 60px rgba(0,0,0,.35);padding:0 6vw}
+.attract[data-hint="center"] .attract-hint{bottom:14vh}
+/* attract.hint_size scales the hint (100 % = 28 px, as before); it may wrap
+   instead of running off a narrow screen. */
+.attract-hint{position:absolute;left:50%;bottom:7vh;transform:translateX(-50%);
+  padding:calc(18px * var(--attract-hint-scale,1)) calc(38px * var(--attract-hint-scale,1));
+  width:max-content;max-width:88vw;text-align:center;
+  border-radius:99px;font-size:calc(28px * var(--attract-hint-scale,1));font-weight:600;color:var(--attract-text,#fff);
+  /* Die Pille leitet sich von der Schriftfarbe des Schoners ab, nicht vom Theme:
+     sonst wird sie auf einer weißen Fläche grau und auf einer schwarzen unsichtbar. */
+  background:color-mix(in srgb,var(--attract-text,#fff) 14%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--attract-text,#fff) 22%,transparent);
+  animation:breathe 3.6s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.6}50%{opacity:1}}
+
+
+/* Mirror-Booth. Gespiegelt wird die Fläche, nicht die Schrift: Texte, Zahlen und
+   der QR-Code bekommen die Spiegelung zurückgedreht, sonst wäre nichts lesbar
+   und kein Code scannbar. */
+/* Der Kasten, in dem alles liegt. Ohne eigene Maße wäre er null hoch — alle
+   Bildschirme sind position:fixed und damit außerhalb des Flusses. Das fällt
+   nur auf, sobald gespiegelt wird: Ein transform macht #app zum Bezugsrahmen
+   auch für fixierte Kinder, und die rechnen dann gegen einen nullhohen
+   Kasten. Gemessen am 20.09.2026 in Chromium: mit Spiegelung 1080x0 statt
+   1080x1920 — die Spiegelbox zeigte gar nichts. */
+#app { position: fixed; inset: 0; }
+#app[data-mirror-h="1"] { transform: scaleX(-1); }
+#app[data-mirror-v="1"] { transform: scaleY(-1); }
+#app[data-mirror-h="1"][data-mirror-v="1"] { transform: scale(-1, -1); }
+#app[data-mirror-h="1"] { transform-origin: center; }
+#app[data-mirror-h="1"] :is(h1, h2, h3, p, span, b, output, code, small, .mode, .chip, .look, .btn-primary,
+  .btn-secondary, .btn-ghost, .pill, .countdown, .countdown-full, .shotcount, #qr, #qrBig, .kb-key, .kb-field) {
+  transform: scaleX(-1);
+}
+#app[data-mirror-v="1"] :is(h1, h2, h3, p, span, b, output, code, small, .mode, .chip, .look, .btn-primary,
+  .btn-secondary, .btn-ghost, .pill, .countdown, .countdown-full, .shotcount, #qr, #qrBig, .kb-key, .kb-field) {
+  transform: scaleY(-1);
+}
+#app[data-mirror-h="1"][data-mirror-v="1"] :is(h1, h2, h3, p, span, b, output, code, small, .mode, .chip, .look,
+  .btn-primary, .btn-secondary, .btn-ghost, .pill, .countdown, .countdown-full, .shotcount, #qr, #qrBig,
+  .kb-key, .kb-field) { transform: scale(-1, -1); }
+
+
+/* Datensparsamer Betrieb: Der Hinweis gehört sichtbar an die Box, nicht ins
+   Kleingedruckte — Eltern sollen ihn im Vorbeigehen lesen können. */
+.privacy-note { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 16px 7vw;
+  background: rgba(14,14,17,.88); color: #e7e7ea; font-size: 20px; line-height: 1.35;
+  text-align: center; backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 color-mix(in srgb,var(--text) 7%,transparent); }
+/* Die Modus-Kacheln rücken hoch, damit der Hinweis nichts verdeckt — er ist für
+   Eltern gedacht, nicht als Schleier über den Knöpfen. */
+#app[data-privacy="1"] .modes { bottom: calc(9vh + 44px); }
+#app[data-privacy="1"] .statusline { bottom: auto; }
+.privacy-note--result { position: static; transform: none; max-width: none; margin-top: 12px;
+  border-radius: 16px; font-size: 18px; text-align: left; padding: 12px 16px; }
+
+/* Schlüsselmodus (/?keys=1) — zeigt statt jedes Textes seinen Schlüssel, nur fürs Einrichten */
+#keysbar{position:fixed;left:0;right:0;top:0;z-index:999;background:#e5484d;color:#fff;
+  padding:6px 12px;font-size:14px;text-align:center;letter-spacing:.2px}
+
+/* PIN-Fenster und Betreiber-Menü — groß genug für einen Daumen, ruhig genug,
+   dass ein Gast es für einen Fehler hält und nicht für ein Spiel */
+.overlay--pin,.overlay--menu{gap:18px}
+.overlay--pin output{font-size:44px;letter-spacing:.42em;min-height:56px;padding-left:.42em;
+  font-variant-numeric:tabular-nums}
+.pin-hint{font-size:19px;color:var(--muted);max-width:34ch;text-align:center}
+.pinpad{display:grid;grid-template-columns:repeat(3,110px);gap:14px;margin-top:6px}
+.pinkey{min-height:86px;border-radius:min(var(--btn-radius),24px);background:var(--panel-2);
+  font-size:30px;font-weight:var(--btn-weight);transition:transform .2s var(--ease),background .2s}
+.pinkey:active{transform:scale(.94);background:var(--accent);color:var(--on-accent)}
+.pinkey.is-go{background:var(--accent);color:var(--on-accent)}
+.menu-actions{display:flex;flex-direction:column;gap:14px;min-width:min(420px,80vw)}
+.menu-actions .btn-primary,.menu-actions .btn-secondary{width:100%}
+.overlay--lock .btn-ghost{margin-top:26px}
+
+/* Nur für Screenreader: da, aber nicht zu sehen. Ohne diesen Text bekäme
+   jemand, der nicht sieht, keinen Hinweis, dass der Bildschirm gewechselt hat. */
+.nur-vorlesen{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;
+  overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* Unsichtbare Bildschirme bekommen auch keinen Fokus mehr. ``inert`` erledigt
+   das in modernen Browsern; das hier ist der Rückfall. */
+.screen[aria-hidden="true"]{visibility:hidden}
+#app[data-screen] .screen[aria-hidden="false"]{visibility:visible}
+
+/* Fokus ist am Kiosk groß — wer mit Tastatur arbeitet, steht zwei Meter weg. */
+:focus-visible{outline:4px solid var(--accent);outline-offset:4px;border-radius:12px}
+
+/* „Bitte lächeln!": liegt über dem Live-Bild, genau in dem Moment, in dem
+   alle nach unten schauen würden. Deckend, damit es niemand übersieht. */
+.smile{position:absolute;inset:0;background:var(--bg) center/contain no-repeat;z-index:20;display:grid;place-items:center;text-align:center;padding:0 var(--edge-x);color:var(--text);font-family:var(--font-display,var(--font-stack));font-weight:700;letter-spacing:-.03em;line-height:1.02;font-size:clamp(72px,17vh,220px);text-wrap:balance}
+
+/* ── Operator notice ───────────────────────────────────────────────────
+   For the operator, not the guest: one more item in the status line, quiet,
+   no red. Red belongs to recording and deleting — a booth that shouts at a
+   guest because paper runs low has the tone wrong. It used to be a box of
+   its own bottom left and sat on the first mode tile (11.11.2026); inside
+   the status line it can never cover a control, and the line lets taps
+   through. A long title is cut, never wrapped over the pills below.
+   No entry animation: the status line is redrawn on every poll, so it
+   would replay every second. */
+.betriebsmeldung{display:inline-flex;align-items:center;min-width:0;color:var(--text)}
+.betriebsmeldung b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34ch}
+
+/* Einwilligung je Durchgang: two buttons of the same size, colour and weight,
+   none preselected. Readable at 1920x1080 from arm's length; nothing grows
+   past what a 1024x768 screen can hold. */
+.consent{display:grid;align-content:center;justify-items:center;gap:clamp(20px,3.5vh,44px);height:100%;padding:clamp(88px,10vh,120px) 5vw 6vh;text-align:center}
+.consent h1{margin:0;font-size:clamp(34px,5.2vh,64px);line-height:1.1}
+.consent-choices{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:clamp(16px,2.6vw,44px);width:min(1180px,90vw)}
+.consent-choice{display:grid;align-content:center;justify-items:center;gap:12px;min-height:clamp(170px,26vh,300px);padding:24px;border-radius:min(var(--radius),32px);background:var(--panel-2);color:var(--text);border:3px solid color-mix(in srgb,var(--text) 45%,transparent);font:inherit;font-size:clamp(26px,3.8vh,46px);font-weight:700;cursor:pointer}
+.consent-choice small{font-size:clamp(18px,2.1vh,24px);font-weight:500;color:var(--text)}
+.consent-choice:active{transform:scale(.98)}
+.consent-note{margin:0;max-width:62ch;font-size:clamp(16px,1.75vh,20px);line-height:1.5;color:var(--text)}
+@media (max-width:700px){.consent-choices{grid-template-columns:1fr}}
+
+/* countdown.live_view = "off": no live picture while counting -- the guests
+   look into the lens, not at themselves. A recording shows it again. */
+#s-capture[data-liveoff="1"] .live{visibility:hidden}
+#s-capture[data-liveoff="1"] .crop-guide{display:none}
+#s-capture[data-liveoff="1"] .frame:has(.rec.on) .live{visibility:visible}
+
+/* phase_media: a picture, GIF or video per phase of the run. The layer lies
+   behind the screen's own text and buttons and never takes a tap; until a
+   video has its first frame the screen colour shows, not black. */
+.phase-media{position:absolute;inset:0;display:none;pointer-events:none;background:var(--bg);overflow:hidden}
+.phase-media[data-on="1"]{display:block}
+.phase-media>img,.phase-media>video{width:100%;height:100%;object-fit:cover;display:block;background:transparent}
+.phase-media[data-fit="contain"]>img,.phase-media[data-fit="contain"]>video{object-fit:contain}
+#s-processing[data-phase="1"] .proc-still{display:none}
+#s-processing[data-phase="1"] .processing,#s-error[data-phase="1"] .error{z-index:1}
+#s-processing[data-phase="1"] .processing p,#s-error[data-phase="1"] .error h2,#s-error[data-phase="1"] .error p{
+  color:var(--text);text-shadow:0 2px 18px rgba(0,0,0,.75)}
+#s-processing[data-phase-text="off"] .processing p,
+#s-error[data-phase-text="off"] .error h2,#s-error[data-phase-text="off"] .error p{display:none}
+.phase-overlay{position:fixed;inset:0;z-index:26;display:grid;place-items:center;background:var(--bg)}
+.phase-overlay[hidden]{display:none}
+.phase-text{position:relative;z-index:1;margin:0;padding:0 var(--edge-x);text-align:center;color:var(--text);
+  font-family:var(--font-display,var(--font-stack));font-weight:700;letter-spacing:-.03em;line-height:1.02;
+  font-size:clamp(72px,14vh,200px);text-wrap:balance;text-shadow:0 4px 30px rgba(0,0,0,.6)}
+.phase-text:empty{display:none}
+
+/* Download without internet: two steps where the gallery code would be.
+   Each is a .share box, a little smaller so both fit next to the print box. */
+.wifi-steps{display:grid;gap:14px;flex-shrink:0}
+.wifi-steps[hidden]{display:none}
+.wifi-step{grid-template-columns:clamp(150px,10.5vw,210px) 1fr;padding:16px;gap:18px}
+.wifi-step img{width:clamp(150px,10.5vw,210px);height:clamp(150px,10.5vw,210px)}
+.wifi-step p+p{margin-top:4px}
+
+/* Scrollbars in the colours of the theme. The default one is a white bar on
+   the dark stage; it stays visible, because a mouse needs something to grab. */
+#app *{scrollbar-color:color-mix(in srgb,var(--text) 34%,transparent) transparent}
+
+/* Lock and status line in the same corner: the line moves aside. */
+#app[data-corner="top-right"]:has(.hotspot[data-icon="1"]) .statusline{right:calc(var(--edge-x) + 56px)}
+
+/* "Fernsteuerung aktiv": small, in a corner, out of the way of the live view. */
+.remote-mark { position: fixed; left: 12px; bottom: 12px; z-index: 60; padding: 4px 10px; border-radius: 999px;
+  font: 600 12px/1.4 system-ui, sans-serif; color: #fff; background: rgba(0, 0, 0, .55); pointer-events: none; }
+.remote-mark[hidden] { display: none; }
+
+/* Links on every booth page (kiosk, admin, help, templates) in the theme's
+   colours: the text colour with an accent underline, so a link stays readable
+   on the dark and on the light scheme. The browser's blue and purple were
+   near-unreadable on the dark panels (16.11.2026). :where() keeps this below
+   every link that has its own style (jump bar, help navigation). */
+:where(a){color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);
+  text-decoration-thickness:2px;text-underline-offset:.2em;overflow-wrap:anywhere}
+:where(a:visited){color:var(--text)}
+:where(a):focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+/* On-screen keyboard (static/osk.js): docked at the bottom, keys as big as a
+   thumb on the 14" touch screen, never wider than a comfortable reach. The
+   page gets room below its content while it is open, so the field it types
+   into can always be scrolled above it. */
+.osk{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:grid;gap:8px;
+  padding:12px max(12px,calc((100vw - 1500px)/2)) calc(14px + var(--safe-bottom,0px));
+  background:color-mix(in srgb,var(--panel) 96%,#000);box-shadow:0 -12px 40px rgba(0,0,0,.45),0 -1px 0 var(--line);
+  font-family:var(--font-stack);user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.osk-row{display:flex;gap:8px;justify-content:center}
+.osk-key{flex:1 1 0;min-width:0;max-width:118px;height:clamp(56px,8.4vh,84px);border-radius:14px;
+  background:var(--panel-2,#26262c);color:var(--text);font-size:clamp(22px,3vh,30px);font-weight:600;
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.35)}
+.osk-key:active{transform:scale(.96);background:color-mix(in srgb,var(--panel-2,#26262c) 70%,var(--text))}
+.osk-key--back,.osk-key--shift,.osk-key--symbols,.osk-key--letters,.osk-key--close{max-width:150px;font-size:clamp(20px,2.6vh,26px);
+  background:color-mix(in srgb,var(--panel-2,#26262c) 80%,#000)}
+.osk-key--shift.is-on{background:var(--accent);color:var(--on-accent)}
+.osk-key--space{flex-grow:4;max-width:none}
+.osk-key--enter{flex-grow:1.6;max-width:220px;background:var(--accent);color:var(--on-accent)}
+.osk-key--wide{flex-grow:1.4;max-width:150px;font-size:clamp(18px,2.4vh,24px)}
+.osk[data-layer="numbers"]{padding-left:max(12px,calc(50vw - 300px));padding-right:max(12px,calc(50vw - 300px))}
+.osk[data-layer="numbers"] .osk-key{max-width:none}
+body.osk-open{padding-bottom:var(--osk-height,0px)}

@@ -1,0 +1,48 @@
+{# Folders: galleries inside this gallery, one level deep (app/folders.py). #}
+{% set fp = folder_panel(event) %}
+<div class="card" style="margin:1.25rem 0" id="ordner">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('folder.admin.title') }}</h2></div>
+  <div class="card-body">
+    <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0 0 12px">{{ t('folder.admin.hint') }}</p>
+    {% if fp.parent %}
+    <p style="margin:0 0 12px">{{ t('folder.admin.child_of', name=fp.parent.name) }}
+      <a class="adm-link" href="/admin/events/{{ fp.parent.id }}/edit" aria-label="Zum übergeordneten Event">→</a> · {{ t('folder.admin.inherit') }}</p>
+    {% endif %}
+    {% if fp.children %}
+    <ul style="margin:0 0 12px;padding-left:1.1rem">
+      {% for c in fp.children %}
+      <li><a class="adm-link" href="/admin/events/{{ c.id }}/edit">{{ c.name }}</a> <small style="color:var(--color-text-muted)">/gallery/{{ c.slug }}{% if not c.published %} · {{ t('client.admin.unpublished') }}{% endif %}{% if c.password_hash %} · Passwort{% endif %}</small></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if not fp.parent %}
+    <form method="post" action="/admin/events/{{ event.id }}/folders" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:0 0 12px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group" style="margin:0"><label class="form-label" for="f_name">{{ t('folder.admin.new') }}</label>
+        <input class="form-control" id="f_name" name="name" maxlength="200" required></div>
+      <button class="btn btn-secondary">{{ t('folder.admin.create') }}</button>
+    </form>
+    {% endif %}
+    {% if fp.parent or fp.candidates %}
+    <form method="post" action="/admin/events/{{ event.id }}/parent" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group" style="margin:0"><label class="form-label" for="f_parent">{{ t('folder.admin.move') }}</label>
+        <select class="form-control" id="f_parent" name="parent_id">
+          <option value="">{{ t('folder.admin.top') }}</option>
+          {% for e in fp.candidates %}<option value="{{ e.id }}" {% if fp.parent and fp.parent.id == e.id %}selected{% endif %}>{{ e.name }}</option>{% endfor %}
+        </select></div>
+      <button class="btn btn-secondary">{{ t('folder.admin.move_btn') }}</button>
+    </form>
+    {% endif %}
+    <hr style="border:0;border-top:1px solid var(--color-border);margin:16px 0">
+    <form method="post" action="/admin/events/{{ event.id }}/legacy-id" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group" style="margin:0"><label class="form-label" for="f_legacy">{{ t('legacy.admin.id_label') }}</label>
+        <input class="form-control" id="f_legacy" name="legacy_id" maxlength="64" pattern="[A-Za-z0-9_-]{4,64}" value="{{ event.foreign_id or '' }}"></div>
+      <button class="btn btn-secondary">{{ t('client.admin.save') }}</button>
+    </form>
+    <p style="margin:6px 0 0;font-size:.8rem;color:var(--color-text-muted)">
+      {% if legacy_account() and event.foreign_id %}{{ t('legacy.admin.id_live', path='/' ~ legacy_account() ~ '/' ~ event.foreign_id) }}
+      {% else %}{{ t('legacy.admin.id_hint') }}{% endif %}</p>
+  </div>
+</div>

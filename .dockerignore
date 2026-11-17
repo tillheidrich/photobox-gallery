@@ -1,0 +1,40 @@
+# The gallery image needs app/, run.py, VERSION and requirements.txt (see
+# tests/test_dockerignore.py). Everything else in the repository is for the
+# booth, the build machines or the people working on it.
+
+# Not the gallery: nothing in app/ imports or reads these at runtime.
+booth/
+sync/
+windows_uploader/
+packaging/
+tools/
+tests/
+website/
+.github/
+
+# Documents. The font licences stay: the image redistributes the fonts.
+docs/
+!docs/lizenzen/
+*.md
+# ...except the list of third-party licences: the image redistributes the
+# fonts and the Python packages it names.
+!THIRD_PARTY.md
+
+# .git stays: the software page in the admin reads the running commit from
+# .git/HEAD when the build does not pass SOURCE_COMMIT.
+
+# Local state that must never end up in an image.
+data/
+.env
+.venv/
+venv/
+**/__pycache__
+**/*.pyc
+*.log
+*.sqlite3
+*.db
+.claude/
+
+# Build leftovers.
+*.whl
+*.egg

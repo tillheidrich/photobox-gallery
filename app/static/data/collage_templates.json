@@ -1,0 +1,2342 @@
+{
+ "templates": [
+  {
+   "id": "solo",
+   "name": "Einzelbild · 1 Foto",
+   "shots": 1,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 1380,
+     "shot": 0
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1500,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1578,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 940,
+    "y": 1490,
+    "size": 200
+   }
+  },
+  {
+   "id": "solo-quer",
+   "name": "Einzelbild quer · 1 Foto",
+   "shots": 1,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1680,
+     "h": 900,
+     "shot": 0
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1000,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1078,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1570,
+    "y": 990,
+    "size": 170
+   }
+  },
+  {
+   "id": "quadrat1",
+   "name": "Quadrat · 1 Foto",
+   "shots": 1,
+   "orientation": "portrait",
+   "paper": "quadrat",
+   "canvas": [
+    1200,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 880,
+     "shot": 0
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 990,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1068,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 990,
+    "y": 980,
+    "size": 150
+   }
+  },
+  {
+   "id": "vollbild",
+   "name": "Vollbild · 1 Foto, ohne Rand",
+   "shots": 1,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 0,
+     "y": 0,
+     "w": 1200,
+     "h": 1800,
+     "shot": 0,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": null
+  },
+  {
+   "id": "vollbild-quer",
+   "name": "Vollbild quer · 1 Foto, ohne Rand",
+   "shots": 1,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 0,
+     "y": 0,
+     "w": 1800,
+     "h": 1200,
+     "shot": 0,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": null
+  },
+  {
+   "id": "duo",
+   "name": "Duo · 2 Fotos",
+   "shots": 2,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 720,
+     "shot": 0
+    },
+    {
+     "x": 60,
+     "y": 810,
+     "w": 1080,
+     "h": 720,
+     "shot": 1
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1580,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1658,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 950,
+    "y": 1570,
+    "size": 190
+   }
+  },
+  {
+   "id": "duo-quer",
+   "name": "Duo quer · 2 Fotos",
+   "shots": 2,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 830,
+     "h": 940,
+     "shot": 0
+    },
+    {
+     "x": 910,
+     "y": 60,
+     "w": 830,
+     "h": 940,
+     "shot": 1
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1040,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1118,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1600,
+    "y": 1030,
+    "size": 140
+   }
+  },
+  {
+   "id": "duo-quer-gestapelt",
+   "name": "Duo quer gestapelt · 2 Fotos",
+   "shots": 2,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1680,
+     "h": 450,
+     "shot": 0
+    },
+    {
+     "x": 60,
+     "y": 530,
+     "w": 1680,
+     "h": 450,
+     "shot": 1
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1010,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1088,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1590,
+    "y": 1000,
+    "size": 150
+   }
+  },
+  {
+   "id": "trio",
+   "name": "Dreier · 3 Fotos",
+   "shots": 3,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 466,
+     "shot": 0
+    },
+    {
+     "x": 60,
+     "y": 546,
+     "w": 1080,
+     "h": 466,
+     "shot": 1
+    },
+    {
+     "x": 60,
+     "y": 1032,
+     "w": 1080,
+     "h": 466,
+     "shot": 2
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1560,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1638,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 950,
+    "y": 1550,
+    "size": 190
+   }
+  },
+  {
+   "id": "strips3",
+   "name": "Fotostreifen · 3 Fotos",
+   "shots": 3,
+   "orientation": "portrait",
+   "paper": "streifen",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 50,
+     "y": 50,
+     "w": 525,
+     "h": 486,
+     "shot": 0
+    },
+    {
+     "x": 50,
+     "y": 552,
+     "w": 525,
+     "h": 486,
+     "shot": 1
+    },
+    {
+     "x": 50,
+     "y": 1054,
+     "w": 525,
+     "h": 486,
+     "shot": 2
+    },
+    {
+     "x": 625,
+     "y": 50,
+     "w": 525,
+     "h": 486,
+     "shot": 0
+    },
+    {
+     "x": 625,
+     "y": 552,
+     "w": 525,
+     "h": 486,
+     "shot": 1
+    },
+    {
+     "x": 625,
+     "y": 1054,
+     "w": 525,
+     "h": 486,
+     "shot": 2
+    }
+   ],
+   "texts": [
+    {
+     "x": 312,
+     "y": 1580,
+     "size": 44,
+     "align": "center",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 312,
+     "y": 1642,
+     "size": 30,
+     "align": "center",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    },
+    {
+     "x": 887,
+     "y": 1580,
+     "size": 44,
+     "align": "center",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 887,
+     "y": 1642,
+     "size": 30,
+     "align": "center",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": null
+  },
+  {
+   "id": "trio-quer",
+   "name": "Panorama · 3 Fotos",
+   "shots": 3,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 546,
+     "h": 920,
+     "shot": 0
+    },
+    {
+     "x": 626,
+     "y": 60,
+     "w": 546,
+     "h": 920,
+     "shot": 1
+    },
+    {
+     "x": 1192,
+     "y": 60,
+     "w": 546,
+     "h": 920,
+     "shot": 2
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1020,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1098,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1600,
+    "y": 1010,
+    "size": 140
+   }
+  },
+  {
+   "id": "grid4",
+   "name": "Raster · 4 Fotos",
+   "shots": 4,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 530,
+     "h": 710,
+     "shot": 0
+    },
+    {
+     "x": 610,
+     "y": 60,
+     "w": 530,
+     "h": 710,
+     "shot": 1
+    },
+    {
+     "x": 60,
+     "y": 790,
+     "w": 530,
+     "h": 710,
+     "shot": 2
+    },
+    {
+     "x": 610,
+     "y": 790,
+     "w": 530,
+     "h": 710,
+     "shot": 3
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1560,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1638,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 950,
+    "y": 1550,
+    "size": 190
+   }
+  },
+  {
+   "id": "grid4-quer",
+   "name": "Raster quer · 4 Fotos",
+   "shots": 4,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 830,
+     "h": 450,
+     "shot": 0
+    },
+    {
+     "x": 910,
+     "y": 60,
+     "w": 830,
+     "h": 450,
+     "shot": 1
+    },
+    {
+     "x": 60,
+     "y": 530,
+     "w": 830,
+     "h": 450,
+     "shot": 2
+    },
+    {
+     "x": 910,
+     "y": 530,
+     "w": 830,
+     "h": 450,
+     "shot": 3
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1010,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1088,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1590,
+    "y": 1000,
+    "size": 150
+   }
+  },
+  {
+   "id": "quadrat4",
+   "name": "Quadrat · 4 Fotos",
+   "shots": 4,
+   "orientation": "portrait",
+   "paper": "quadrat",
+   "canvas": [
+    1200,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 530,
+     "h": 450,
+     "shot": 0
+    },
+    {
+     "x": 610,
+     "y": 60,
+     "w": 530,
+     "h": 450,
+     "shot": 1
+    },
+    {
+     "x": 60,
+     "y": 530,
+     "w": 530,
+     "h": 450,
+     "shot": 2
+    },
+    {
+     "x": 610,
+     "y": 530,
+     "w": 530,
+     "h": 450,
+     "shot": 3
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1010,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1088,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1000,
+    "y": 1000,
+    "size": 140
+   }
+  },
+  {
+   "id": "streifen4",
+   "name": "Fotostreifen · 4 Fotos",
+   "shots": 4,
+   "orientation": "portrait",
+   "paper": "streifen",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 50,
+     "y": 50,
+     "w": 525,
+     "h": 360,
+     "shot": 0
+    },
+    {
+     "x": 50,
+     "y": 426,
+     "w": 525,
+     "h": 360,
+     "shot": 1
+    },
+    {
+     "x": 50,
+     "y": 802,
+     "w": 525,
+     "h": 360,
+     "shot": 2
+    },
+    {
+     "x": 50,
+     "y": 1178,
+     "w": 525,
+     "h": 360,
+     "shot": 3
+    },
+    {
+     "x": 625,
+     "y": 50,
+     "w": 525,
+     "h": 360,
+     "shot": 0
+    },
+    {
+     "x": 625,
+     "y": 426,
+     "w": 525,
+     "h": 360,
+     "shot": 1
+    },
+    {
+     "x": 625,
+     "y": 802,
+     "w": 525,
+     "h": 360,
+     "shot": 2
+    },
+    {
+     "x": 625,
+     "y": 1178,
+     "w": 525,
+     "h": 360,
+     "shot": 3
+    }
+   ],
+   "texts": [
+    {
+     "x": 312,
+     "y": 1578,
+     "size": 44,
+     "align": "center",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 312,
+     "y": 1640,
+     "size": 30,
+     "align": "center",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    },
+    {
+     "x": 887,
+     "y": 1578,
+     "size": 44,
+     "align": "center",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 887,
+     "y": 1640,
+     "size": 30,
+     "align": "center",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": null
+  },
+  {
+   "id": "fuenf",
+   "name": "Fünfer · 1 groß, 4 klein",
+   "shots": 5,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 700,
+     "shot": 0
+    },
+    {
+     "x": 60,
+     "y": 790,
+     "w": 530,
+     "h": 350,
+     "shot": 1
+    },
+    {
+     "x": 610,
+     "y": 790,
+     "w": 530,
+     "h": 350,
+     "shot": 2
+    },
+    {
+     "x": 60,
+     "y": 1160,
+     "w": 530,
+     "h": 350,
+     "shot": 3
+    },
+    {
+     "x": 610,
+     "y": 1160,
+     "w": 530,
+     "h": 350,
+     "shot": 4
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1580,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1658,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 170
+   }
+  },
+  {
+   "id": "fuenf-quer",
+   "name": "Fünfer quer · 1 groß, 4 klein",
+   "shots": 5,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1000,
+     "h": 900,
+     "shot": 0
+    },
+    {
+     "x": 1080,
+     "y": 60,
+     "w": 320,
+     "h": 440,
+     "shot": 1
+    },
+    {
+     "x": 1420,
+     "y": 60,
+     "w": 320,
+     "h": 440,
+     "shot": 2
+    },
+    {
+     "x": 1080,
+     "y": 520,
+     "w": 320,
+     "h": 440,
+     "shot": 3
+    },
+    {
+     "x": 1420,
+     "y": 520,
+     "w": 320,
+     "h": 440,
+     "shot": 4
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1010,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1088,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1590,
+    "y": 1000,
+    "size": 150
+   }
+  },
+  {
+   "id": "sechs",
+   "name": "Sechser · 2 × 3",
+   "shots": 6,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 530,
+     "h": 466,
+     "shot": 0
+    },
+    {
+     "x": 610,
+     "y": 60,
+     "w": 530,
+     "h": 466,
+     "shot": 1
+    },
+    {
+     "x": 60,
+     "y": 546,
+     "w": 530,
+     "h": 466,
+     "shot": 2
+    },
+    {
+     "x": 610,
+     "y": 546,
+     "w": 530,
+     "h": 466,
+     "shot": 3
+    },
+    {
+     "x": 60,
+     "y": 1032,
+     "w": 530,
+     "h": 466,
+     "shot": 4
+    },
+    {
+     "x": 610,
+     "y": 1032,
+     "w": 530,
+     "h": 466,
+     "shot": 5
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1560,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1638,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 950,
+    "y": 1550,
+    "size": 190
+   }
+  },
+  {
+   "id": "sechs-quer",
+   "name": "Sechser quer · 3 × 2",
+   "shots": 6,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 546,
+     "h": 450,
+     "shot": 0
+    },
+    {
+     "x": 626,
+     "y": 60,
+     "w": 546,
+     "h": 450,
+     "shot": 1
+    },
+    {
+     "x": 1192,
+     "y": 60,
+     "w": 546,
+     "h": 450,
+     "shot": 2
+    },
+    {
+     "x": 60,
+     "y": 530,
+     "w": 546,
+     "h": 450,
+     "shot": 3
+    },
+    {
+     "x": 626,
+     "y": 530,
+     "w": 546,
+     "h": 450,
+     "shot": 4
+    },
+    {
+     "x": 1192,
+     "y": 530,
+     "w": 546,
+     "h": 450,
+     "shot": 5
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1010,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1088,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1590,
+    "y": 1000,
+    "size": 150
+   }
+  },
+  {
+   "id": "panorama-gross",
+   "name": "Panorama 13×18 · 3 Fotos",
+   "shots": 3,
+   "orientation": "landscape",
+   "paper": "13x18-quer",
+   "canvas": [
+    2126,
+    1535
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 655,
+     "h": 1215,
+     "shot": 0
+    },
+    {
+     "x": 735,
+     "y": 60,
+     "w": 655,
+     "h": 1215,
+     "shot": 1
+    },
+    {
+     "x": 1410,
+     "y": 60,
+     "w": 655,
+     "h": 1215,
+     "shot": 2
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1290,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1368,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1896,
+    "y": 1280,
+    "size": 170
+   }
+  },
+  {
+   "id": "grid4-gross",
+   "name": "Raster 13×18 quer · 4 Fotos",
+   "shots": 4,
+   "orientation": "landscape",
+   "paper": "13x18-quer",
+   "canvas": [
+    2126,
+    1535
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 993,
+     "h": 597,
+     "shot": 0
+    },
+    {
+     "x": 1073,
+     "y": 60,
+     "w": 993,
+     "h": 597,
+     "shot": 1
+    },
+    {
+     "x": 60,
+     "y": 677,
+     "w": 993,
+     "h": 597,
+     "shot": 2
+    },
+    {
+     "x": 1073,
+     "y": 677,
+     "w": 993,
+     "h": 597,
+     "shot": 3
+    }
+   ],
+   "texts": [
+    {
+     "x": 60,
+     "y": 1290,
+     "size": 58,
+     "align": "left",
+     "value": "{headline}",
+     "color": "@schrift",
+     "bold": true
+    },
+    {
+     "x": 60,
+     "y": 1368,
+     "size": 36,
+     "align": "left",
+     "value": "{subline}",
+     "color": "@gedaempft",
+     "bold": false
+    }
+   ],
+   "qr": {
+    "x": 1896,
+    "y": 1280,
+    "size": 170
+   }
+  },
+  {
+   "id": "schlicht-1-weiss",
+   "name": "Schlicht · 1 Foto · weiß",
+   "shots": 1,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 1680,
+     "shot": 0,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-1-schwarz",
+   "name": "Schlicht · 1 Foto · schwarz",
+   "shots": 1,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 1680,
+     "shot": 0,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-1-quer-weiss",
+   "name": "Schlicht · 1 Foto quer · weiß",
+   "shots": 1,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1680,
+     "h": 1080,
+     "shot": 0,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 1570,
+    "y": 970,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-1-quer-schwarz",
+   "name": "Schlicht · 1 Foto quer · schwarz",
+   "shots": 1,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1680,
+     "h": 1080,
+     "shot": 0,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 1570,
+    "y": 970,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-2-weiss",
+   "name": "Schlicht · 2 Fotos · weiß",
+   "shots": 2,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 825,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 915,
+     "w": 1080,
+     "h": 825,
+     "shot": 1,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-2-schwarz",
+   "name": "Schlicht · 2 Fotos · schwarz",
+   "shots": 2,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 825,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 915,
+     "w": 1080,
+     "h": 825,
+     "shot": 1,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-2-quer-weiss",
+   "name": "Schlicht · 2 Fotos quer · weiß",
+   "shots": 2,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 825,
+     "h": 1080,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 915,
+     "y": 60,
+     "w": 825,
+     "h": 1080,
+     "shot": 1,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 1570,
+    "y": 970,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-2-quer-schwarz",
+   "name": "Schlicht · 2 Fotos quer · schwarz",
+   "shots": 2,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 825,
+     "h": 1080,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 915,
+     "y": 60,
+     "w": 825,
+     "h": 1080,
+     "shot": 1,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 1570,
+    "y": 970,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-3-weiss",
+   "name": "Schlicht · 3 Fotos · weiß",
+   "shots": 3,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 540,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 630,
+     "w": 1080,
+     "h": 540,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 1200,
+     "w": 1080,
+     "h": 540,
+     "shot": 2,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-3-schwarz",
+   "name": "Schlicht · 3 Fotos · schwarz",
+   "shots": 3,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 1080,
+     "h": 540,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 630,
+     "w": 1080,
+     "h": 540,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 1200,
+     "w": 1080,
+     "h": 540,
+     "shot": 2,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-3-quer-weiss",
+   "name": "Schlicht · 3 Fotos quer · weiß",
+   "shots": 3,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 540,
+     "h": 1080,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 60,
+     "w": 540,
+     "h": 1080,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 1200,
+     "y": 60,
+     "w": 540,
+     "h": 1080,
+     "shot": 2,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 1570,
+    "y": 970,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-3-quer-schwarz",
+   "name": "Schlicht · 3 Fotos quer · schwarz",
+   "shots": 3,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 540,
+     "h": 1080,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 60,
+     "w": 540,
+     "h": 1080,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 1200,
+     "y": 60,
+     "w": 540,
+     "h": 1080,
+     "shot": 2,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 1570,
+    "y": 970,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-4-weiss",
+   "name": "Schlicht · 4 Fotos (Raster) · weiß",
+   "shots": 4,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 525,
+     "h": 825,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 615,
+     "y": 60,
+     "w": 525,
+     "h": 825,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 915,
+     "w": 525,
+     "h": 825,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 615,
+     "y": 915,
+     "w": 525,
+     "h": 825,
+     "shot": 3,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-4-schwarz",
+   "name": "Schlicht · 4 Fotos (Raster) · schwarz",
+   "shots": 4,
+   "orientation": "portrait",
+   "paper": "10x15",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 525,
+     "h": 825,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 615,
+     "y": 60,
+     "w": 525,
+     "h": 825,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 915,
+     "w": 525,
+     "h": 825,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 615,
+     "y": 915,
+     "w": 525,
+     "h": 825,
+     "shot": 3,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-4-quer-weiss",
+   "name": "Schlicht · 4 Fotos quer (Raster) · weiß",
+   "shots": 4,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 825,
+     "h": 525,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 915,
+     "y": 60,
+     "w": 825,
+     "h": 525,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 615,
+     "w": 825,
+     "h": 525,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 915,
+     "y": 615,
+     "w": 825,
+     "h": 525,
+     "shot": 3,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 1570,
+    "y": 970,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-4-quer-schwarz",
+   "name": "Schlicht · 4 Fotos quer (Raster) · schwarz",
+   "shots": 4,
+   "orientation": "landscape",
+   "paper": "10x15-quer",
+   "canvas": [
+    1800,
+    1200
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 825,
+     "h": 525,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 915,
+     "y": 60,
+     "w": 825,
+     "h": 525,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 615,
+     "w": 825,
+     "h": 525,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 915,
+     "y": 615,
+     "w": 825,
+     "h": 525,
+     "shot": 3,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 1570,
+    "y": 970,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-streifen3-weiss",
+   "name": "Schlicht · Streifen · 3 Fotos · weiß",
+   "shots": 3,
+   "orientation": "portrait",
+   "paper": "streifen",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 510,
+     "h": 546,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 626,
+     "w": 510,
+     "h": 546,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 1192,
+     "w": 510,
+     "h": 546,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 60,
+     "w": 510,
+     "h": 546,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 626,
+     "w": 510,
+     "h": 546,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 1192,
+     "w": 510,
+     "h": 546,
+     "shot": 2,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-streifen3-schwarz",
+   "name": "Schlicht · Streifen · 3 Fotos · schwarz",
+   "shots": 3,
+   "orientation": "portrait",
+   "paper": "streifen",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 510,
+     "h": 546,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 626,
+     "w": 510,
+     "h": 546,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 1192,
+     "w": 510,
+     "h": 546,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 60,
+     "w": 510,
+     "h": 546,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 626,
+     "w": 510,
+     "h": 546,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 1192,
+     "w": 510,
+     "h": 546,
+     "shot": 2,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  },
+  {
+   "id": "schlicht-streifen4-weiss",
+   "name": "Schlicht · Streifen · 4 Fotos · weiß",
+   "shots": 4,
+   "orientation": "portrait",
+   "paper": "streifen",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 510,
+     "h": 405,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 485,
+     "w": 510,
+     "h": 405,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 910,
+     "w": 510,
+     "h": 405,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 1335,
+     "w": 510,
+     "h": 405,
+     "shot": 3,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 60,
+     "w": 510,
+     "h": 405,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 485,
+     "w": 510,
+     "h": 405,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 910,
+     "w": 510,
+     "h": 405,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 1335,
+     "w": 510,
+     "h": 405,
+     "shot": 3,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#ffffff",
+   "plain": true
+  },
+  {
+   "id": "schlicht-streifen4-schwarz",
+   "name": "Schlicht · Streifen · 4 Fotos · schwarz",
+   "shots": 4,
+   "orientation": "portrait",
+   "paper": "streifen",
+   "canvas": [
+    1200,
+    1800
+   ],
+   "slots": [
+    {
+     "x": 60,
+     "y": 60,
+     "w": 510,
+     "h": 405,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 485,
+     "w": 510,
+     "h": 405,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 910,
+     "w": 510,
+     "h": 405,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 60,
+     "y": 1335,
+     "w": 510,
+     "h": 405,
+     "shot": 3,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 60,
+     "w": 510,
+     "h": 405,
+     "shot": 0,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 485,
+     "w": 510,
+     "h": 405,
+     "shot": 1,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 910,
+     "w": 510,
+     "h": 405,
+     "shot": 2,
+     "radius": 0
+    },
+    {
+     "x": 630,
+     "y": 1335,
+     "w": 510,
+     "h": 405,
+     "shot": 3,
+     "radius": 0
+    }
+   ],
+   "texts": [],
+   "qr": {
+    "x": 970,
+    "y": 1570,
+    "size": 150,
+    "hidden": true
+   },
+   "background": "#000000",
+   "plain": true
+  }
+ ],
+ "presets": {
+  "clean": {
+   "background": "#0f0d09",
+   "ink": "#f5f3f0",
+   "muted": "#898580",
+   "accent": "#e7ad59",
+   "headline": "{event_name}",
+   "subline": "{date}",
+   "font": "system",
+   "radius": 14,
+   "frame": 0
+  },
+  "hell": {
+   "background": "#faf8f5",
+   "ink": "#1a1714",
+   "muted": "#6f6a63",
+   "accent": "#b07d2b",
+   "headline": "{event_name}",
+   "subline": "{date}",
+   "font": "system",
+   "radius": 14,
+   "frame": 0
+  },
+  "geburtstag": {
+   "background": "#151033",
+   "ink": "#fdf7ff",
+   "muted": "#a79ecb",
+   "accent": "#ffbf3c",
+   "headline": "Happy Birthday",
+   "subline": "{event_name} · {date}",
+   "font": "display",
+   "radius": 22,
+   "frame": 0
+  },
+  "hochzeit": {
+   "background": "#f7f3ec",
+   "ink": "#2a2620",
+   "muted": "#8a8073",
+   "accent": "#b39258",
+   "headline": "{event_name}",
+   "subline": "{date}",
+   "font": "serif",
+   "radius": 0,
+   "frame": 10
+  },
+  "feier": {
+   "background": "#110d1a",
+   "ink": "#fbf6ff",
+   "muted": "#9b8fb3",
+   "accent": "#ff5f9e",
+   "headline": "{event_name}",
+   "subline": "{date}",
+   "font": "display",
+   "radius": 24,
+   "frame": 0
+  },
+  "firma": {
+   "background": "#ffffff",
+   "ink": "#101418",
+   "muted": "#5d6772",
+   "accent": "#1d5fd0",
+   "headline": "{event_name}",
+   "subline": "{date}",
+   "font": "system",
+   "radius": 6,
+   "frame": 0
+  }
+ }
+}

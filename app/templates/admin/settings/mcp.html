@@ -1,0 +1,98 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}Assistenten-Zugang (MCP) – Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'mcp' %}
+{% set settings_subtitle = 'Verwaltung und Fehlersuche durch einen KI-Assistenten' %}
+{% include 'admin/settings/_tabs.html' %}
+
+<div class="settings-section">
+  <div class="alert alert--info" style="margin-bottom:var(--sp-6)">
+    Mit diesem Zugang kann ein KI-Assistent die Verwaltung bedienen: nachsehen, was an einer Box los ist,
+    das Profil ändern, einen Testdruck auslösen, einen Hintergrund anlegen. Gedacht für den Eventabend,
+    an dem du mit dem Handy vor einer Box stehst, die nicht druckt.
+    <br><br>
+    <strong>Standard ist Lesen und Verwalten.</strong> An Gästefotos, Gast-Adressen, das QR-Ziel, Mail- und
+    Webhook-Einstellungen, PIN und Schlüssel, die Fernsteuerung einer Box und Updates kommt ein Zugang nur mit
+    einem <strong>Zusatzrecht</strong>, das du einzeln und mit deinem Passwort vergibst. Löschen, Abschalten und
+    Updates fragt der Assistent jedes Mal zweistufig nach; alles außer Lesen steht im Änderungsprotokoll.
+    Passwörter, PIN und Schlüssel kann ein Assistent setzen, aber nie auslesen. Antworten, die Text von Gästen
+    oder der Box enthalten, sind für den Assistenten als Daten markiert, nicht als Anweisungen.
+  </div>
+
+  <div class="alert alert--info" style="margin-bottom:var(--sp-6)">
+    {{ t('mcp.key.oauth_hint') }} <a href="/admin/settings/assistants">{{ t('oauth.admin.title') }}</a>
+  </div>
+
+  <h2 class="settings-section-title">Schlüssel</h2>
+  {% if key %}
+    <p class="settings-section-desc"><strong>{{ t('mcp.key.state_on') if key_enabled else t('mcp.key.state_off') }}</strong></p>
+    <p class="settings-section-desc">Trage diesen Schlüssel im KI-Werkzeug als <code>X-API-Key</code> ein.
+      Er ist das einzige Geheimnis dieses Zugangs; wer ihn hat, kann die Verwaltung bedienen.</p>
+    {% if fresh_key %}
+    <div class="form-group">
+      <p class="settings-section-desc"><strong>Nur jetzt sichtbar:</strong> Die Galerie speichert nur einen Fingerabdruck
+        des Schlüssels. Kopiere ihn jetzt; ein neues Passwort beendet ihn.</p>
+      <input class="form-control" value="{{ fresh_key }}" readonly onclick="this.select()" style="font-family:ui-monospace,monospace">
+    </div>
+    {% else %}
+    <p class="settings-section-desc">Ein Schlüssel ist eingerichtet. Er wird nur beim Erzeugen angezeigt — wer ihn
+      verloren hat, erzeugt einen neuen. Ein neues Admin-Passwort beendet ihn.</p>
+    {% endif %}
+    <div class="form-group">
+      <label class="form-label">Adresse</label>
+      <input class="form-control" value="{{ url_for('mcp.endpoint', _external=True) }}" readonly onclick="this.select()" style="font-family:ui-monospace,monospace">
+    </div>
+    <form method="post" style="display:flex;gap:10px;flex-wrap:wrap">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if key_enabled %}
+      <button class="btn btn-secondary" name="action" value="static_off">{{ t('mcp.key.switch_off') }}</button>
+      {% else %}
+      <button class="btn btn-primary" name="action" value="static_on">{{ t('mcp.key.switch_on') }}</button>
+      {% endif %}
+      <button class="btn btn-secondary" name="action" value="rotate">Neuen Schlüssel erzeugen</button>
+      <button class="btn btn-danger" name="action" value="revoke">Zugang entziehen</button>
+    </form>
+
+    <h3 class="settings-section-title" style="margin-top:var(--sp-6)">{{ t('mcp.key.extras_title') }}</h3>
+    <p class="settings-section-desc">{{ t('mcp.key.extras_desc') }}</p>
+    {% set labels = {'control': (t('oauth.scope.control'), t('oauth.scope.control_desc')),
+                     'photos': (t('oauth.scope.photos'), t('oauth.scope.photos_desc')),
+                     'secure': (t('oauth.scope.secure'), t('oauth.scope.secure_desc')),
+                     'updates': (t('oauth.scope.updates'), t('oauth.scope.updates_desc'))} %}
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% for s in ['control', 'photos', 'secure', 'updates'] %}
+      <label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+        <input type="checkbox" name="scope_{{ s }}" value="1" {% if s in key_extras %}checked{% endif %}>
+        <span><strong>{{ labels[s][0] }}</strong><br><small>{{ labels[s][1] }}</small></span>
+      </label>
+      {% endfor %}
+      <div class="form-group">
+        <label class="form-label" for="key-reauth">{{ t('oauth.consent.password') }}</label>
+        <input class="form-control" type="password" id="key-reauth" name="password" autocomplete="current-password">
+      </div>
+      <button class="btn btn-secondary" name="action" value="key_extras">{{ t('mcp.key.extras_save') }}</button>
+    </form>
+  {% else %}
+    <p class="settings-section-desc">Noch kein Zugang eingerichtet. Ohne Schlüssel antwortet die Adresse auf
+      jede Anfrage mit „Kein Schlüssel“.</p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-primary" name="action" value="rotate">Zugang einrichten</button>
+    </form>
+  {% endif %}
+
+  <h2 class="settings-section-title" style="margin-top:var(--sp-8)">Was der Assistent tun kann</h2>
+  <table class="table table--stack">
+    <thead><tr><th>Werkzeug</th><th>{{ t('mcp.key.col_scope') }}</th><th>Wozu</th></tr></thead>
+    <tbody>
+      {% for name, spec in tools %}
+        <tr><td class="td-main"><code>{{ name }}</code></td><td data-label="{{ t('mcp.key.col_scope') }}">{{ {'read': t('oauth.scope.read'), 'manage': t('oauth.scope.manage'), 'control': t('oauth.scope.control'), 'photos': t('oauth.scope.photos'), 'secure': t('oauth.scope.secure'), 'updates': t('oauth.scope.updates')}[spec.scope] }}{% for x in spec.also %} + {{ {'photos': t('oauth.scope.photos'), 'control': t('oauth.scope.control')}[x] }}{% endfor %}{% if spec.destructive %} · zweistufig{% endif %}</td><td data-label="Wozu">{{ spec.description }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

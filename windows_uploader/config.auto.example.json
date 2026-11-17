@@ -1,0 +1,62 @@
+{
+  "server_url": "https://photobox.example.org",
+  "auto_events": true,
+  "admin_api_key": "PASTE_ADMIN_API_KEY_HERE",
+  "ensure_endpoint": "/api/events/ensure",
+  "event_root": "C:\\DSLRBooth",
+  "event_folder_glob": "*",
+  "poll_interval_seconds": 2,
+  "stable_seconds": 3,
+  "recursive": true,
+  "allowed_ext": [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".mp4",
+    ".gif"
+  ],
+  "event_subfolders": [
+    {
+      "subdir": "Originals",
+      "kind": "photo",
+      "include_ext": [
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp"
+      ],
+      "exclude_substrings": [
+        "\\\\thumb\\\\",
+        "/thumb/"
+      ]
+    },
+    {
+      "subdir": "Prints",
+      "kind": "print",
+      "include_ext": [
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp"
+      ],
+      "exclude_substrings": [
+        "\\\\thumb\\\\",
+        "/thumb/"
+      ]
+    },
+    {
+      "subdir": "Animated",
+      "kind": "video",
+      "include_ext": [
+        ".mp4"
+      ],
+      "exclude_substrings": [
+        "_mp4.jpg",
+        ".jpg"
+      ]
+    }
+  ],
+  "state_db": "uploader_state.sqlite3",
+  "log_file": "uploader.log"
+}

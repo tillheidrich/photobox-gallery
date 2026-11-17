@@ -1,0 +1,76 @@
+/* ============================================================
+   Photobox Gallery — Event-Ebene (White-Label)
+   Lädt ZULETZT, nur auf Gast-Galerie, QR-Seite und Box.
+
+   Grundsatz: Auf der Gästeseite ist die Marke des Betreibers oder
+   des Paares sichtbar, unsere nicht. Photobox Gallery ist Werkzeug,
+   nicht Absender. Darum darf ein Event genau vier Dinge setzen —
+   mehr nicht, sonst zerfällt das System in Einzelfälle.
+
+     --pb-accent       Akzentfarbe des Events
+     --pb-event-font   Schriftfamilie (aus der erlaubten Liste)
+     --pb-event-radius Formcharakter
+     Logo              als Bilddatei, nicht als CSS
+
+   Alles Übrige (Flächen, Linien, Abstände, Bewegung, Fokus,
+   Kontrastregeln) bleibt fest. Damit kann kein Event die Galerie
+   unlesbar oder unbedienbar machen.
+
+   Der Server schreibt die Werte in ein style-Attribut am <html>:
+     <html style="--pb-accent:#7a5cff; --pb-event-radius:16px">
+   ============================================================ */
+
+:root {
+  /* Aus dem Event abgeleitet, mit unserem Wert als Rückfall. */
+  --pb-accent:       var(--pb-event-accent, var(--pb-amber-500));
+  --pb-accent-hover: color-mix(in oklch, var(--pb-accent) 82%, black);
+  --pb-accent-quiet: color-mix(in oklch, var(--pb-accent) 14%, var(--pb-surface));
+  --pb-focus:        var(--pb-accent);
+  --pb-focus-ring:   0 0 0 3px color-mix(in oklch, var(--pb-accent) 38%, transparent);
+
+  /* Schrift AUF dem Akzent wird berechnet, nicht geraten:
+     helle Akzentfarbe -> dunkle Schrift, dunkle -> helle. Damit bleibt ein
+     Knopf auch bei Neongelb lesbar.
+     Der Kipppunkt liegt bei L 0.575 — dort kreuzen sich die beiden
+     Kontrastkurven. Multipliziert mit 1000 wird aus der Differenz ein
+     harter Schalter, clamp() macht daraus 0.16 oder 0.97.
+     Nicht 0 und 1: reines Schwarz und reines Weiß sind im System verboten.
+     Die Farbrichtung des Akzents bleibt mit minimaler Sättigung erhalten,
+     damit auch diese Schrift warm bleibt statt grau.
+
+     Ehrliche Grenze: Zwischen L 0.55 und 0.60 erreicht KEINE Schriftfarbe
+     4.5:1 — dort liegt das Beste bei etwa 4.2:1. Das ist keine Schwäche
+     dieser Rechnung, sondern der Farbe selbst. Die Verwaltung soll beim
+     Speichern einer solchen Akzentfarbe warnen und anbieten, den Text
+     neben den Knopf statt darauf zu setzen. */
+  --pb-on-accent: oklch(
+    from var(--pb-accent)
+    clamp(0.16, (0.575 - l) * 1000 * 0.81 + 0.16, 0.97)
+    0.014 h
+  );
+
+  --pb-r-md:  var(--pb-event-radius, 9px);
+  --pb-r-lg:  calc(var(--pb-event-radius, 9px) * 1.35);
+  --pb-font:  var(--pb-event-font, "Inter", ui-sans-serif, system-ui, sans-serif);
+}
+
+/* Rückfall für Browser ohne oklch(from …): dunkle Schrift auf Akzent.
+   Wird von der Regel oben überschrieben, wo sie unterstützt wird. */
+@supports not (color: oklch(from red l c h)) {
+  :root { --pb-on-accent: #0f0d09; }
+  :root[data-accent-dunkel="1"] { --pb-on-accent: #fefdfc; }
+}
+
+/* Kopf der Gast-Galerie: Logo des Events, nicht unseres. */
+.pb-event-kopf { display: flex; align-items: center; gap: var(--pb-4); min-height: 56px; }
+.pb-event-kopf img { max-height: 40px; width: auto; }
+.pb-event-titel { font-size: var(--pb-text-2xl); letter-spacing: var(--pb-track-tight); }
+.pb-event-datum { color: var(--pb-text-2); font-size: var(--pb-text-sm); }
+
+/* Unsere Marke erscheint auf Gästeseiten nur als eine Zeile im Fuß,
+   klein, ohne Logo — und ist je Event abschaltbar. */
+.pb-fuss-marke { font-size: var(--pb-text-xs); color: var(--pb-text-muted); }
+[data-marke="aus"] .pb-fuss-marke { display: none; }
+
+/* Wasserzeichen des Betreibers liegt ÜBER dem Foto, nie im Foto. */
+.pb-wasserzeichen { position: absolute; inset: auto 8px 8px auto; opacity: .7; pointer-events: none; }

@@ -1,0 +1,40 @@
+{# Clients that may open this gallery with their access code. #}
+{% set cp = client_panel(event.id) %}
+<div class="card" style="margin:1.25rem 0" id="kunden">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('client.admin.panel_title') }}</h2></div>
+  <div class="card-body">
+    <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0 0 12px">{{ t('client.admin.panel_hint') }}</p>
+    {% if cp.clients %}
+    <form method="post" action="/admin/events/{{ event.id }}/clients">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="gs-grid">
+        {% for c in cp.clients %}
+        <label class="gs-check"><input type="checkbox" name="client_ids" value="{{ c.id }}" {% if c.id in cp.assigned %}checked{% endif %}>
+          {{ c.name }}{% if not c.active %} · {{ t('client.admin.blocked') }}{% endif %}</label>
+        {% endfor %}
+      </div>
+      <button class="btn btn-secondary" style="margin-top:10px">{{ t('client.admin.save') }}</button>
+    </form>
+    {% endif %}
+    <p style="margin:10px 0 0;font-size:.85rem"><a class="adm-link" href="/admin/clients">{{ t('client.admin.manage') }}</a></p>
+    <h3 style="font-size:.875rem;font-weight:600;margin:18px 0 8px">{{ t('picks.admin.title') }}</h3>
+    {% if cp.selections %}
+    <table class="sl-table table--stack">
+      <thead><tr><th>{{ t('client.admin.name') }}</th><th>{{ t('picks.admin.selection') }}</th><th>{{ t('picks.admin.count') }}</th><th>{{ t('picks.admin.export') }}</th></tr></thead>
+      {% for s in cp.selections %}
+      {% set base = '/admin/events/' ~ event.id ~ '/selections/' ~ s.id %}
+      <tr>
+        <td class="td-main">{{ s.client_name }}</td><td data-label="{{ t('picks.admin.selection') }}"><span><b>{{ s.name }}</b><br><small style="color:var(--color-text-muted)">{{ (s.updated_at or s.created_at or '')[:16] }}</small></span></td>
+        <td data-label="{{ t('picks.admin.count') }}">{{ s.count }}</td>
+        <td class="td-actions"><a class="adm-link" href="{{ base }}.or" target="_blank" rel="noopener" title="{{ t('picks.admin.or_hint') }}">Lightroom (OR)</a> ·
+            <a class="adm-link" href="{{ base }}.comma" target="_blank" rel="noopener">{{ t('picks.admin.comma') }}</a> ·
+            <a class="adm-link" href="{{ base }}.csv">CSV</a> · <a class="adm-link" href="{{ base }}.txt">{{ t('picks.admin.txt') }}</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+    <p style="margin:8px 0 0;font-size:.78rem;color:var(--color-text-muted)">{{ t('picks.admin.or_hint') }}</p>
+    {% else %}
+    <p style="margin:0;font-size:.85rem;color:var(--color-text-muted)">{{ t('picks.admin.none') }}</p>
+    {% endif %}
+  </div>
+</div>

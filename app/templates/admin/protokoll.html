@@ -1,0 +1,95 @@
+{% extends "layout_admin.html" %}
+{% block title %}Änderungsprotokoll{% endblock %}
+{% block page_title %}Änderungsprotokoll{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Änderungsprotokoll</h1>
+    <p class="page-subtitle">Wer hat wann was umgestellt. Aufgezeichnet wird jede ändernde Anfrage an
+      die Verwaltung — auch die, für die niemand eigens daran gedacht hat. Dass ein Kennwort oder
+      ein Schlüssel neu ist, steht drin; der Wert nie. Die IP-Adresse steht gekürzt da, das genügt
+      für „aus dem Büro oder von unterwegs". Einträge bleiben {{ tage }} Tage.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn--secondary" href="{{ url_for('admin.protokoll_csv', suche=suche, wer=wer) }}">Als CSV</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--sp-6)">
+  <div class="card-body">
+    <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:0">
+      <div class="form-group" style="margin:0;flex:1 1 260px">
+        <label class="form-label" for="p-suche">Suchen</label>
+        <input class="form-control" id="p-suche" name="suche" value="{{ suche }}"
+               placeholder="Feld, Gegenstand oder Pfad">
+      </div>
+      <div class="form-group" style="margin:0;min-width:min(180px,100%);flex:1 1 180px">
+        <label class="form-label" for="p-wer">Wer</label>
+        <select class="form-control" id="p-wer" name="wer">
+          <option value="">alle</option>
+          {% for name in leute %}<option value="{{ name }}" {% if wer == name %}selected{% endif %}>{{ name }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn--secondary" type="submit">Filtern</button>
+      {% if suche or wer %}<a class="btn btn--secondary" href="{{ url_for('admin.protokoll_seite') }}">Zurücksetzen</a>{% endif %}
+    </form>
+  </div>
+</div>
+
+{% if vorgaenge %}
+{% for v in vorgaenge %}
+<div class="card" style="margin-bottom:var(--sp-4)">
+  <div class="card-header" style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
+    <strong style="font-size:.9375rem">{{ v.was }}</strong>
+    <span class="badge badge--gray">{{ v.methode }}</span>
+    <span style="color:var(--color-text-2);font-size:.85rem">
+      {{ v.at.replace('T', ' ') }} UTC · {{ v.wer }}{% if v.ip %} · {{ v.ip }}{% endif %}
+    </span>
+    <span style="margin-left:auto;font-size:.85rem;
+      color:{% if 'abgelehnt' in v.ergebnis %}var(--pb-danger){% else %}var(--color-text-2){% endif %}">
+      {{ v.ergebnis }}</span>
+  </div>
+  {% if v.aenderungen %}
+  <div class="card-body" style="padding-top:0">
+    <table class="table table--stack" style="margin:0">
+      <thead><tr><th style="width:30%">Gegenstand</th><th style="width:22%">Feld</th>
+                 <th>Vorher</th><th>Nachher</th></tr></thead>
+      <tbody>
+        {% for a in v.aenderungen %}
+        <tr>
+          <td class="td-main">{{ a.gegenstand }}</td>
+          <td data-label="Feld">{% if a.feld %}<code>{{ a.feld }}</code>{% else %}—{% endif %}</td>
+          <td data-label="Vorher" style="color:var(--color-text-2)">{% if a.vorher is none %}<em>leer</em>{% else %}{{ a.vorher }}{% endif %}</td>
+          <td data-label="Nachher"{% if a.nachher == 'entfernt' %} style="color:var(--pb-danger)"{% endif %}>
+            {%- if a.nachher is none %}<em>leer</em>{% else %}{{ a.nachher }}{% endif -%}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="form-hint" style="margin:10px 0 0"><code>{{ v.pfad }}</code></p>
+  </div>
+  {% else %}
+  <div class="card-body" style="padding-top:0">
+    <p class="form-hint" style="margin:0"><code>{{ v.pfad }}</code> — an Einstellungen, Events und
+      Boxen hat sich dabei nichts geändert. Was an Aufnahmen geschah, steht im
+      <a class="adm-link" href="{{ url_for('admin.deletions') }}">Löschprotokoll</a>.</p>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<div style="display:flex;gap:12px;justify-content:space-between;margin-top:var(--sp-6)">
+  {% if seite > 1 %}
+  <a class="btn btn--secondary" href="{{ url_for('admin.protokoll_seite', seite=seite-1, suche=suche, wer=wer) }}">Neuere</a>
+  {% else %}<span></span>{% endif %}
+  {% if weiter %}
+  <a class="btn btn--secondary" href="{{ url_for('admin.protokoll_seite', seite=seite+1, suche=suche, wer=wer) }}">Ältere</a>
+  {% endif %}
+</div>
+{% else %}
+<div class="card"><div class="card-body" style="color:var(--color-text-2)">
+  {% if suche or wer %}Auf diesen Filter passt nichts.{% else %}Noch nichts umgestellt, seit das
+  Protokoll läuft. Der nächste Klick auf „Speichern" steht hier.{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

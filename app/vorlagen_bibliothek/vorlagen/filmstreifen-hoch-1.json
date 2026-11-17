@@ -1,0 +1,105 @@
+{
+ "id": "filmstreifen-hoch-1",
+ "name": "Filmstreifen · hoch · 1 Foto",
+ "paper": "10x15",
+ "canvas": [
+  1200,
+  1800
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 1008,
+   "h": 840,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  }
+ ],
+ "texts": [
+  {
+   "x": 600,
+   "y": 1250,
+   "size": 79,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#f1eee8",
+   "id": "t1",
+   "font": "CourierPrime-Regular.ttf"
+  },
+  {
+   "x": 600,
+   "y": 1340,
+   "size": 43,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#b3aea6",
+   "id": "t2",
+   "font": "CourierPrime-Regular.ttf"
+  }
+ ],
+ "shots": 1,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 1800,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "line",
+   "x": 570,
+   "y": 1211,
+   "w": 60,
+   "h": 6,
+   "fill": "",
+   "stroke": "#b3aea6",
+   "stroke_width": 3,
+   "opacity": 100,
+   "id": "form-3"
+  }
+ ],
+ "images": [
+  {
+   "file": "kol-film-perforation-senkrecht-hoch.png",
+   "x": 18,
+   "y": 0,
+   "w": 40,
+   "h": 1800,
+   "opacity": 100,
+   "id": "bild-1"
+  },
+  {
+   "file": "kol-film-perforation-senkrecht-hoch.png",
+   "x": 1142,
+   "y": 0,
+   "w": 40,
+   "h": 1800,
+   "opacity": 100,
+   "id": "bild-2"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "bild-1",
+  "bild-2",
+  "foto-1",
+  "form-3",
+  "t1",
+  "t2"
+ ]
+}

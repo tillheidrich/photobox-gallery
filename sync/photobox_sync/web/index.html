@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photobox Sync</title>
+<style>
+:root{--bg:#f6f5f2;--panel:#fff;--line:#e7e5e0;--text:#1c1c1e;--muted:#6b6b70;--ok:#2f9e5b;--warn:#d9820b;--bad:#d4383f;--accent:#1c1c1e;
+  font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#111113;--panel:#19191c;--line:#2a2a2f;--text:#f1f1f3;--muted:#9a9aa2;--accent:#f1f1f3}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 22px 60px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:22px}
+h1{font-size:28px;letter-spacing:-.02em;margin:0}
+.sub{color:var(--muted);font-size:14px;margin-top:4px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;background:var(--panel);border:1px solid var(--line);font-size:14px;font-weight:600}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+.card h2{font-size:15px;margin:0 0 14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{padding:12px;border-radius:12px;background:var(--bg)}
+.stat b{display:block;font-size:26px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat span{font-size:12px;color:var(--muted)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:14px 0 0;font-size:14px}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
+ul.files{list-style:none;margin:0;padding:0;font-size:14px}
+ul.files li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+ul.files li:first-child{border-top:0}
+.muted{color:var(--muted)}
+label{display:grid;gap:6px;font-size:13px;color:var(--muted);margin-bottom:12px}
+input,textarea,select{font:inherit;font-size:15px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:42px}
+textarea{width:100%;min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{font:inherit;font-weight:600;font-size:14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px 16px;cursor:pointer;min-height:42px}
+button.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+button:active{transform:scale(.98)}
+button:hover{border-color:var(--muted)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button,input,select{transition:border-color .15s ease}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.job{border:1px solid var(--line);border-radius:12px;padding:12px 12px 2px;margin-bottom:10px}
+.job .row{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.job-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;font-size:13px;margin-bottom:10px}
+.chips label{margin:0}
+pre{font-size:12px;max-height:240px;overflow:auto;white-space:pre-wrap;color:var(--muted);margin:0}
+.full{grid-column:1/-1}
+.target{border:1px solid var(--line);border-radius:12px;padding:12px 12px 2px;margin-bottom:10px}
+.target .row{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.target-foot{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap}
+.check{display:flex!important;gap:8px;align-items:center;color:var(--text)!important}
+.check input{min-height:0}
+.hint{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 12px}
+dialog{border:1px solid var(--line);border-radius:16px;padding:22px;max-width:520px;width:92vw;background:var(--panel);color:var(--text)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+#pickList li{border-top:0;padding:3px 0}#pickList button{width:100%;text-align:left}
+code{font-size:12px;background:var(--bg);padding:2px 6px;border-radius:6px}
+[hidden]{display:none!important}
+@media(max-width:820px){.grid,.row{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Photobox Sync</h1><div class="sub" id="sub">verbinde …</div></div>
+    <span class="pill"><i class="dot" id="dot"></i><span id="state">…</span></span>
+  </header>
+  <div class="grid">
+    <section class="card">
+      <h2>Warteschlange</h2>
+      <div class="stats">
+        <div class="stat"><b id="qPending">–</b><span>offen</span></div>
+        <div class="stat"><b id="qDone">–</b><span>übertragen</span></div>
+        <div class="stat"><b id="qFailed">–</b><span>fehlgeschlagen</span></div>
+      </div>
+      <dl>
+        <dt>Event</dt><dd id="event">–</dd>
+        <dt>Ziele</dt><dd id="targets">–</dd>
+        <dt>Tempo</dt><dd id="speed">–</dd>
+        <dt>Restzeit</dt><dd id="eta">–</dd>
+        <dt>Freier Platz</dt><dd id="disk">–</dd>
+        <dt>Letzter Kontakt</dt><dd id="lastSync">–</dd>
+        <dt>Aufnahme-Software</dt><dd id="booth">–</dd>
+        <dt>Durchgang</dt><dd id="session">–</dd>
+      </dl>
+      <div class="actions" style="margin-top:16px">
+        <button onclick="act('sync_now')">Jetzt synchronisieren</button>
+        <button id="pauseBtn" onclick="togglePause()">Upload pausieren</button>
+        <button onclick="act('rescan')">Ordner neu prüfen</button>
+        <button onclick="act('retry_failed')">Fehlgeschlagene erneut</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Zuletzt erkannt</h2>
+      <ul class="files" id="files"><li class="muted">Noch keine Dateien.</li></ul>
+    </section>
+
+    <section class="card full">
+      <h2>Verlauf — was ist wohin gegangen</h2>
+      <p class="hint">Die Frage nach dem Event: ist alles oben? Hier steht jede übertragene Datei mit Ziel und Zeit.</p>
+      <ul class="files" id="history"><li class="muted">Noch nichts übertragen.</li></ul>
+    </section>
+
+    <section class="card full" id="settings">
+      <h2>Einstellungen</h2>
+      <div id="pinGate" hidden><label>PIN<input id="pin" type="password" inputmode="numeric"></label><button onclick="loadConfig()">Öffnen</button></div>
+      <div id="form" hidden>
+        <p class="hint">Gerät in der Photobox Gallery unter <b>Geräte</b> anlegen, dort <b>Kopplungscode kopieren</b> — und hier einfügen. Das war die ganze Einrichtung; das Event weist du danach in der Galerie zu, ohne diesen PC anzufassen.</p>
+        <div class="row">
+          <label>Kopplungscode<input id="pairCode" placeholder="PBX1-… hier einfügen" autocomplete="off" spellcheck="false"></label>
+          <label style="align-self:end"><button class="primary" style="width:100%" onclick="pair()">Koppeln</button></label>
+        </div>
+        <p class="hint" id="pairMsg" hidden></p>
+        <details><summary class="muted" style="cursor:pointer;font-size:13px">Von Hand eintragen</summary>
+          <div class="row" style="margin-top:8px">
+            <label>Galerie-Adresse<input id="url" placeholder="https://photobox.example.de"></label>
+            <label>Geräte-Schlüssel<input id="key" placeholder="neu eingeben zum Ändern"></label>
+          </div>
+        </details>
+        <h2 style="margin-top:8px">Sync-Aufträge</h2>
+        <p class="hint">Ein Auftrag je Ordner. dslrBooth legt Originale, Drucke und GIFs getrennt ab — jeder Auftrag kann eigene Ziele haben, etwa Drucke ans NAS und Originale zu Picdrop. Standard unter <code>Bilder\dslrBooth</code>. Übertragen wird nur, was nach dem Speichern entsteht. Für Sofort-Upload in dslrBooth unter Einstellungen → Trigger die URL <code>http://127.0.0.1:8766/trigger</code> eintragen.</p>
+        <div id="folders"></div>
+        <button onclick="addFolder()">+ Auftrag</button>
+        <h2 style="margin-top:18px">Weitere Ziele</h2>
+        <p class="hint">Zusätzlich zur Galerie: Picdrop („Live Push“, FTPS), NAS oder Webspace (FTP, SFTP/SSH) und eine Kopie in einen Ordner oder auf einen USB-Stick. Zugangsdaten stehen in Picdrop unter Galerie → Upload per FTP. <b>Ziele prüfen</b> meldet sich bei jedem Ziel einmal an — erst speichern, dann prüfen.</p>
+        <div id="targetRows"></div>
+        <div class="actions"><button type="button" onclick="addTarget({type:'ftps', flat:true}); renderChips()">+ Ziel</button>
+          <button type="button" id="checkBtn" onclick="checkTargets()">Ziele prüfen</button></div>
+        <ul class="files" id="checkResult" hidden></ul>
+        <details style="margin-top:12px"><summary class="muted" style="cursor:pointer;font-size:13px">Erweitert: Ziele als JSON</summary>
+          <textarea id="targetsJson" spellcheck="false" style="margin-top:8px"></textarea>
+          <p class="hint">Wird beim Speichern übernommen, wenn hier etwas geändert wurde.</p>
+        </details>
+        <div class="row" style="margin-top:12px">
+          <label>Name dieses PCs<input id="name"></label>
+          <label>PIN für diese Seite (optional)<input id="newPin" inputmode="numeric"></label>
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input type="checkbox" id="toGallery" style="min-height:0" onchange="renderChips()"> Zur Photobox Gallery hochladen</label>
+        <div class="actions"><button class="primary" onclick="save()">Speichern</button></div>
+      </div>
+    </section>
+    <section class="card full"><h2>Protokoll</h2><pre id="log"></pre></section>
+  </div>
+</div>
+<dialog id="picker">
+  <h2 style="margin:0 0 4px;font-size:15px">Ordner am Ziel</h2>
+  <p class="hint" id="pickPath" style="word-break:break-all"></p>
+  <ul class="files" id="pickList" style="max-height:300px;overflow:auto"></ul>
+  <div class="actions" style="margin-top:12px">
+    <button type="button" class="primary" id="pickTake" onclick="pickHere()">Diesen Ordner nehmen</button>
+    <button type="button" onclick="pickNew()">Neuer Unterordner …</button>
+    <button type="button" onclick="document.getElementById('picker').close()">Abbrechen</button>
+  </div>
+</dialog>
+<script>
+let PIN = "";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const groesse = (b) => b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
+const dauer = (sec) => sec < 90 ? `${Math.round(sec)} s` : sec < 5400 ? `${Math.round(sec / 60)} min` : `${(sec / 3600).toFixed(1)} h`;
+const ago = (ts) => { if (!ts) return "noch nie"; const s = Math.round(Date.now()/1000 - ts); return s < 60 ? `vor ${s} s` : s < 3600 ? `vor ${Math.round(s/60)} min` : new Date(ts*1000).toLocaleString("de-DE"); };
+async function call(path, opts = {}) {
+  const r = await fetch(path, {...opts, headers: {"Content-Type": "application/json", "X-Pin": PIN}});
+  if (!r.ok) throw Object.assign(new Error((await r.json().catch(() => ({}))).detail || r.statusText), {status: r.status});
+  return r.json();
+}
+async function refresh() {
+  try {
+    const s = await call("/api/status");
+    const bad = s.queue.failed > 0, ok = s.online;
+    $("dot").className = "dot " + (bad ? "bad" : ok ? "ok" : s.queue.pending ? "warn" : "");
+    $("state").textContent = ok ? "Online" : "Offline";
+    $("sub").textContent = `Version ${s.version}` + (s.error && !ok ? ` · ${s.error}` : "");
+    $("qPending").textContent = s.queue.pending; $("qDone").textContent = s.queue.done; $("qFailed").textContent = s.queue.failed;
+    $("event").textContent = s.event || "noch kein Event zugewiesen";
+    $("targets").textContent = s.targets.length ? s.targets.join(", ") : "keins konfiguriert";
+    $("speed").textContent = s.speed_bps ? `${(s.speed_bps / 1024 / 1024 * 8).toFixed(1)} Mbit/s` : "–";
+    $("eta").textContent = s.eta_seconds === null || s.eta_seconds === undefined ? "–"
+      : s.eta_seconds === 0 ? "alles übertragen" : dauer(s.eta_seconds);
+    $("disk").textContent = s.disk_free_gb !== undefined ? `${s.disk_free_gb} GB` : "–";
+    if (s.disk_free_gb !== undefined && s.disk_free_gb < 2) $("disk").style.color = "var(--bad)";
+    $("pauseBtn").textContent = s.paused ? "Upload fortsetzen" : "Upload pausieren";
+    if (s.paused) { $("state").textContent = "pausiert"; $("dot").className = "dot warn"; }
+    $("lastSync").textContent = ago(s.last_sync);
+    $("booth").textContent = s.booth_running ? "läuft" : "nicht gestartet";
+    $("session").textContent = s.session ? `aktiv (${s.session.uid})` : "–";
+    $("files").innerHTML = s.last_files.length ? s.last_files.map(f => `<li><span>${esc(f.name)}</span><span class="muted">${esc(f.kind)} · ${ago(f.at)}</span></li>`).join("") : '<li class="muted">Noch keine Dateien.</li>';
+    if (s.pin_required && !PIN && $("form").hidden) $("pinGate").hidden = false;
+  } catch (e) { $("state").textContent = "nicht erreichbar"; }
+}
+const KINDS = ["auto","photo","print","gif","video","boomerang","original"];
+const GALLERY = "gallery";
+function targetLabel(n) { return n === GALLERY ? "Galerie" : n; }
+function availableTargets() {
+  // Genau die Namen, unter denen der Agent die Ziele führt — sonst zeigt die
+  // Auswahl etwas an, das es beim Hochladen nicht gibt.
+  const names = $("toGallery").checked ? [GALLERY] : [];
+  document.querySelectorAll(".target").forEach((d) => {
+    const type = d.querySelector('[data-k="type"]').value;
+    const n = d.querySelector('[data-k="name"]').value.trim() || defaultTargetName(type);
+    if (!names.includes(n)) names.push(n);
+  });
+  return names;
+}
+function renderChips() {
+  const avail = availableTargets();
+  document.querySelectorAll(".job").forEach((d) => {
+    const box = d.querySelector(".chips");
+    let sel = box.dataset.ready ? [...box.querySelectorAll("input:checked")].map((i) => i.value)
+                                : (JSON.parse(d.dataset.extra || "{}").targets || []);
+    box.dataset.ready = "1";
+    box.innerHTML = avail.length
+      ? avail.map((n) => `<label class="check"><input type="checkbox" value="${esc(n)}" ${sel.includes(n) ? "checked" : ""}> ${esc(targetLabel(n))}</label>`).join("")
+      : '<span class="muted">Noch kein Ziel eingerichtet — weiter unten anlegen.</span>';
+  });
+}
+const liste = (v) => v.split(",").map((x) => x.trim()).filter(Boolean);
+function folderRow(f = {}) {
+  const d = document.createElement("div"); d.className = "job";
+  const pick = (f.targets || []).length > 0;
+  d.innerHTML = `<div class="row">
+      <label>Auftrag<input class="fname" value="${esc(f.name || "")}" placeholder="Originale"></label>
+      <label>Ordner<input class="fpath" value="${esc(f.path || "")}" placeholder="C:\\Users\\Fotobox\\Pictures\\dslrBooth"></label>
+      <label>Art<select class="fkind">${KINDS.map((k) => `<option ${f.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></label>
+      <label>Ziele<select class="fmode"><option value="all" ${pick ? "" : "selected"}>alle Ziele</option><option value="pick" ${pick ? "selected" : ""}>nur ausgewählte</option></select></label>
+    </div>
+    <div class="chips" ${pick ? "" : "hidden"}></div>
+    <details style="margin-bottom:10px"><summary class="muted" style="cursor:pointer;font-size:13px">Filter</summary>
+      <div class="row" style="margin-top:8px">
+        <label>Nur diese Muster<input class="finc" value="${esc((f.include || []).join(", "))}" placeholder="leer = alles, z. B. *.jpg, *.mp4"></label>
+        <label>Diese nie<input class="fexc" value="${esc((f.exclude || []).join(", "))}" placeholder="thumbs.db, *_thumb.jpg"></label>
+        <label>Mindestgröße (KB)<input class="fmin" inputmode="numeric" value="${esc(f.min_kb || "")}" placeholder="0"></label>
+      </div>
+    </details>
+    <div class="job-foot">
+      <label class="check"><input type="checkbox" class="fon" ${f.enabled === false ? "" : "checked"}> Auftrag aktiv</label>
+      <button type="button" onclick="this.closest('.job').remove()">Entfernen</button>
+    </div>`;
+  d.dataset.extra = JSON.stringify(f);
+  d.querySelector(".fmode").addEventListener("change", (e) => { d.querySelector(".chips").hidden = e.target.value !== "pick"; });
+  return d;
+}
+function addFolder(f) { $("folders").appendChild(folderRow(f)); renderChips(); }
+let TARGETS_JSON_LOADED = "";
+function addTarget(t = {}) {
+  const d = document.createElement("div"); d.className = "target";
+  d.dataset.extra = JSON.stringify(t);
+  d.innerHTML = `<div class="row">
+      <label>Art<select data-k="type">${TYPES.map(([v, l]) => `<option value="${v}" ${(t.type || "ftps") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label>Name<input data-k="name" value="${esc(t.name || "")}" placeholder="picdrop"></label>
+      <label class="net">Server<input data-k="host" value="${esc(t.host || "")}" placeholder="ftp.picdrop.com"></label>
+    </div><div class="row">
+      <label class="net">Benutzer<input data-k="user" value="${esc(t.user || "")}" autocomplete="off"></label>
+      <label class="net">Passwort<input data-k="password" type="password" value="${esc(t.password || "")}" autocomplete="new-password"></label>
+      <label>Ordner<input data-k="path" value="${esc(t.path || "")}" placeholder="leer = Hauptordner"></label>
+      <label class="net">Port<input data-k="port" inputmode="numeric" value="${esc(t.port || "")}" placeholder="${t.type === "sftp" ? "22" : "21"}"></label>
+      <label class="ssh">Schlüsseldatei<input data-k="key_file" value="${esc(t.key_file || "")}" placeholder="C:\\Users\\…\\id_ed25519"></label>
+      <label class="local">Ablage<select data-k="layout">${LAYOUTS.map(([v, l]) => `<option value="${v}" ${t.layout === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    </div>
+    <div class="target-foot">
+      <label class="check"><input type="checkbox" data-k="only_web" ${t.only_web ? "checked" : ""}> nur Web-Fassungen, keine Originale</label>
+      <label class="check net"><input type="checkbox" data-k="flat" ${t.flat === false ? "" : "checked"}> alles in einen Ordner statt Unterordner je Event und Tag</label>
+      <label class="check"><input type="checkbox" data-k="paused" ${t.paused ? "checked" : ""}> dieses Ziel pausiert</label>
+      <label class="check net" style="gap:6px">Bremse<input data-k="limit_kbps" inputmode="numeric" value="${esc(t.limit_kbps || "")}" placeholder="0" style="width:82px;min-height:32px;padding:4px 8px"> KB/s</label>
+      <label class="check local"><input type="checkbox" data-k="removable" ${t.removable ? "checked" : ""}> Wechseldatenträger (darf fehlen)</label>
+      <span style="display:flex;gap:8px;margin-left:auto">
+        <button type="button" onclick="browse(this)">Ordner wählen …</button>
+        <button type="button" onclick="this.closest('.target').remove(); renderChips()">Entfernen</button>
+      </span>
+    </div>`;
+  const type = d.querySelector('[data-k="type"]');
+  const fit = () => {
+    const v = type.value;
+    d.querySelectorAll(".net").forEach((el) => { el.hidden = v === "folder"; });
+    d.querySelectorAll(".ssh").forEach((el) => { el.hidden = v !== "sftp"; });
+    d.querySelectorAll(".local").forEach((el) => { el.hidden = v !== "folder"; });
+    d.querySelector('[data-k="port"]').placeholder = v === "sftp" ? "22" : "21";
+    d.querySelector('[data-k="path"]').placeholder = v === "folder" ? "D:\\Fotos oder E:\\ (Stick)" : "leer = Hauptordner";
+  };
+  type.addEventListener("change", () => { fit(); renderChips(); });
+  fit();
+  $("targetRows").appendChild(d);
+}
+const TYPES = [["ftps", "Picdrop / FTPS"], ["ftp", "FTP ohne Verschlüsselung (Passwort und Bilder lesbar)"], ["sftp", "NAS / SFTP (SSH)"],
+               ["folder", "Ordner / USB-Stick"]];
+const LAYOUTS = [["event/date", "Unterordner: Event / Datum"], ["event", "Unterordner: Event"],
+                 ["flat", "alles in einen Ordner"]];
+function defaultTargetName(type) {
+  return {sftp: "nas", ftp: "ftp", folder: "ablage"}[type] || "picdrop";
+}
+document.addEventListener("input", (e) => { if (e.target.closest(".target")) renderChips(); });
+function readTargets() {
+  const raw = $("targetsJson").value.trim();
+  if (raw !== TARGETS_JSON_LOADED) return JSON.parse(raw || "[]");      // Erweitert wurde bearbeitet
+  return [...document.querySelectorAll(".target")].map((d) => {
+    const o = JSON.parse(d.dataset.extra || "{}");
+    d.querySelectorAll("[data-k]").forEach((el) => { o[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value.trim(); });
+    if (!o.name) o.name = defaultTargetName(o.type);
+    if (o.port === "") delete o.port; else if (o.port) o.port = Number(o.port);
+    o.limit_kbps = Number(o.limit_kbps || 0);
+    if (o.type === "folder") { delete o.host; delete o.user; delete o.password; delete o.port; }
+    return o;
+  }).filter((o) => o.host || (o.type === "folder" && o.path));
+}
+async function loadConfig() {
+  if ($("pin").value) PIN = $("pin").value;
+  try {
+    const c = await call("/api/config");
+    $("pinGate").hidden = true; $("form").hidden = false;
+    $("url").value = c.server.url || ""; $("key").placeholder = c.server.api_key || "noch nicht gesetzt";
+    $("name").value = c.device_name || ""; $("newPin").value = c.pin || "";
+    $("toGallery").checked = c.upload_to_gallery !== false;
+    TARGETS_JSON_LOADED = JSON.stringify(c.targets || [], null, 2);
+    $("targetsJson").value = TARGETS_JSON_LOADED;
+    $("targetRows").innerHTML = ""; (c.targets || []).forEach(addTarget);
+    $("folders").innerHTML = ""; (c.folders || []).forEach(addFolder); if (!(c.folders || []).length) addFolder();
+    const lg = await call("/api/log"); $("log").textContent = lg.lines.length ? lg.lines.join("\n") : "Noch keine Einträge. Sobald Dateien erkannt oder übertragen werden, steht es hier.";
+  } catch (e) { if (e.status === 401) $("pinGate").hidden = false; }
+}
+async function save() {
+  let targets; try { targets = readTargets(); } catch (e) { return alert("Weitere Ziele (Erweitert): ungültiges JSON"); }
+  const blind = [];
+  const folders = [...document.querySelectorAll(".job")].map((d) => {
+    const pick = d.querySelector(".fmode").value === "pick";
+    const f = {recursive: true, ...JSON.parse(d.dataset.extra || "{}"),
+      path: d.querySelector(".fpath").value.trim(), name: d.querySelector(".fname").value.trim(),
+      kind: d.querySelector(".fkind").value, enabled: d.querySelector(".fon").checked,
+      include: liste(d.querySelector(".finc").value), exclude: liste(d.querySelector(".fexc").value),
+      min_kb: Number(d.querySelector(".fmin").value || 0),
+      targets: pick ? [...d.querySelectorAll(".chips input:checked")].map((i) => i.value) : []};
+    if (pick && f.enabled && !f.targets.length && f.path) blind.push(f.name || f.path);
+    return f;
+  }).filter((f) => f.path);
+  if (blind.length) return alert("Ohne Ziel wird nichts übertragen: " + blind.join(", ") + "\nZiel auswählen, „alle Ziele“ wählen oder den Auftrag deaktivieren.");
+  const body = {device_name: $("name").value, pin: $("newPin").value, upload_to_gallery: $("toGallery").checked, folders, targets,
+    server: {url: $("url").value.trim(), ...($("key").value.trim() ? {api_key: $("key").value.trim()} : {})}};
+  const btn = document.querySelector("#form .primary");
+  btn.disabled = true; btn.textContent = "Speichert …";
+  try {
+    await call("/api/config", {method: "POST", body: JSON.stringify(body)});
+    btn.textContent = "Gespeichert";
+  } catch (e) {
+    btn.textContent = "Fehler: " + e.message;
+  } finally {
+    setTimeout(() => { btn.disabled = false; btn.textContent = "Speichern"; }, 1800);
+  }
+  if (body.pin) PIN = body.pin;
+  $("key").value = ""; loadConfig(); refresh();
+}
+async function checkTargets() {
+  const btn = $("checkBtn"), box = $("checkResult");
+  btn.disabled = true; btn.textContent = "Prüft …";
+  try {
+    const r = await call("/api/check_targets");
+    box.hidden = false;
+    box.innerHTML = r.targets.length
+      ? r.targets.map((t) => `<li><span>${t.ok === true ? "✓" : t.ok === false ? "✕" : "–"} ${esc(targetLabel(t.name))}</span><span class="muted">${esc(t.detail)}</span></li>`).join("")
+      : '<li class="muted">Noch kein Ziel eingerichtet.</li>';
+  } catch (e) {
+    box.hidden = false; box.innerHTML = `<li class="muted">${esc(e.message)}</li>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Ziele prüfen";
+  }
+}
+let PICK_FOR = null, PICK_PATH = "";
+async function browse(btn) {
+  const row = btn.closest(".target");
+  const name = row.querySelector('[data-k="name"]').value.trim() || defaultTargetName(row.querySelector('[data-k="type"]').value);
+  PICK_FOR = row;
+  await openPath(name, row.querySelector('[data-k="path"]').value.trim());
+}
+async function openPath(name, path, create) {
+  const dlg = $("picker");
+  $("pickPath").textContent = `${name} — ${path || "Hauptordner"}`;
+  $("pickList").innerHTML = '<li class="muted">frage das Ziel …</li>';
+  PICK_PATH = path; $("pickTake").disabled = true;
+  if (!dlg.open) dlg.showModal();
+  try {
+    const q = `target=${encodeURIComponent(name)}&path=${encodeURIComponent(path)}${create ? "&create=1" : ""}`;
+    const d = await call("/api/browse?" + q);
+    PICK_PATH = d.path; $("pickTake").disabled = false;
+    $("pickPath").textContent = `${d.target} — ${d.path}`;
+    const up = d.parent ? `<li><button type="button" onclick="openPath('${esc(d.target)}','${esc(d.parent)}')">⬆ eine Ebene höher</button></li>` : "";
+    const dirs = d.dirs.map((n) => `<li><button type="button" onclick="openPath('${esc(d.target)}','${esc(d.path.replace(/\/$/, "") + "/" + n)}')">📁 ${esc(n)}</button></li>`).join("");
+    $("pickList").innerHTML = up + dirs + (d.files.length ? `<li class="muted">${d.files.length} Datei(en)${d.more_files ? ` und ${d.more_files} weitere` : ""}</li>` : "")
+      || '<li class="muted">Keine Unterordner.</li>';
+  } catch (e) {
+    $("pickList").innerHTML = `<li class="muted">${esc(e.message)}</li>`;
+  }
+}
+function pickHere() {
+  if (PICK_FOR) {
+    PICK_FOR.querySelector('[data-k="path"]').value = PICK_PATH;
+    const flat = PICK_FOR.querySelector('[data-k="flat"]');
+    if (flat && PICK_FOR.querySelector('[data-k="type"]').value !== "folder") flat.checked = false;
+  }
+  $("picker").close();
+}
+async function pickNew() {
+  const name = prompt("Name des neuen Ordners");
+  if (!name) return;
+  await openPath($("pickPath").textContent.split(" — ")[0], PICK_PATH.replace(/\/$/, "") + "/" + name, true);
+}
+async function act(name) { try { await call("/api/action/" + name, {method: "POST"}); } catch (e) {} refresh(); }
+async function pair() {
+  const code = $("pairCode").value.trim();
+  const msg = $("pairMsg");
+  msg.hidden = false;
+  if (!code) { msg.textContent = "Bitte den Code aus der Galerie einfügen."; return; }
+  msg.textContent = "Koppele …";
+  try {
+    const r = await call("/api/pair", {method: "POST", body: JSON.stringify({code})});
+    msg.textContent = r.online ? `Verbunden mit ${r.url}${r.name ? ` als „${r.name}"` : ""}.`
+                               : `Eingetragen: ${r.url}. Noch keine Antwort${r.error ? ` (${r.error})` : ""} — sobald Netz da ist, meldet sich der PC von allein.`;
+    $("pairCode").value = "";
+    loadConfig(); refresh();
+  } catch (e) {
+    msg.textContent = e.message;
+  }
+}
+async function togglePause() { await act($("pauseBtn").textContent.includes("pausieren") ? "pause" : "resume"); }
+async function loadHistory() {
+  try {
+    const {items} = await call("/api/history?limit=40");
+    $("history").innerHTML = items.length ? items.map((i) => {
+      const mb = i.bytes ? " · " + groesse(i.bytes) : "";
+      return `<li><span>${i.ok ? "✓" : "✕"} ${esc(i.file)}</span><span class="muted">${esc(i.target)}${mb} · ${ago(i.at)}${i.ok ? "" : " · " + esc(i.error || "")}</span></li>`;
+    }).join("") : '<li class="muted">Noch nichts übertragen.</li>';
+  } catch (e) { /* PIN noch nicht eingegeben */ }
+}
+refresh(); loadConfig(); loadHistory(); setInterval(refresh, 3000); setInterval(loadHistory, 15000);
+</script>
+</body>
+</html>

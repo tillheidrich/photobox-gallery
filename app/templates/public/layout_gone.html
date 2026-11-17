@@ -1,0 +1,17 @@
+{% extends "layout_public.html" %}
+{# One page for every layout link that opens nothing: unknown, expired, locked.
+   Nothing on it depends on which of the three it was. #}
+{% block title %}{{ t('lc.gone_title') }}{% endblock %}
+{% block nav %}
+<nav class="public-nav" aria-label="{{ t('a11y.nav') }}">
+  <div class="container"><span class="nav-logo"><span class="nav-logo-text">{{ t('lc.title') }}</span></span></div>
+</nav>
+{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:560px;padding:var(--sp-16) var(--sp-5)">
+    <h1 class="section-title" style="margin-bottom:var(--sp-4)">{{ t('lc.gone_heading') }}</h1>
+    <p style="color:var(--color-text-2);line-height:1.6">{{ t('lc.gone_text') }}</p>
+  </div>
+</section>
+{% endblock %}

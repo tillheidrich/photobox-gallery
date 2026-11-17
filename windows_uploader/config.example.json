@@ -1,0 +1,23 @@
+{
+  "server_url": "https://photobox.example.org",
+  "api_key": "YOUR_DEVICE_API_KEY",
+  "event_slug": "your-event-slug",
+  "auto_event": false,
+  "event_name_template": "Event {date}",
+  "watch_folder": "C:\\Fotobox\\Bilder",
+  "upload_interval": 3,
+  "min_stable_seconds": 3,
+  "max_attempts": 5,
+  "supported_extensions": [".jpg", ".jpeg", ".png", ".gif", ".mp4"],
+  "delete_after_upload": false,
+  "log_file": "uploader.log",
+  "backup": {
+    "enabled": false,
+    "protocol": "sftp",
+    "host": "nas.local",
+    "port": 22,
+    "username": "fotobox",
+    "password": "CHANGE_ME",
+    "base_path": "/Fotobox-Backup"
+  }
+}

@@ -1,0 +1,96 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}FAQ – Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'faq' %}
+{% set settings_subtitle = 'Häufige Fragen mit Antworten, Bildern und PDFs verwalten' %}
+{% include 'admin/settings/_tabs.html' %}
+
+{% if msg %}
+<div class="alert alert--success">{{ msg }}</div>
+{% endif %}
+
+<!-- Intro text -->
+<div class="card" style="margin-bottom:1.5rem">
+  <div class="card-header"><h3 class="card-title">Einleitungstext</h3></div>
+  <div class="card-body">
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="save_intro">
+      <div class="form-group">
+        <label class="form-label">Einleitung (Markdown)</label>
+        <textarea name="intro_text" class="form-control" rows="4" placeholder="Hier stehen allgemeine Hinweise zur Fotobox...">{{ intro_text }}</textarea>
+      </div>
+      <button type="submit" class="btn btn--primary">Speichern</button>
+    </form>
+  </div>
+</div>
+
+<!-- Existing items -->
+{% if items %}
+<div class="card" style="margin-bottom:1.5rem">
+  <div class="card-header"><h3 class="card-title">Einträge ({{ items|length }})</h3></div>
+  <div class="card-body" style="padding:0">
+    {% for item in items %}
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border);{% if loop.last %}border-bottom:none{% endif %}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:0.25rem">{{ item.q }}</div>
+          <div style="color:var(--color-text-muted);font-size:0.85rem;white-space:pre-wrap;max-height:60px;overflow:hidden">{{ item.a[:120] }}{% if item.a|length > 120 %}…{% endif %}</div>
+          {% if item.file_name %}<div style="font-size:0.8rem;margin-top:0.25rem">Anhang: {{ item.file_name }}</div>{% endif %}
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-shrink:0">
+          <form method="POST" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="move_up">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            <button type="submit" class="btn btn--ghost btn--sm" title="Nach oben">↑</button>
+          </form>
+          <form method="POST" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="move_down">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            <button type="submit" class="btn btn--ghost btn--sm" title="Nach unten">↓</button>
+          </form>
+          <form method="POST" style="display:inline" onsubmit="return confirm('Eintrag wirklich löschen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="delete_item">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            <button type="submit" class="btn btn--danger btn--sm">Löschen</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Add new item -->
+<div class="card">
+  <div class="card-header"><h3 class="card-title">Neuen Eintrag hinzufügen</h3></div>
+  <div class="card-body">
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="add_item">
+      <div class="form-group">
+        <label class="form-label">Frage <span style="color:var(--color-danger)">*</span></label>
+        <input type="text" name="q" class="form-control" placeholder="z.B. Wie lange sind die Fotos online?" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Antwort (Markdown)</label>
+        <textarea name="a" class="form-control" rows="5" placeholder="Die Fotos sind **dauerhaft** verfügbar, solange der Server läuft..."></textarea>
+        <div class="form-hint">Markdown wird unterstützt: **fett**, *kursiv*, [Link](URL)</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Anhang (optional)</label>
+        <input type="file" name="attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.gif">
+        <div class="form-hint">PDF oder Bild – wird als Anhang angezeigt</div>
+      </div>
+      <button type="submit" class="btn btn--primary">Eintrag hinzufügen</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'events' %}
+
+{% block title %}Freigabe – {{ event.name }}{% endblock %}
+{% block page_title %}Aufnahmen freigeben{% endblock %}
+
+{% block topbar_actions %}
+<a href="/admin/events/{{ event.id }}/edit" class="btn btn--ghost btn--sm">← Zum Event</a>
+{% endblock %}
+
+{% block content %}
+<style>
+  .rv-head{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+  .rv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}
+  .rv-card{border:1px solid var(--color-border);border-radius:var(--r-lg);overflow:hidden;background:var(--color-surface)}
+  .rv-card img,.rv-card video{display:block;width:100%;height:auto;background:var(--color-surface-3)}
+  .rv-meta{padding:.5rem .75rem;font-size:.75rem;color:var(--color-text-muted);
+           display:flex;gap:.5rem;justify-content:space-between}
+  .rv-actions{display:flex;gap:.5rem;padding:0 .75rem .75rem}
+  .rv-actions form{flex:1;display:flex}
+  .rv-actions .btn{flex:1;justify-content:center}
+</style>
+
+<div class="rv-head">
+  <div>
+    <h1 class="adm-objname" style="font-weight:600">{{ event.name }}</h1>
+    <div style="font-size:.8125rem;color:var(--color-text-muted)">
+      {% if gs.moderation %}
+        Freigabe ist an: neue Aufnahmen bleiben unsichtbar, bis du sie hier freigibst.
+      {% else %}
+        Freigabe ist aus — neue Aufnahmen erscheinen sofort in der Galerie.
+      {% endif %}
+    </div>
+  </div>
+  {% if items %}
+  <form method="post" action="/admin/events/{{ event.id }}/review/approve"
+        onsubmit="return confirm({{ ('Alle ' ~ (items|length) ~ ' Aufnahmen freigeben?')|tojson|forceescape }})">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn--primary">Alle freigeben ({{ items|length }})</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if not items %}
+<div class="card">
+  <div class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+    <h3>Nichts wartet</h3>
+    <p>Alle Aufnahmen dieses Events sind freigegeben.</p>
+    <a href="/admin/events/{{ event.id }}/edit" class="btn btn--secondary">Zum Event</a>
+  </div>
+</div>
+{% else %}
+<div class="rv-grid">
+  {% for it in items %}
+  <div class="rv-card">
+    {% if it.is_video %}
+      <video src="{{ it.video_url }}" {% if it.url %}poster="{{ it.url }}"{% endif %} controls playsinline muted loop></video>
+    {% else %}
+      <img src="{{ it.url }}" alt="" loading="lazy">
+    {% endif %}
+    <div class="rv-meta">
+      <span>{{ it.kind }} · {{ it.size_h }}</span>
+      <span>{{ it.taken }}</span>
+    </div>
+    <div class="rv-actions">
+      <form method="post" action="/admin/events/{{ event.id }}/review/approve">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="media_id" value="{{ it.id }}">
+        <button type="submit" class="btn btn--primary btn--sm">Freigeben</button>
+      </form>
+      <form method="post" action="/admin/events/{{ event.id }}/review/{{ it.id }}/reject"
+            onsubmit="return confirm('Aufnahme endgültig löschen?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn--ghost btn--sm" style="color:var(--color-danger)">Löschen</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

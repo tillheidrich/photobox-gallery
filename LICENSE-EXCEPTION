@@ -1,0 +1,30 @@
+Photobox Gallery — additional permission for the Canon EDSDK
+
+Photobox Gallery (gallery, booth and sync) is licensed under the GNU Affero
+General Public License, version 3 or (at your option) any later version. The
+licence text is in the file LICENSE and is not modified. The following
+additional permission is granted under section 7 of that licence. It applies
+to the whole Program and to every covered work; as section 7 allows, you may
+remove it from copies you convey.
+
+Additional permission under GNU AGPL version 3 section 7
+
+If you modify this Program, or any covered work, by linking or combining it
+with the Canon EOS Digital SDK (EDSDK) runtime libraries (EDSDK.dll,
+EdsImage.dll, libEDSDK.so, EDSDK.framework), containing parts covered by the
+terms of Canon's SDK agreement, the licensors of this Program grant you
+additional permission to convey the resulting work. Corresponding Source for a
+non-source form of such a combination need not include the EDSDK. This
+permission grants no rights under Canon's agreement; obtaining the SDK and
+complying with Canon's terms, including any redistribution limits, is solely
+your responsibility.
+
+Why this exists (explanation, not part of the permission)
+
+The booth can drive Canon cameras over USB through the EDSDK, which is
+proprietary. This repository and every build made from it contain only the
+project's own wrapper code; the SDK itself is never shipped. Each operator
+obtains it from Canon and installs it on their own machine
+("--install-edsdk"). The permission above settles the AGPL side of running
+the booth together with that SDK. Whether and how the SDK itself may be
+passed on is decided by Canon's agreement alone.

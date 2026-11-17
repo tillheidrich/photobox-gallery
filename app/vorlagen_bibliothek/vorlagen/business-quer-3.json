@@ -1,0 +1,118 @@
+{
+ "id": "business-quer-3",
+ "name": "Business klar · quer · 3 Fotos",
+ "paper": "10x15-quer",
+ "canvas": [
+  1800,
+  1200
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 1000,
+   "h": 667,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  },
+  {
+   "x": 1120,
+   "y": 96,
+   "w": 584,
+   "h": 492,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-2"
+  },
+  {
+   "x": 1120,
+   "y": 612,
+   "w": 584,
+   "h": 492,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-3"
+  }
+ ],
+ "texts": [
+  {
+   "x": 160,
+   "y": 890,
+   "size": 68,
+   "bold": true,
+   "align": "left",
+   "value": "{event_name}",
+   "color": "#1b2430",
+   "id": "t1",
+   "font": "display"
+  },
+  {
+   "x": 160,
+   "y": 960,
+   "size": 32,
+   "bold": true,
+   "align": "left",
+   "value": "{date}",
+   "color": "#1f6f8b",
+   "id": "t2",
+   "font": "system"
+  }
+ ],
+ "shots": 3,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1800,
+   "h": 1200,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 96,
+   "y": 787,
+   "w": 1000,
+   "h": 317,
+   "fill": "#f2f4f6",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-1"
+  },
+  {
+   "kind": "rect",
+   "x": 128,
+   "y": 900,
+   "w": 8,
+   "h": 91,
+   "fill": "#1f6f8b",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-2"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "form-1",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "form-2",
+  "t1",
+  "t2"
+ ]
+}

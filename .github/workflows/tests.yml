@@ -1,0 +1,117 @@
+name: tests
+
+# Agents need a feedback loop they can trust: three suites, one command each,
+# and the checks that catch the mistakes review keeps finding by hand.
+#
+# Actions are pinned to a commit, not to a tag: a tag can be moved, a commit
+# cannot. The comment names the release the commit belongs to. To update,
+# look the new release's commit up (git ls-remote --tags <repo>) and replace
+# both.
+
+on:
+  push:
+    branches: [main, ecosystem]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  suites:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - { name: gallery, dir: "." }
+          - { name: booth,   dir: "booth" }
+          - { name: sync,    dir: "sync" }
+    name: ${{ matrix.suite.name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Tesseract (nur für die Galerie-Suite)
+        if: matrix.suite.name == 'gallery'
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Install
+        # From the part's own folder: booth/requirements.txt says `-e ../sync`,
+        # and pip resolves that against the working directory, not the file.
+        working-directory: ${{ matrix.suite.dir }}
+        run: |
+          python -m pip install --upgrade pip
+          # One constraints file for all three parts, at the repository root.
+          pip install -r requirements.txt -c "$GITHUB_WORKSPACE/constraints.txt"
+          pip install pytest -c "$GITHUB_WORKSPACE/constraints.txt"
+          if [ "${{ matrix.suite.name }}" = "gallery" ]; then pip install -r requirements-dev.txt -c "$GITHUB_WORKSPACE/constraints.txt"; fi
+      - name: Run tests
+        working-directory: ${{ matrix.suite.dir }}
+        env:
+          BOOTH_CAMERA: mock
+          # Fehlt ein Testpaket, soll die Datei scheitern statt sich still zu
+          # überspringen — sonst ist eine Lücke in CI unsichtbar.
+          PHOTOBOX_STRICT_TESTS: ${{ matrix.suite.name == 'gallery' && '1' || '' }}
+          # A test that writes straight into /tmp instead of the run's own
+          # folder fails the run here (tools/tmp_guard.py); locally it warns.
+          PHOTOBOX_TMP_GUARD: strict
+        run: python -m pytest tests -q
+
+  hygiene:
+    runs-on: ubuntu-latest
+    name: hygiene
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: No vendor binaries, no credentials, one version
+        run: python tools/check_hygiene.py
+      - name: Both compose files are valid (server and NAS variant)
+        env:
+          NAS_DATA_DIR: /volume1/docker/photobox/data
+          SECRET_KEY: placeholder-for-config-check
+          BASE_URL: http://192.168.1.20:5000
+        run: |
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.nas.yml config -q
+
+  # Known vulnerabilities in what the three parts install. pip-audit is a CI
+  # tool only: it is installed here, in its own virtual environment, and is
+  # not a dependency of the project.
+  audit:
+    runs-on: ubuntu-latest
+    name: dependency audit
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Install what the gallery, the booth and the sync install
+        run: |
+          python -m venv /tmp/project
+          /tmp/project/bin/pip install --upgrade pip
+          /tmp/project/bin/pip install -r requirements.txt -c constraints.txt
+          (cd booth && /tmp/project/bin/pip install -r requirements.txt -c ../constraints.txt)
+          /tmp/project/bin/pip install -r sync/requirements.txt -c constraints.txt
+      - name: pip-audit
+        run: |
+          python -m venv /tmp/audit
+          /tmp/audit/bin/pip install pip-audit==2.10.1
+          /tmp/project/bin/pip freeze --exclude-editable > /tmp/installed.txt
+          /tmp/audit/bin/pip-audit --requirement /tmp/installed.txt --no-deps --disable-pip --progress-spinner off
+
+  # Credentials anywhere in the history. The test suites are exempt (see
+  # .gitleaks.toml): they log in with made-up passwords.
+  secrets:
+    runs-on: ubuntu-latest
+    name: secret scan
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml

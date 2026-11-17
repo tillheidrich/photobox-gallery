@@ -1,0 +1,62 @@
+{# The offer: which layouts, which fields, which colours and fonts, logo, expiry. #}
+{% if not lp.templates %}
+<p style="margin:12px 0 0;font-size:.85rem">Es gibt noch keine eigene Vorlage. Lege unter
+  <a href="/admin/vorlagen">Vorlagen</a> eine an und schreib in ihre Texte <code>{feld_namen}</code>,
+  <code>{feld_datum}</code> oder <code>{feld_spruch}</code> — dort setzt die Box ein, was der Kunde einträgt.</p>
+{% else %}
+<form method="post" action="/admin/events/{{ event.id }}/layout" style="margin-top:12px;display:grid;gap:16px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <fieldset style="border:0;padding:0;margin:0"><legend class="form-label">Welche Layouts darf der Kunde wählen?</legend>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
+      {% for tpl in lp.templates %}
+      <label class="gs-check" style="margin:0;align-items:flex-start"><input type="checkbox" name="templates" value="{{ tpl.file }}" {% if tpl.fields %}checked{% endif %}>
+        <span>{{ tpl.name }}<span style="display:block;color:var(--color-text-2);font-size:.78rem">
+          {% if tpl.fields %}Felder: {{ tpl.fields|join(', ') }}{% else %}ohne Kundenfelder{% endif %}{% if tpl.logo_spot %} · Logo-Platz{% endif %}</span></span></label>
+      {% endfor %}
+    </div>
+    <span class="form-hint">Kundenfelder sind Texte mit <code>{feld_…}</code>, ein Logo-Platz ist eine Ebene namens „Logo“.</span>
+  </fieldset>
+  <fieldset style="border:0;padding:0;margin:0"><legend class="form-label">Was trägt der Kunde ein?</legend>
+    {#- On a desk one table row per field; on a phone one small card per field,
+        each input with its caption above it. -#}
+    <style>
+      .lf-cell,.lf-row{display:contents}
+      .lf-cap{display:none}
+      @media (max-width:768px){
+        .lf-grid{grid-template-columns:1fr!important;gap:10px!important}
+        .lf-grid>.lf-head{display:none}
+        .lf-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:10px;border:1px solid var(--color-border);border-radius:10px}
+        .lf-cell{display:grid;gap:4px}
+        .lf-cap{display:block;font-size:.8125rem;color:var(--color-text-2)}
+      }
+    </style>
+    <div class="lf-grid" style="display:grid;grid-template-columns:110px 1fr 70px 1fr;gap:6px;font-size:.78rem;color:var(--color-text-2)">
+      <span class="lf-head">Platzhalter</span><span class="lf-head">Beschriftung</span><span class="lf-head">Zeichen</span><span class="lf-head">Vorgabe (leer = leer)</span>
+      {% for f in lp.fields + [{'key': '', 'label': '', 'max': 40, 'default': ''}] %}
+      <div class="lf-row">
+      <label class="lf-cell"><span class="lf-cap">Platzhalter</span><input class="form-control" name="field_key" value="{{ f.key }}" maxlength="20" pattern="[a-z0-9_]*" aria-label="Platzhalter feld_…"></label>
+      <label class="lf-cell"><span class="lf-cap">Beschriftung</span><input class="form-control" name="field_label" value="{{ f.label }}" maxlength="40" aria-label="Beschriftung"></label>
+      <label class="lf-cell"><span class="lf-cap">Zeichen</span><input class="form-control" name="field_max" type="number" min="1" max="80" value="{{ f.max }}" aria-label="Höchstens Zeichen"></label>
+      <label class="lf-cell"><span class="lf-cap">Vorgabe</span><input class="form-control" name="field_default" value="{{ f.default }}" maxlength="80" aria-label="Vorgabe"></label>
+      </div>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+    <fieldset style="border:0;padding:0;margin:0"><legend class="form-label">Farben zur Wahl</legend>
+      {% for p, label in lp.palettes %}<label class="gs-check"><input type="checkbox" name="palettes" value="{{ p }}" {% if p in ('hochzeit', 'hell') %}checked{% endif %}> {{ label }}</label>{% endfor %}
+      <span class="form-hint">Nichts angehakt: die Farben der Box.</span>
+    </fieldset>
+    <fieldset style="border:0;padding:0;margin:0"><legend class="form-label">Schriften zur Wahl</legend>
+      {% for f, label in lp.fonts %}<label class="gs-check"><input type="checkbox" name="fonts" value="{{ f }}" {% if f in ('serif', 'system') %}checked{% endif %}> {{ label }}</label>{% endfor %}
+      <span class="form-hint">Nichts angehakt: die Schrift der Vorlage.</span>
+    </fieldset>
+    <fieldset style="border:0;padding:0;margin:0"><legend class="form-label">Sonst</legend>
+      <label class="gs-check"><input type="checkbox" name="logo" value="1"> Logo oder Monogramm hochladen lassen</label>
+      <label class="form-label" for="lf-days" style="margin-top:8px">Link gilt (Tage)</label>
+      <input class="form-control" id="lf-days" name="days" type="number" min="1" max="365" value="{{ lp.default_days }}" style="max-width:120px">
+    </fieldset>
+  </div>
+  <button class="btn btn-primary" style="justify-self:start">Link erzeugen</button>
+</form>
+{% endif %}

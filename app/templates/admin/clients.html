@@ -1,0 +1,55 @@
+{% extends "layout_admin.html" %}
+{% block title %}{{ t('client.admin.title') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">{{ t('client.admin.title') }}</h1>
+  <p class="page-subtitle">{{ t('client.admin.subtitle') }}</p>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('client.admin.new') }}</h2></div>
+  <div class="card-body">
+    <form method="post" style="display:grid;grid-template-columns:1.4fr 2fr auto;gap:12px;align-items:end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group" style="margin:0"><label class="form-label" for="c_name">{{ t('client.admin.name') }}</label>
+        <input class="form-control" id="c_name" name="name" maxlength="120" required></div>
+      <div class="form-group" style="margin:0"><label class="form-label" for="c_note">{{ t('client.admin.note') }}</label>
+        <input class="form-control" id="c_note" name="note" maxlength="2000"></div>
+      <button class="btn btn-primary">{{ t('client.admin.create') }}</button>
+    </form>
+  </div>
+</div>
+
+{% if clients %}
+<div class="card">
+  <table class="sl-table table--stack" style="width:100%">
+    <thead><tr><th>{{ t('client.admin.name') }}</th><th>{{ t('client.admin.galleries') }}</th><th>{{ t('client.admin.code') }}</th><th>{{ t('client.admin.last_visit') }}</th></tr></thead>
+    <tbody>
+    {% for c in clients %}
+    <tr{% if not c.active %} style="opacity:.6"{% endif %}>
+      <td class="td-main"><a class="adm-row-link" href="/admin/clients/{{ c.id }}"><b>{{ c.name }}</b></a>{% if not c.active %} · {{ t('client.admin.blocked') }}{% endif %}
+        {% if c.note %}<br><small style="color:var(--color-text-muted)">{{ c.note|truncate(80) }}</small>{% endif %}</td>
+      <td data-label="{{ t('client.admin.galleries') }}">{{ c.event_count }}</td>
+      <td data-label="{{ t('client.admin.code') }}">{{ t('client.admin.code_set') if c.has_code else t('client.admin.code_none') }}</td>
+      <td data-label="{{ t('client.admin.last_visit') }}">{{ (c.last_seen_at or '')[:16] or '–' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:18px" id="umzug">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('legacy.admin.title') }}</h2></div>
+  <div class="card-body">
+    <p style="margin:0 0 12px;font-size:.875rem;color:var(--color-text-secondary)">{{ t('legacy.admin.hint') }}</p>
+    <form method="post" action="/admin/clients/account" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group" style="margin:0"><label class="form-label" for="la">{{ t('legacy.admin.account') }}</label>
+        <input class="form-control" id="la" name="legacy_account" maxlength="40" value="{{ legacy_account() }}" placeholder="demo"></div>
+      <button class="btn btn-secondary">{{ t('client.admin.save') }}</button>
+    </form>
+    <p style="margin:10px 0 0;font-size:.8rem;color:var(--color-text-muted)">{{ t('legacy.admin.import') }} <code>python -m app.import_ids ids.csv</code></p>
+  </div>
+</div>
+{% endblock %}

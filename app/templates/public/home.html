@@ -1,0 +1,92 @@
+{% extends "layout_public.html" %}
+{% block title %}{{ g.homepage_headline or t('app.title') }}{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="hero">
+  {% if g.homepage_hero_image %}
+  <div class="hero-bg" style="background-image:url('/data/{{ g.homepage_hero_image }}')"></div>
+  {% endif %}
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="container">
+      <h1>{{ g.homepage_headline or t('app.title') }}</h1>
+      {% if g.homepage_subtext %}
+      <p>{{ g.homepage_subtext }}</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if events %}
+<!-- Galerie-Liste (nur wenn Admin es aktiviert hat) -->
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">{{ t('home.galleries_label') }}</h2>
+      <span class="text-muted text-sm">{{ events|length }} {{ t('home.gallery_count_many') if events|length != 1 else t('home.gallery_count_one') }}</span>
+    </div>
+    <div class="events-grid">
+      {% for event in events %}
+      <a href="/gallery/{{ event.slug }}" class="event-card" style="position:relative;">
+        {% if event.featured %}
+        <div class="event-featured-badge">★ {{ t('home.featured') }}</div>
+        {% endif %}
+        <div class="event-card-cover">
+          {% if event.cover_url %}
+          <img src="{{ event.cover_url }}" alt="{{ event.name }}" loading="lazy">
+          {% else %}
+          <div class="event-card-cover-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <path d="m21 15-5-5L5 21"/>
+            </svg>
+          </div>
+          {% endif %}
+        </div>
+        <div class="event-card-body">
+          <div class="event-card-title">{{ event.name }}</div>
+          {% if event.date %}
+          <div class="event-card-meta"><span>{{ event.date }}</span></div>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% else %}
+<!-- Neutrale Landingpage: keine Galerien öffentlich gelistet, Gäste kommen per QR/Link -->
+<section class="section">
+  <div class="container">
+    <div class="landing-hint">
+      <div class="landing-hint-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <path d="M14 14h3v3h-3z M20 14v.01 M14 20v.01 M17 17h.01 M20 20h.01 M20 17h.01 M17 20h.01"/>
+        </svg>
+      </div>
+      <h2>{{ t('home.landing_title') }}</h2>
+      <p>{{ t('home.landing_text') }}</p>
+
+      <form class="code-finder" method="get" action="/finden" autocomplete="off">
+        <label class="code-finder-label" for="codeInput">{{ t('home.code_label') }}</label>
+        <div class="code-finder-row">
+          <input id="codeInput" name="code" class="code-input" inputmode="latin"
+                 maxlength="10" placeholder="{{ t('home.code_placeholder') }}"
+                 value="{{ request.args.get('code_error','') }}"
+                 oninput="this.value=this.value.toUpperCase()">
+          <button type="submit" class="btn btn--primary" data-umami-event="code-search">{{ t('home.code_go') }}</button>
+        </div>
+        {% if request.args.get('code_error') %}
+        <p class="code-error">{{ t('home.code_notfound') }}</p>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

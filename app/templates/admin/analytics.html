@@ -1,0 +1,105 @@
+{% extends "layout_admin.html" %}
+{% block title %}Analytics – Photobox Gallery Admin{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">
+    {# pb-statistik from static/img/brand/photobox-icons.svg #}
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px">
+      <path d="M4 3.5v16.5h16"/><rect x="7.2" y="11.8" width="3.4" height="5.2" rx="0.8"/><rect x="13.4" y="7.2" width="3.4" height="9.8" rx="0.8"/>
+    </svg>
+    Analytics
+  </h1>
+  <p class="page-subtitle">Statistiken über alle Events</p>
+</div>
+
+<!-- Gesamt-Statistiken -->
+<div class="an-totals" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--spacing-md); margin-bottom:var(--spacing-xl);">
+  <div class="stat-card">
+    <div class="stat-value">{{ totals.views or 0 }}</div>
+    <div class="stat-label">Galerie-Aufrufe</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ totals.downloads or 0 }}</div>
+    <div class="stat-label">Downloads</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ totals.zip_downloads or 0 }}</div>
+    <div class="stat-label">ZIP-Downloads</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ totals.whatsapp or 0 }}</div>
+    <div class="stat-label">WhatsApp-Shares</div>
+  </div>
+</div>
+
+<!-- Pro-Event Tabelle -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Events im Überblick</h2>
+  </div>
+  <div class="card-body" style="padding:0;">
+    <table class="table table--stack table--nums">
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Status</th>
+          <th>Fotos</th>
+          <th>Aufrufe</th>
+          <th>Downloads</th>
+          <th>ZIP</th>
+          <th>WhatsApp</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td class="td-main"><a class="adm-row-link" href="{{ url_for('admin.edit_event', event_id=e.id) }}">{{ e.name }}</a></td>
+          <td class="td-wide">
+            <span class="badge badge-{% if e.status == 'live' %}success{% elif e.status == 'draft' %}secondary{% else %}warning{% endif %}">
+              {{ e.status }}
+            </span>
+          </td>
+          <td data-label="Fotos">{{ e.media_count or 0 }}</td>
+          <td data-label="Aufrufe">{{ e.views or 0 }}</td>
+          <td data-label="Downloads">{{ e.downloads or 0 }}</td>
+          <td data-label="ZIP">{{ e.zip_downloads or 0 }}</td>
+          <td data-label="WhatsApp">{{ e.whatsapp_shares or 0 }}</td>
+          <td class="td-actions">
+            <a href="{{ url_for('admin.analytics_event', event_id=e.id) }}" class="btn btn-sm btn-secondary">Detail<span class="sr-only"> zu {{ e.name }}</span></a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center; color:var(--color-text-secondary);">Noch keine Events</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-top:18px">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Boxen</h2></div>
+  <div class="card-body">
+    {% if boxen %}
+    <table class="table table--stack table--nums">
+      <thead><tr><th>Box</th><th>Durchgänge</th><th>Drucke</th><th><span class="sr-only">Aktion</span></th></tr></thead>
+      <tbody>
+        {% for b in boxen %}
+        <tr>
+          <td class="td-main">{{ b.name }}</td><td data-label="Durchgänge">{{ b.sessions }}</td><td data-label="Drucke">{{ b.prints }}</td>
+          <td class="td-actions"><a class="btn btn-sm btn-secondary" href="/admin/analytics/box/{{ b.id }}">Detail<span class="sr-only"> zu {{ b.name }}</span></a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="font-size:.8rem;color:var(--color-text-secondary);margin:12px 0 0">Durchgänge und Drucke zählt
+      die Box selbst; hier steht der Zuwachs je Tag. Medien in der Galerie stehen oben beim Event.</p>
+    {% else %}
+    <p style="margin:0;color:var(--color-text-secondary)">Noch keine Box verbunden.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

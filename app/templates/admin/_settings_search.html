@@ -1,0 +1,25 @@
+{#- One search bar for a long settings form (app/static/js/settings-search.js).
+    Include it where the bar should stand, with
+      ss_scope  CSS selector of the element that holds the sections
+      ss_card   what a section is           (default ".card")
+      ss_field  what one setting is         (default ".form-group")
+      ss_chips  true: also a row of section chips under the field
+    The field has no name and is no part of any form, so it is never sent. -#}
+<div class="ss-bar" data-settings-search data-not-dirty role="search"
+     data-ss-scope="{{ ss_scope }}" data-ss-card="{{ ss_card or '.card' }}" data-ss-head="{{ ss_head or 'h2' }}"
+     data-ss-field="{{ ss_field or '.form-group' }}"{% if ss_chips %} data-ss-chips="1"{% endif %}
+     data-ss-one="{{ t('search.settings.one') }}" data-ss-many="{{ t('search.settings.many') }}"
+     data-ss-none="{{ t('search.settings.none') }}">
+  <label class="ss-label" for="ssInput">{{ t('search.settings.label') }}</label>
+  <div class="ss-field">
+    <input id="ssInput" class="ss-input form-control" type="search" inputmode="search" autocomplete="off"
+           enterkeyhint="search" spellcheck="false" placeholder="{{ t('search.settings.placeholder') }}"
+           aria-describedby="ssCount">
+    <button type="button" class="ss-clear" aria-label="{{ t('search.settings.clear') }}" hidden>&times;</button>
+  </div>
+  <p class="ss-count" id="ssCount" role="status" aria-live="polite"></p>
+  <p class="ss-empty" hidden>{{ t('search.settings.try') }}
+    <button type="button" class="ss-reset">{{ t('search.settings.reset') }}</button></p>
+  <nav class="ss-chips" aria-label="{{ t('booth.jump') }}" hidden></nav>
+</div>
+<script src="/static/js/settings-search.js" defer></script>

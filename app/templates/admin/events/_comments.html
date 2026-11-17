@@ -1,0 +1,28 @@
+{# Comments of clients on this gallery and its pictures (app/comments.py). #}
+{% set cl = comment_panel(event.id) %}
+<div class="card" style="margin:1.25rem 0" id="kommentare">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('comments.admin.title') }} ({{ cl|length }})</h2></div>
+  <div class="card-body">
+    {% if not gs.comments %}<p style="margin:0 0 10px;font-size:.85rem;color:var(--color-text-muted)">{{ t('comments.admin.off') }}</p>{% endif %}
+    {% for c in cl %}
+    <div style="padding:10px 0;border-top:1px solid var(--color-border-subtle){% if c.from_operator %};margin-left:24px{% endif %}">
+      <p style="margin:0 0 4px;font-size:.8rem;color:var(--color-text-muted)"><b style="color:var(--color-text)">{{ c.author }}</b>
+        · {{ c.created_at[:16] }} · {{ (t('comments.admin.on_picture', name=c.media_name)) if c.media_id else t('comments.gallery') }}</p>
+      <p style="margin:0 0 6px;white-space:pre-wrap">{{ c.body }}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+        {% if not c.from_operator %}
+        <form method="post" action="/admin/events/{{ event.id }}/comments/{{ c.id }}/reply" style="display:flex;gap:6px;flex:1;min-width:240px;margin:0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input class="form-control" name="body" maxlength="1000" placeholder="{{ t('comments.admin.reply') }}" required>
+          <button class="btn btn-secondary btn-sm">{{ t('comments.send') }}</button>
+        </form>
+        {% endif %}
+        <form method="post" action="/admin/events/{{ event.id }}/comments/{{ c.id }}/delete" style="margin:0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn btn-secondary btn-sm">{{ t('comments.admin.delete') }}</button>
+        </form>
+      </div>
+    </div>
+    {% else %}<p style="margin:0;font-size:.85rem;color:var(--color-text-muted)">{{ t('comments.empty') }}</p>{% endfor %}
+  </div>
+</div>

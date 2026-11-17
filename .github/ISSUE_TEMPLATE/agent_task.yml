@@ -1,0 +1,35 @@
+name: Task for an agent (or anyone)
+description: A self-contained piece of work with an acceptance criterion
+labels: ["good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when you know what needs doing and want someone — human or AI
+        agent — to pick it up. Read `AGENTS.md` before starting.
+  - type: textarea
+    id: task
+    attributes:
+      label: What needs to happen
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where in the code
+      placeholder: "booth/boothcore/media/compose.py, plus a test in booth/tests/"
+  - type: textarea
+    id: done
+    attributes:
+      label: Acceptance criterion
+      description: How a reviewer decides this is finished. One or two sentences, testable.
+    validations:
+      required: true
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Does this need hardware?
+      description: Camera, printer or a Windows machine. If yes, it gets the `needs-hardware` label.
+      options: [No, "Yes — camera", "Yes — printer", "Yes — Windows machine"]
+    validations:
+      required: true

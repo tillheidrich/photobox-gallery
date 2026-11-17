@@ -1,0 +1,155 @@
+{
+ "id": "salbei-quer-3",
+ "name": "Salbei & feine Zweige · quer · 3 Fotos",
+ "paper": "10x15-quer",
+ "canvas": [
+  1800,
+  1200
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 1000,
+   "h": 667,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  },
+  {
+   "x": 1120,
+   "y": 96,
+   "w": 584,
+   "h": 492,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-2"
+  },
+  {
+   "x": 1120,
+   "y": 612,
+   "w": 584,
+   "h": 492,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-3"
+  }
+ ],
+ "texts": [
+  {
+   "x": 596,
+   "y": 880,
+   "size": 69,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#fbf7ee",
+   "id": "t1",
+   "font": "PinyonScript-Regular.ttf",
+   "amp_font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 596,
+   "y": 978,
+   "size": 39,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#e6e0d2",
+   "id": "t2",
+   "font": "CormorantSC-SemiBold.ttf"
+  }
+ ],
+ "shots": 3,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1800,
+   "h": 1200,
+   "fill": "#5f7259",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 84,
+   "y": 84,
+   "w": 1024,
+   "h": 691,
+   "fill": "#f6f1e6",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-1"
+  },
+  {
+   "kind": "rect",
+   "x": 1108,
+   "y": 84,
+   "w": 608,
+   "h": 516,
+   "fill": "#f6f1e6",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-2"
+  },
+  {
+   "kind": "rect",
+   "x": 1108,
+   "y": 600,
+   "w": 608,
+   "h": 516,
+   "fill": "#f6f1e6",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-3"
+  }
+ ],
+ "images": [
+  {
+   "file": "kol-salbei-zweig-260.png",
+   "x": 86,
+   "y": 854,
+   "w": 260,
+   "h": 260,
+   "opacity": 100,
+   "id": "bild-4"
+  },
+  {
+   "file": "kol-salbei-zweig-260-sp.png",
+   "x": 846,
+   "y": 854,
+   "w": 260,
+   "h": 260,
+   "opacity": 100,
+   "id": "bild-5"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "form-1",
+  "form-2",
+  "form-3",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "bild-4",
+  "bild-5",
+  "t1",
+  "t2"
+ ]
+}

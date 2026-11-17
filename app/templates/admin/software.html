@@ -1,0 +1,142 @@
+{% extends "layout_admin.html" %}
+{% block title %}Software{% endblock %}
+{% block page_title %}Software{% endblock %}
+{% block content %}
+<style>
+  .sw-actions{white-space:nowrap}
+  .sw-actions form+form{margin-left:8px}
+  @media (max-width:768px){.sw-actions form+form{margin-left:0}.sw-actions form{flex:1 1 auto}.sw-actions .btn{width:100%}}
+</style>
+<div class="page-header">
+  <h1 class="page-title">Software</h1>
+  <p class="page-subtitle">Neue Fassungen der Box-Software hier ablegen — die Boxen holen sie sich beim nächsten
+    Sync und tauschen erst, wenn du es sagst. Nie von selbst mitten im Abend.</p>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Diese Galerie</h2></div>
+  <div class="card-body">
+    <p style="margin:0 0 10px">Läuft als <b>Photobox Gallery {{ galerie_version.version or '?' }}</b>{% if galerie_version.commit %}
+      · Stand <code>{{ galerie_version.commit }}</code>{% endif %}.</p>
+    <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0">
+      Aktualisiert wird die Galerie dort, wo sie läuft — nicht von hier aus, denn ein Dienst, der sich selbst
+      überschreibt, kann sich auch selbst abschießen. Mit Docker:
+      <code>docker compose pull &amp;&amp; docker compose up -d</code>. Mit Coolify: im Projekt auf
+      <em>Redeploy</em>. Danach steht die neue Version oben.
+    </p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Neue Fassung ablegen</h2></div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data" style="display:grid;gap:12px;max-width:640px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Programm</label>
+          <select name="program" class="form-control">
+            {% for k, l in programme.items() %}<option value="{{ k }}">{{ l }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Version</label>
+          <input class="form-control" name="version" placeholder="0.3.0" required>
+        </div>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Datei (.exe, .zip, .dmg, .tar.gz)</label>
+        <input type="file" name="file" class="form-control" accept=".exe,.zip,.dmg,.gz" required>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Was ist neu? (sieht der Betreiber an der Box)</label>
+        <textarea class="form-control" name="notes" rows="3" placeholder="Kurz und konkret."></textarea>
+      </div>
+      <label class="gs-check"><input type="checkbox" name="released"> sofort für alle Boxen freigeben</label>
+      <button class="btn btn-primary" style="justify-self:start">Ablegen</button>
+    </form>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Abgelegte Fassungen</h2></div>
+  <div class="card-body">
+    {% if fassungen %}
+    <table class="sl-table table--stack">
+      <thead><tr><th>Programm</th><th>Version</th><th>Größe</th><th>Abgelegt</th><th>Freigabe</th><th><span class="sr-only">Löschen</span></th></tr></thead>
+      <tbody>
+      {% for f in fassungen %}
+      <tr>
+        <td class="td-main">{{ programme.get(f.program, f.program) }}</td>
+        <td data-label="Version"><span><b>{{ f.version }}</b>{% if f.notes %}<br><span style="font-size:.78rem;color:var(--color-text-muted)">{{ f.notes }}</span>{% endif %}</span></td>
+        <td data-label="Größe">{{ (f.size_bytes / 1048576) | round(1) }} MB</td>
+        <td data-label="Abgelegt">{{ f.created_at[:16] }}</td>
+        <td class="td-actions">
+          <form method="post" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="release" value="{{ f.id }}">
+            <input type="hidden" name="on" value="{{ '0' if f.released else '1' }}">
+            <button class="btn btn-sm {{ 'btn-secondary' if f.released else 'btn-primary' }}">
+              {{ 'freigegeben — zurückziehen' if f.released else 'freigeben' }}</button>
+          </form>
+        </td>
+        <td class="td-actions">
+          <form method="post" style="display:inline" onsubmit="return confirm('Diese Fassung löschen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="delete" value="{{ f.id }}">
+            <button class="btn btn-sm btn-secondary">löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p style="font-size:.78rem;color:var(--color-text-muted);margin:12px 0 0">Freigegeben heißt: Boxen mit älterer Fassung bekommen
+      sie beim Sync angeboten. Zu jeder Datei gehört eine Prüfsumme — passt sie nicht, wird die Datei verworfen
+      und die Box läuft weiter wie bisher.</p>
+    {% else %}
+    <p style="margin:0;color:var(--color-text-muted)">Noch nichts abgelegt. Die <code>.exe</code> entsteht auf einem Windows-Rechner
+      (<code>packaging\windows\Fotobox bauen.bat</code>) und wird hier hochgeladen.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Was auf den Boxen läuft</h2></div>
+  <div class="card-body">
+    {% if geraete %}
+    <table class="sl-table table--stack">
+      <thead><tr><th>Box</th><th>Fassung</th><th>Update</th><th><span class="sr-only">Aktionen</span></th></tr></thead>
+      <tbody>
+      {% for g in geraete %}
+      <tr>
+        <td class="td-main">{{ g.name }}</td>
+        <td data-label="Fassung">{{ g.version or '–' }}</td>
+        <td data-label="Update"><span>
+          {% if g.update and g.update.state == 'bereit' %}<b>{{ g.update.version }} liegt bereit</b>
+          {% elif g.update and g.update.state == 'angeboten' %}{{ g.update.version }} angeboten, noch nicht geladen
+          {% else %}<span style="color:var(--color-text-muted)">nichts offen</span>{% endif %}</span>
+        </td>
+        <td class="td-actions sw-actions">
+          <form method="post" action="/admin/devices/{{ g.id }}/job" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="type" value="fetch_update">
+            <button class="btn btn-sm btn-secondary">herunterladen</button>
+          </form>
+          <form method="post" action="/admin/devices/{{ g.id }}/job" style="display:inline"
+                onsubmit="return confirm('Die Box spielt die neue Fassung ein und startet neu. Jetzt?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="type" value="install_update">
+            <button class="btn btn-sm btn-primary">einspielen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="margin:0;color:var(--color-text-muted)">Noch keine Box verbunden.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'devices' %}
+{% block title %}Box koppeln – Photobox Gallery Admin{% endblock %}
+{% block page_title %}Box koppeln{% endblock %}
+{% block content %}
+{#- Opened from the QR code on the booth's admin page, usually on a phone.
+    Shows what is asking, never a key. -#}
+<div class="card" style="max-width:560px; padding:var(--spacing-lg);">
+  {% if state == 'confirmed_now' %}
+    <h1 class="page-title" style="font-size:var(--text-xl)">Gekoppelt</h1>
+    <p>Die Box „{{ device_name }}“ holt sich die Verbindung in den nächsten Sekunden und zeigt dann
+      „Gekoppelt“ an. Hier ist nichts mehr zu tun.</p>
+    <a class="btn btn-secondary" href="{{ url_for('admin.devices') }}">Zu den Boxen</a>
+  {% elif state == 'declined_now' or state == 'declined' %}
+    <h1 class="page-title" style="font-size:var(--text-xl)">Abgelehnt</h1>
+    <p>Die Anfrage ist verworfen. Die Box zeigt das an; dort kann eine neue Anfrage gestartet werden.</p>
+  {% elif state == 'open' %}
+    <h1 class="page-title" style="font-size:var(--text-xl)">Diese Box möchte sich verbinden</h1>
+    <dl style="display:grid; grid-template-columns:auto 1fr; gap:6px 14px; margin:14px 0;">
+      <dt>Name an der Box</dt><dd>{{ row.booth_name or 'ohne Namen' }}</dd>
+      <dt>Programm</dt><dd>{{ row.version or 'unbekannt' }}</dd>
+      <dt>Angefragt</dt><dd>{{ row.created_at }} (UTC)</dd>
+      <dt>Von Adresse</dt><dd><code>{{ row.ip or 'unbekannt' }}</code></dd>
+      <dt>Gerät/Programm</dt><dd style="word-break:break-word">{{ row.user_agent or 'unbekannt' }}</dd>
+      <dt>Code</dt><dd><code style="font-size:1.3rem; letter-spacing:.08em; font-weight:600;">{{ code[:4] }}-{{ code[4:] }}</code></dd>
+    </dl>
+    <p class="alert alert-warning" role="alert" style="margin:12px 0;"><strong>Nur bestätigen, wenn du den QR-Code selbst gerade an der Box geöffnet hast.</strong>
+      Hat dir jemand diesen Link geschickt, lehne ab: Wer bestätigt wird, bekommt Zugang zur Galerie.</p>
+    <p class="form-hint">Steht derselbe Code auf dem Bildschirm der Box? Nur dann koppeln.</p>
+    <form method="post" action="{{ url_for('admin.pair_request_page') }}?c={{ code }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label class="form-label" for="device_id">Welche Box ist das?</label>
+        <select class="form-control" id="device_id" name="device_id" required>
+          <option value="new" selected>Neue Box anlegen</option>
+          {% for d in devices %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+        </select>
+        <small class="form-hint">Vorhandene Box gewählt: Sie bekommt einen neuen Schlüssel. Läuft sie gerade,
+          wird sie sofort getrennt und arbeitet erst wieder, wenn sie hier neu gekoppelt ist.</small>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="new_name">Name der neuen Box</label>
+        <input class="form-control" id="new_name" name="new_name" value="{{ row.booth_name or 'Fotobox' }}" maxlength="60">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="event_id">Event zuweisen (optional)</label>
+        <select class="form-control" id="event_id" name="event_id">
+          <option value="">später</option>
+          {% for e in events %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}
+        </select>
+        <small class="form-hint">Ohne Event lehnt die Galerie die Bilder der Box ab.</small>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary" type="submit" name="action" value="confirm" style="flex:1; min-height:48px">Koppeln</button>
+        <button class="btn btn-secondary" type="submit" name="action" value="decline" style="min-height:48px"
+                formnovalidate>Ablehnen</button>
+      </div>
+    </form>
+  {% elif state == 'expired' %}
+    <h1 class="page-title" style="font-size:var(--text-xl)">Abgelaufen</h1>
+    <p>Eine Anfrage gilt fünf Minuten. Bitte an der Box „Mit dem Handy koppeln“ noch einmal wählen.</p>
+  {% elif state in ('confirmed', 'collected') %}
+    <h1 class="page-title" style="font-size:var(--text-xl)">Schon erledigt</h1>
+    <p>Diese Anfrage ist bereits bestätigt.</p>
+  {% else %}
+    <h1 class="page-title" style="font-size:var(--text-xl)">Keine Anfrage gefunden</h1>
+    <p>Bitte den QR-Code an der Box noch einmal scannen.</p>
+  {% endif %}
+</div>
+{% endblock %}

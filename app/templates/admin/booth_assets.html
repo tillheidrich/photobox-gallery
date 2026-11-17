@@ -1,0 +1,41 @@
+{% extends "layout_admin.html" %}
+{% block title %}Medien & Vorlagen{% endblock %}
+{% block content %}
+<style>
+  .ba-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+  .ba-item{border:1px solid var(--color-border,#e5e5e5);border-radius:12px;overflow:hidden;background:var(--color-surface,#fff)}
+  .ba-thumb{aspect-ratio:4/3;background:#f1f1f1;display:grid;place-items:center;overflow:hidden}
+  .ba-thumb img,.ba-thumb video{width:100%;height:100%;object-fit:cover}
+  .ba-meta{padding:8px 10px;font-size:.8rem;display:flex;justify-content:space-between;gap:6px;align-items:center}
+  .ba-kind{font-size:.7rem;color:var(--color-text-muted)}
+</style>
+<div class="page-header">
+  <h1 class="page-title">Medien &amp; Vorlagen für die Boxen</h1>
+  <p class="page-subtitle">Hochladen, dann in den Box-Einstellungen zuweisen. Die Box lädt nur, was ihr Profil braucht — mit Prüfsumme.
+    Rahmen für Boomerang und Video: <a href="{{ url_for('admin_booth.frames_list') }}">Rahmen bauen und verwalten</a>.</p>
+</div>
+<div class="card" id="upload" style="margin-bottom:18px"><div class="card-body">
+  <form method="post" enctype="multipart/form-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group" style="margin:0"><label class="form-label">Art</label>
+      <select name="kind" class="form-control">{% for k, l in kinds.items() %}<option value="{{ k }}">{{ l }}</option>{% endfor %}</select></div>
+    <div class="form-group" style="margin:0"><label class="form-label">Dateien</label>
+      <input type="file" name="files" multiple class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.json"></div>
+    <button class="btn btn-primary">Hochladen</button>
+  </form>
+  <p style="font-size:.8rem;color:var(--color-text-muted);margin:12px 0 0">Startbildschirm: 1920×1200 oder größer, Videos als MP4 (H.264) ohne Ton, kurz halten. Vorlage: JSON mit <code>id</code>, <code>canvas</code>, <code>slots</code> (x, y, w, h), optional <code>texts</code>, <code>qr</code>, <code>overlay</code> — hoch (1200×1800) oder quer (1800×1200).</p>
+</div></div>
+<div class="ba-grid">
+  {% for a in assets %}
+  <div class="ba-item">
+    <div class="ba-thumb">
+      {% if a.file.endswith('.mp4') or a.file.endswith('.webm') %}<video src="{{ url_for('admin_booth.asset_preview', name=a.file) }}" muted loop autoplay playsinline></video>
+      {% elif a.file.endswith('.json') %}<code>Vorlage</code>
+      {% else %}<img src="{{ url_for('admin_booth.asset_preview', name=a.file) }}" loading="lazy" alt="">{% endif %}
+    </div>
+    <div class="ba-meta"><div><div>{{ a.name }}</div><div class="ba-kind">{{ kinds.get(a.kind, a.kind) }} · {{ (a.size_bytes/1024)|round|int }} KB</div></div>
+      <form method="post" onsubmit="return confirm('Löschen?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-sm btn-secondary" name="delete" value="{{ a.id }}">✕</button></form></div>
+  </div>
+  {% else %}<p>Noch keine Dateien.</p>{% endfor %}
+</div>
+{% endblock %}

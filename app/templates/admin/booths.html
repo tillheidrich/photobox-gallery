@@ -1,0 +1,127 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'booths' %}
+{% block title %}Box-Status{% endblock %}
+{% block page_title %}Box-Status{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Box-Status</h1>
+    <p class="page-subtitle">
+      Zustand aller Fotobox-PCs. Die Seite aktualisiert sich alle 30&nbsp;Sekunden.
+    </p>
+  </div>
+</div>
+
+{% if summary.total %}
+<div class="booth-summary">
+  {% if summary.red %}<span class="booth-pill booth-pill--red">{{ summary.red }} kritisch</span>{% endif %}
+  {% if summary.yellow %}<span class="booth-pill booth-pill--yellow">{{ summary.yellow }} auffällig</span>{% endif %}
+  {% if summary.green %}<span class="booth-pill booth-pill--green">{{ summary.green }} in Ordnung</span>{% endif %}
+  {% if summary.unknown %}<span class="booth-pill booth-pill--unknown">{{ summary.unknown }} ohne Lebenszeichen</span>{% endif %}
+</div>
+{% endif %}
+
+{% if not tiles %}
+<div class="card" style="padding:var(--sp-10); text-align:center">
+  <h2 style="font-size:var(--text-lg); margin:0 0 var(--sp-2)">Noch keine Fotobox angelegt</h2>
+  <p style="color:var(--color-text-muted); margin:0 0 var(--sp-5)">
+    Lege eine Box an und kopple sie mit dem Kopplungscode — dann meldet sie sich hier von selbst.
+  </p>
+  <a href="/admin/devices/new" class="btn btn--primary">Box anlegen</a>
+</div>
+{% else %}
+<div class="booth-grid">
+  {% for t in tiles %}
+  {% set L = t.light %}
+  <div class="booth-card booth-card--{{ t.health }}" data-light="{{ t.id }}:{{ t.health }}">
+    {# One look on the phone: colour word, name, how old the news is. #}
+    <div class="booth-card-head">
+      <span class="booth-dot booth-dot--{{ t.health }}" aria-hidden="true"></span>
+      <div style="min-width:0;flex:1">
+        <div class="booth-name">{{ t.name }}</div>
+        <div class="booth-age">{{ t.age_text }}{% if L.event_running %} · Event läuft{% endif %}{% if not t.active %} · deaktiviert{% endif %}</div>
+      </div>
+      <span class="booth-verdict booth-verdict--{{ t.health }}">{{ {"red": "Kritisch", "yellow": "Ansehen", "green": "Läuft", "unknown": "Offline"}[t.health] }}</span>
+    </div>
+
+    {% if t.never_seen %}
+    <p class="booth-hint">
+      Diese Box hat sich noch nie gemeldet. Sie braucht die Adresse der Galerie
+      und ihren Schlüssel (Kopplung auf der Sync-Seite).
+    </p>
+    {% else %}
+
+    <ul class="booth-findings">
+      {% for f in L.findings %}<li class="booth-finding booth-finding--{{ f.level }}">{{ f.text }}</li>
+      {% else %}<li class="booth-finding">Alles in Ordnung</li>{% endfor %}
+    </ul>
+
+    <div class="booth-keys">
+      <div><span>Papier</span><b>{{ L.paper_text or "–" }}</b></div>
+      <div><span>Druck-Warteschlange</span><b>{{ L.print_queue.pending }}{% if L.print_queue.held %} · <span class="booth-bad">{{ L.print_queue.held }} wartet</span>{% endif %}</b></div>
+      <div><span>Uploads offen</span><b>{{ L.upload_queue.pending }}{% if L.upload_queue.failed %} · <span class="booth-bad">{{ L.upload_queue.failed }} fehlerhaft</span>{% endif %}</b></div>
+    </div>
+    {% if L.doctor_text %}<div class="booth-meter-label">Selbstdiagnose der Box {{ L.doctor_text }}</div>{% endif %}
+
+    {% if t.disk_used_pct is not none %}
+    <div class="booth-meter" title="Speicher belegt">
+      <div class="booth-meter-bar" style="width:{{ t.disk_used_pct }}%"></div>
+    </div>
+    <div class="booth-meter-label">
+      Speicher {{ t.disk_used_pct }} % belegt
+      {% if t.status.disk_free_gb is defined %}· {{ '%.1f'|format(t.status.disk_free_gb) }} GB frei{% endif %}
+    </div>
+    {% endif %}
+
+    <dl class="booth-facts">
+      {% if t.status.booth_running is defined %}
+      <div><dt>Booth-Software</dt><dd>{{ 'läuft' if t.status.booth_running else 'gestoppt' }}</dd></div>
+      {% endif %}
+      {% if t.status.printer_name %}
+      <div><dt>Drucker</dt><dd>{{ t.status.printer_name }}{% if t.status.printer_status %} ({{ t.status.printer_status }}){% endif %}</dd></div>
+      {% endif %}
+      {% if t.status.prints_today is defined %}
+      <div><dt>Drucke heute</dt><dd>{{ t.status.prints_today }}</dd></div>
+      {% endif %}
+      {% if t.status.agent_version %}
+      <div><dt>Agent</dt><dd>{{ t.status.agent_version }}</dd></div>
+      {% endif %}
+      {% if t.last_ip %}
+      <div><dt>IP</dt><dd>{{ t.last_ip }}</dd></div>
+      {% endif %}
+    </dl>
+    {% endif %}
+
+    <div class="booth-logs">
+      <a href="/admin/devices/{{ t.id }}/logs?level=error&range=24h"
+         class="booth-logline {% if t.log_errors %}booth-logline--bad{% endif %}"
+         title="Meldungen dieser Box ansehen">
+        <span>Fehler 24 h</span>
+        <b>{{ t.log_errors }}{% if t.log_warnings %} · {{ t.log_warnings }} Warnungen{% endif %}</b>
+      </a>
+      {% if t.log_errors %}
+      <form method="post" action="/admin/devices/{{ t.id }}/logs/ack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="back" value="booths">
+        <button class="btn btn--ghost btn--sm">{{ ack_label }}</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="booth-actions">
+      <a href="/admin/devices/{{ t.id }}/booth" class="btn btn--primary">Box steuern</a>
+      <a href="/admin/devices/{{ t.id }}/sync" class="btn btn--ghost">Sync</a>
+      <a href="/admin/devices/{{ t.id }}/logs" class="btn btn--ghost">Logs</a>
+      <a href="/admin/devices/{{ t.id }}/edit" class="btn btn--ghost">Box bearbeiten</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<script>
+  // Der Betreiber lässt die Seite offen liegen — regelmäßig frisch holen.
+  setTimeout(function () { location.reload(); }, 30000);
+</script>
+{% endblock %}

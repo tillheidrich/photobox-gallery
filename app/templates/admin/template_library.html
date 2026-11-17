@@ -1,0 +1,81 @@
+{% extends "layout_admin.html" %}
+{% block title %}Vorlagen-Bibliothek{% endblock %}
+{% block content %}
+<style>
+  .vb-filter{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 24px}
+  .vb-filter input[type=search]{flex:1 1 240px;max-width:420px;width:auto}
+  .vb-chips{display:flex;gap:8px;flex-wrap:wrap;flex-basis:100%}
+  .vb-chip{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid var(--color-border,#d8d4cc);
+    font-size:.8rem;text-decoration:none;color:inherit;line-height:1.3}
+  .vb-chip[aria-current=true]{background:var(--color-text,#222);color:var(--color-bg,#fff);border-color:transparent}
+  .vb-fam{margin:0 0 22px}
+  .vb-fam h2{font-size:1rem;font-weight:600;margin:0 0 2px}
+  .vb-fam .vb-kat{font-size:.78rem;color:var(--color-text-muted);margin:0 0 12px}
+  .vb-reihe{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:24px 16px;align-items:stretch}
+  .vb-kachel{margin:0;display:flex;flex-direction:column;gap:8px}
+  .vb-kachel form,.vb-kachel>.vb-da:last-child{margin-top:auto}
+  /* One box height for portrait and landscape sheets, so captions and buttons line up. */
+  .vb-bild{height:200px;display:flex;align-items:center;justify-content:center}
+  .vb-kachel img{max-width:100%;max-height:200px;width:auto;height:auto;display:block;border-radius:3px;
+    box-shadow:0 1px 4px rgba(0,0,0,.18);background:#eee}
+  .vb-kachel figcaption{font-size:.78rem;line-height:1.35}
+  .vb-kachel form{margin:0}
+  .vb-kachel .btn{width:100%}
+  .vb-da{font-size:.75rem;color:var(--color-text-muted)}
+</style>
+<div class="page-header">
+  <h1 class="page-title">Vorlagen-Bibliothek</h1>
+  <p class="page-subtitle">Fertige Druckvorlagen, die mit der Galerie kommen. „Übernehmen“ legt eine Kopie zu deinen
+    eigenen Vorlagen — samt Bildern und Schriften; danach in den Box-Einstellungen zuweisen. Deine eigenen Vorlagen
+    werden dabei nie überschrieben. <a href="{{ url_for('admin_booth.templates_list') }}">Zurück zu den Druckvorlagen</a></p>
+</div>
+
+<form class="vb-filter" method="get" action="{{ url_for('admin_booth.templates_library') }}" role="search">
+  <input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Suchen: Boho, Salbei, 6 Fotos …"
+         aria-label="Vorlagen durchsuchen">
+  {% if kategorie %}<input type="hidden" name="kategorie" value="{{ kategorie }}">{% endif %}
+  <button class="btn btn-secondary btn-sm">Suchen</button>
+  <nav class="vb-chips" aria-label="Anlass">
+    <a class="vb-chip" href="{{ url_for('admin_booth.templates_library', q=q or None) }}"
+       {% if not kategorie %}aria-current="true"{% endif %}>Alle</a>
+    {% for k in kategorien %}
+    <a class="vb-chip" href="{{ url_for('admin_booth.templates_library', q=q or None, kategorie=k) }}"
+       {% if k == kategorie %}aria-current="true"{% endif %}>{{ k }}</a>
+    {% endfor %}
+  </nav>
+</form>
+
+{% for fam in familien %}
+<section class="card vb-fam">
+  <div class="card-body">
+    <h2>{{ fam.nummer }} · {{ fam.name }}</h2>
+    <p class="vb-kat">{{ fam.kategorie }} · {{ fam.vorlagen|length }} Anordnungen</p>
+    <div class="vb-reihe">
+      {% for v in fam.vorlagen %}
+      <figure class="vb-kachel">
+        <div class="vb-bild"><img src="{{ url_for('admin_booth.templates_library_preview', name=v.vorschau) }}"
+             loading="lazy" alt="Vorschau {{ v.name }}"></div>
+        <figcaption><b>{{ v.layout_name }}</b><br>
+          <span class="vb-da">{{ v.shots }} Foto(s) · {{ papiere.get(v.paper, {}).get('name', v.paper) }}</span></figcaption>
+        {% if v.datei in eigene %}
+        <span class="vb-da">schon bei deinen Vorlagen</span>
+        {% else %}
+        <form method="post" action="{{ url_for('admin_booth.templates_library_take') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="datei" value="{{ v.datei }}">
+          <input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="kategorie" value="{{ kategorie }}">
+          <button class="btn btn-secondary btn-sm">Übernehmen</button>
+        </form>
+        {% endif %}
+      </figure>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% else %}
+<p style="color:var(--color-text-muted)">Nichts gefunden. <a href="{{ url_for('admin_booth.templates_library') }}">Alle zeigen</a></p>
+{% endfor %}
+<p style="font-size:.8rem;color:var(--color-text-muted)">Gestaltung und Bilder der Bibliothek: eigene Arbeit des Projekts,
+  unter dessen Lizenz. Schriften unter der SIL Open Font License, siehe docs/vorlagen/LIZENZEN.md.</p>
+{% endblock %}

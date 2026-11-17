@@ -1,0 +1,47 @@
+name: Bug report
+description: Something does not work as it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not paste device keys, API keys or a guest's photo in here.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The gallery shows it at `/ueber`, the booth in its admin under "Über".
+      placeholder: "0.9.1 · 2c27f9c"
+    validations:
+      required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part
+      options: [Gallery, Booth, Sync, Windows build, Not sure]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what happened, what you expected instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: network
+    attributes:
+      label: Did the booth have network at the time?
+      description: Half of all booth bugs are really queue bugs.
+      options: [Yes, No, Unstable, Not applicable]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log
+      description: "Last lines of `<data>/logs/booth.log`, or the gallery's container log. Redact keys."
+      render: text
+  - type: input
+    id: hardware
+    attributes:
+      label: Camera and printer
+      placeholder: "Canon EOS M50 over EDSDK, Canon SELPHY CP1300"

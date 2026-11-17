@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Photobox</title>
+<link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+<link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+<link rel="stylesheet" href="/static/css/brand/photobox-booth.css">
+<link rel="stylesheet" href="/static/css/brand/photobox-event.css">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div id="app" data-screen="boot">
+  <!-- Was gerade passiert — nur für Screenreader, nie sichtbar. -->
+  <p id="ansage" class="nur-vorlesen" role="status" aria-live="polite"></p>
+
+  <!-- START -->
+  <section class="screen" id="s-start">
+    <div class="start-bg" id="startBg"></div>
+    <div class="start-shade"></div>
+    <div class="start-copy">
+      <p class="eyebrow" id="startEvent"></p>
+      <h1 data-t="start.title"></h1>
+      <p class="lede" data-t="start.subtitle"></p>
+    </div>
+    <nav class="modes" id="modes"></nav>
+    <!-- Anleitung, letzte Aufnahme, QR zur Galerie, Logo: an einer Box im
+         Einsatz steht das meistens auf einem aufgeklebten Zettel. Hier nicht. -->
+    <ol class="start-steps" id="startSteps" hidden></ol>
+    <div class="start-last" id="startLast" hidden><img alt=""></div>
+    <div class="start-qr" id="startQr" hidden>
+      <img id="startQrImg" alt="">
+      <span data-t="start.qr_hint"></span>
+    </div>
+    <img class="start-logo" id="startLogo" alt="" hidden>
+    <div class="start-tools">
+      <button class="pill" id="galleryBtn" data-action="gallery"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span data-t="start.gallery"></span></button>
+      <button class="pill" id="stepsBtn" data-action="steps" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg><span data-t="start.steps_title"></span></button>
+      <button class="pill" id="langBtn" data-action="lang"></button>
+    </div>
+    <p class="privacy-note" id="privacyStart" hidden></p>
+    <button class="hotspot" id="adminHotspot" aria-label="Verwaltung"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+    <!-- Also carries the operator notice (paper out, disk full): one quiet
+         line up here, never a box over the guest's tiles. -->
+    <div class="statusline" id="statusline" role="status" aria-live="polite"></div>
+  </section>
+
+  <!-- EINWILLIGUNG: wohin mit dem Foto, je Durchgang (profile "consent").
+       Equal buttons, none preselected; the buzzer chooses nothing here. -->
+  <section class="screen" id="s-consent">
+    <header class="bar">
+      <button class="btn-ghost" data-action="home"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span data-t="common.back"></span></button>
+      <span></span>
+      <span></span>
+    </header>
+    <div class="consent">
+      <h1 data-t="consent.title"></h1>
+      <div class="consent-choices" id="consentChoices"></div>
+      <p class="consent-note" id="consentNote"></p>
+    </div>
+  </section>
+
+  <!-- VORBEREITUNG -->
+  <section class="screen" id="s-setup">
+    <header class="bar">
+      <button class="btn-ghost" data-action="home"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span data-t="common.back"></span></button>
+      <h2 id="setupTitle"></h2>
+      <span></span>
+    </header>
+    <div class="setup">
+      <div class="setup-preview"><div class="frame" id="setupFrame"><img class="live" alt="" id="setupLive"></div></div>
+      <div class="setup-options">
+        <div class="setup-scroll">
+          <!-- Layouts as pictures of the printed sheet (layoutbilder.py): a row
+               that scrolls sideways, arrows and a cut-off next card show
+               there is more. -->
+          <div class="group" id="groupFormat"><h3 id="formatHead" data-t="setup.format"></h3>
+            <div class="picker"><div class="cards" id="formatChips" role="group" aria-labelledby="formatHead"></div>
+              <button class="picker-arrow prev" data-scroll="-1" hidden data-a11y="setup.more_prev"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+              <button class="picker-arrow next" data-scroll="1" hidden data-a11y="setup.more_next"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div></div>
+          <div class="group" id="groupTemplate"><h3 id="layoutHead" data-t="setup.layout"></h3>
+            <div class="picker"><div class="cards" id="templateChips" role="group" aria-labelledby="layoutHead"></div>
+              <button class="picker-arrow prev" data-scroll="-1" hidden data-a11y="setup.more_prev"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+              <button class="picker-arrow next" data-scroll="1" hidden data-a11y="setup.more_next"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div></div>
+          <!-- Frames for boomerang and video (media/motion_frames.py): the
+               frame with a sample picture in its window, "Ohne Rahmen" last. -->
+          <div class="group" id="groupFrame" hidden><h3 id="frameHead" data-t="setup.frame"></h3>
+            <div class="picker"><div class="cards" id="frameChips" role="group" aria-labelledby="frameHead"></div>
+              <button class="picker-arrow prev" data-scroll="-1" hidden data-a11y="setup.more_prev"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+              <button class="picker-arrow next" data-scroll="1" hidden data-a11y="setup.more_next"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div></div>
+          <div class="group" id="groupBackground"><h3 data-t="setup.background"></h3><div class="swatches" id="bgChips"></div></div>
+          <div class="group" id="groupChroma" hidden><h3 data-t="setup.scene"></h3><div class="swatches" id="chromaChips"></div></div>
+          <p class="disclaimer" id="disclaimer" data-t="setup.disclaimer"></p>
+          <p class="disclaimer" id="consentNotice" hidden></p>
+        </div>
+        <button class="btn-primary btn-go" data-action="go"><span id="goLabel"></span><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUFNAHME -->
+  <section class="screen" id="s-capture">
+    <div class="capture">
+      <div class="frame frame--big" id="captureFrame">
+        <img class="live" alt="" id="captureLive">
+        <div class="crop-guide" id="cropGuide" aria-hidden="true"></div>
+        <div class="countdown" id="countdown" role="status" aria-live="assertive" aria-atomic="true"></div>
+        <!-- Recording: a ring that empties over the set seconds, the seconds
+             left inside it; it goes when the camera stops (recordingIndicator). -->
+        <div class="rec" id="rec" role="status"><span class="rec-dial" aria-hidden="true"><svg class="rec-ring" viewBox="0 0 40 40"><circle class="rec-track" cx="20" cy="20" r="17"/><circle class="rec-arc" cx="20" cy="20" r="17" pathLength="100"/></svg><span class="rec-left"></span></span><b data-t="capture.move"></b></div>
+        <div class="shotcount" id="shotcount"></div>
+        <div class="shot-strip" id="shotStrip" hidden aria-hidden="true"></div>
+        <img class="shot-review" id="shotReview" alt="">
+      </div>
+    </div>
+    <div class="smile" id="smilePic" hidden aria-hidden="true"></div>
+    <!-- Way out during countdown and recording (countdown.cancel). Quiet, in a
+         corner, but big enough for a finger. -->
+    <button class="capture-cancel" id="captureCancel" data-action="capture-cancel" hidden
+            aria-label="Abbrechen" data-a11y="capture.cancel"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div class="countdown-full" id="countdownFull" role="status" aria-live="assertive" aria-atomic="true"></div>
+    <div class="flash" id="flash"></div>
+    <!-- Der Bildschirm als Blitz: volle Fläche, liegt über allem, was auf dem
+         Aufnahme-Bildschirm steht. Kein Text darauf — er wäre im Bild. -->
+    <div class="screen-flash" id="screenFlash" hidden aria-hidden="true"></div>
+  </section>
+
+  <!-- DURCHSEHEN: nach der letzten Aufnahme einer Serie, wenn „Nochmal" an ist -->
+  <section class="screen" id="s-review">
+    <div class="review">
+      <h2 data-t="review.title"></h2>
+      <p class="review-hint" data-t="review.hint"></p>
+      <div class="review-shots" id="reviewShots"></div>
+      <div class="review-actions">
+        <button class="btn-ghost danger" data-action="review-cancel"><span data-t="review.cancel"></span></button>
+        <button class="btn-primary" data-action="review-ok"><span data-t="review.ok"></span></button>
+      </div>
+      <div class="timer"><span id="reviewTimer"></span></div>
+    </div>
+  </section>
+
+  <!-- VERARBEITUNG -->
+  <section class="screen" id="s-processing">
+    <div class="phase-media" id="phaseProcessing" aria-hidden="true"></div>
+    <div class="processing">
+      <div class="proc-stage">
+        <div class="proc-still" id="procStill" hidden><img class="proc-still-bg" alt=""><img class="proc-still-img" alt=""></div>
+        <div class="proc-badge" aria-hidden="true">
+          <svg class="proc-ring" viewBox="0 0 100 100"><circle class="proc-track" cx="50" cy="50" r="47"/><circle class="proc-arc" cx="50" cy="50" r="47" pathLength="100"/></svg>
+          <span class="proc-icon" id="procIcon"></span>
+        </div>
+      </div>
+      <p id="processingText"></p>
+    </div>
+  </section>
+
+  <!-- ERGEBNIS (auch Detailansicht der Galerie) -->
+  <section class="screen" id="s-result">
+    <div class="result">
+      <div class="result-media" id="resultMedia"></div>
+      <aside class="result-side">
+        <!-- Nur bei einer Collage mit GIF: Bild oder Filmchen -->
+        <div class="anim-toggle" id="animToggle" hidden>
+          <button data-action="anim-off" data-anim="0" aria-pressed="false" data-t="gallery.still"></button>
+          <button data-action="anim-on" data-anim="1" aria-pressed="true" data-t="gallery.animated"></button>
+        </div>
+        <div class="looks" id="looks"></div>
+        <button class="share" id="share" data-action="qr-full">
+          <img id="qr" alt="" aria-hidden="true">
+          <div><strong data-t="result.scan"></strong><p data-t="result.scan_hint"></p></div>
+        </button>
+        <!-- Download without internet: join the booth's Wi-Fi, then load the photo from the booth -->
+        <div class="wifi-steps" id="wifiSteps" hidden>
+          <button class="share wifi-step" data-action="qr-full" data-qr="wifi">
+            <img id="wifiQr" alt="" aria-hidden="true">
+            <div><strong data-t="result.wifi_join"></strong><p id="wifiSsid"></p><p data-t="result.wifi_join_hint"></p></div>
+          </button>
+          <button class="share wifi-step" data-action="qr-full" data-qr="photo">
+            <img id="photoQr" alt="" aria-hidden="true">
+            <div><strong data-t="result.wifi_photo"></strong><p data-t="result.wifi_photo_hint"></p></div>
+          </button>
+        </div>
+        <div class="print" id="printBox">
+          <div class="stepper">
+            <button data-action="copies-minus" aria-label="Eine Kopie weniger" data-a11y="common.copies_less">−</button>
+            <output id="copies" aria-live="polite">1</output>
+            <button data-action="copies-plus" aria-label="Eine Kopie mehr" data-a11y="common.copies_more">+</button>
+          </div>
+          <button class="btn-secondary" data-action="print" id="printBtn">
+            <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>
+            <span data-t="result.print"></span>
+          </button>
+        </div>
+        <p class="print-note" id="printNote"></p>
+        <p class="privacy-note privacy-note--result" id="privacyResult" hidden></p>
+        <button class="btn-secondary" id="mailBtn" data-action="mail" hidden>
+          <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>
+          <span data-t="result.mail"></span>
+        </button>
+        <!-- Only when the operator switched drawing on, and only for a fresh photo or collage -->
+        <button class="btn-secondary" id="drawBtn" data-action="draw" hidden>
+          <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
+          <span data-t="draw.open"></span>
+        </button>
+        <div class="result-actions">
+          <button class="btn-ghost" data-action="retake" id="retakeBtn"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg><span data-t="result.retake"></span></button>
+          <button class="btn-ghost danger" data-action="delete" id="deleteBtn"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg><span data-t="result.delete"></span></button>
+        </div>
+        <button class="btn-primary" data-action="done" id="doneBtn"><span data-t="result.done"></span></button>
+        <div class="timer"><span id="timerBar"></span></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- GALERIE -->
+  <section class="screen" id="s-gallery">
+    <header class="bar">
+      <button class="btn-ghost" data-action="home"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span data-t="common.back"></span></button>
+      <h2 data-t="gallery.title"></h2>
+      <span class="bar-count" id="galleryCount"></span>
+    </header>
+    <div class="gallery" id="galleryGrid"></div>
+  </section>
+
+  <!-- HINWEISE -->
+  <section class="screen" id="s-error">
+    <div class="phase-media" id="phaseError" aria-hidden="true"></div>
+    <div class="error">
+      <h2 id="errorTitle"></h2>
+      <p id="errorText"></p>
+      <button class="btn-primary" data-action="home"><span data-t="common.to_start"></span></button>
+    </div>
+  </section>
+
+  <!-- PHASE MEDIA over the run: between two shots and after the result -->
+  <div class="phase-overlay" id="phaseOverlay" hidden>
+    <div class="phase-media" id="phaseOverlayMedia" aria-hidden="true"></div>
+    <p class="phase-text" id="phaseOverlayText" role="status" aria-live="polite"></p>
+  </div>
+
+  <!-- BILDSCHIRMSCHONER: zwei Ebenen, damit ein Bild ins nächste überblenden kann -->
+  <div class="attract" id="attract" hidden>
+    <div class="attract-layer" id="attractA"></div>
+    <div class="attract-layer" id="attractB"></div>
+    <div class="attract-dim"></div>
+    <h2 class="attract-title" id="attractTitle" data-t="attract.title" hidden></h2>
+    <p class="attract-hint" id="attractHint" data-t="attract.hint"></p>
+  </div>
+
+  <div class="overlay" id="qrOverlay" role="dialog" aria-modal="true"
+       aria-label="QR-Code zur Aufnahme" data-a11y="common.qr_window" hidden>
+    <button class="overlay-close" data-action="qr-close" aria-label="Schließen" data-a11y="common.close"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <img id="qrBig" alt="" aria-hidden="true">
+    <p id="qrTitle" data-t="result.scan"></p>
+    <code id="qrUrl"></code>
+  </div>
+  <!-- Vollbild: die Aufnahme groß, sonst nichts. Kein Löschen hier —
+       fremde Bilder räumt an der Box niemand weg. -->
+  <div class="overlay overlay--voll" id="fullOverlay" role="dialog" aria-modal="true"
+       aria-label="Aufnahme in groß" data-a11y="common.full_window" hidden>
+    <button class="overlay-close" data-action="full-close" aria-label="Schließen" data-a11y="common.close"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div class="voll-media" id="fullMedia"></div>
+  </div>
+  <!-- Gruß des Gastes: vor der Aufnahme, damit der Text schon beim Entwickeln
+       dasteht und niemand zweimal wartet. -->
+  <div class="overlay overlay--keyboard" id="textOverlay" role="dialog" aria-modal="true"
+       aria-labelledby="textOverlayTitel" hidden>
+    <h2 id="textOverlayTitel" data-t="guesttext.title"></h2>
+    <p data-t="guesttext.hint"></p>
+    <output class="kb-field" id="textField"></output>
+    <div class="kb" id="textKeyboard"></div>
+    <div class="overlay-actions">
+      <button class="btn-secondary" data-action="text-skip"><span data-t="guesttext.skip"></span></button>
+      <button class="btn-primary" data-action="text-ok"><span data-t="guesttext.ok"></span></button>
+    </div>
+  </div>
+  <div class="overlay overlay--keyboard" id="mailOverlay" role="dialog" aria-modal="true"
+       aria-labelledby="mailOverlayTitel" hidden>
+    <button class="overlay-close" data-action="mail-close" aria-label="Schließen" data-a11y="common.close"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <h2 id="mailOverlayTitel" data-t="mail.title"></h2>
+    <p data-t="mail.hint"></p>
+    <output class="kb-field" id="mailField"></output>
+    <div class="kb" id="keyboard"></div>
+    <div class="overlay-actions">
+      <button class="btn-secondary" data-action="mail-close"><span data-t="common.cancel"></span></button>
+      <button class="btn-primary" data-action="mail-send"><span data-t="mail.send"></span></button>
+    </div>
+  </div>
+  <!-- Drawing on the finished picture. The canvas lies exactly over the
+       picture; what is drawn travels as strokes, the booth paints the print. -->
+  <div class="overlay overlay--draw" id="drawOverlay" role="dialog" aria-modal="true"
+       aria-labelledby="drawTitel" hidden>
+    <div class="draw-stage" id="drawStage">
+      <div class="draw-frame" id="drawFrame">
+        <img id="drawImg" alt="">
+        <canvas id="drawCanvas"></canvas>
+      </div>
+    </div>
+    <div class="draw-side">
+      <h2 id="drawTitel" data-t="draw.title"></h2>
+      <div class="draw-colors" id="drawColors" role="group" data-a11y="draw.color"></div>
+      <div class="draw-widths" id="drawWidths" role="group" data-a11y="draw.width">
+        <button class="draw-width" data-draw-width="0" aria-label="Strichstärke 1" aria-pressed="false"><i></i></button>
+        <button class="draw-width" data-draw-width="1" aria-label="Strichstärke 2" aria-pressed="true"><i></i></button>
+        <button class="draw-width" data-draw-width="2" aria-label="Strichstärke 3" aria-pressed="false"><i></i></button>
+      </div>
+      <div class="draw-edit">
+        <button class="btn-ghost" data-action="draw-undo" id="drawUndo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg><span data-t="draw.undo"></span></button>
+        <button class="btn-ghost danger" data-action="draw-clear" id="drawClear"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg><span data-t="draw.clear"></span></button>
+      </div>
+      <button class="btn-secondary" data-action="draw-cancel"><span data-t="common.cancel"></span></button>
+      <button class="btn-primary" data-action="draw-done" id="drawDone"><span data-t="draw.done"></span></button>
+    </div>
+  </div>
+  <div class="overlay" id="confirmOverlay" role="dialog" aria-modal="true"
+       aria-labelledby="confirmTitel" hidden>
+    <h2 id="confirmTitel" data-t="result.delete_confirm"></h2>
+    <div class="overlay-actions">
+      <button class="btn-secondary" data-action="confirm-no"><span data-t="common.cancel"></span></button>
+      <button class="btn-primary" data-action="confirm-yes"><span data-t="result.delete"></span></button>
+    </div>
+  </div>
+  <!-- A "Nur drucken" run whose print failed: the guest decides. Two equal buttons. -->
+  <div class="overlay" id="printFailOverlay" role="dialog" aria-modal="true"
+       aria-labelledby="printFailTitel" hidden>
+    <h2 id="printFailTitel" data-t="print.failed_print_only"></h2>
+    <div class="overlay-actions">
+      <button class="btn-secondary" data-action="pf-discard"><span data-t="print.discard"></span></button>
+      <button class="btn-secondary" data-action="pf-gallery"><span data-t="print.to_gallery"></span></button>
+    </div>
+  </div>
+  <div class="overlay overlay--lock" id="lockOverlay" role="dialog" aria-modal="true"
+       aria-labelledby="lockTitel" hidden>
+    <img id="lockImage" alt="" hidden>
+    <h2 id="lockTitel" data-t="lock.title"></h2>
+    <p data-t="lock.text"></p>
+    <button class="btn-ghost" id="unlockBtn" hidden><span data-t="pin.unlock"></span></button>
+  </div>
+
+  <!-- PIN-Fenster: sperren, entsperren, Verwaltung öffnen. Der Ziffernblock ist
+       groß genug für den Daumen eines Betreibers, der zwischen zwei Gruppen
+       schnell etwas erledigen will. -->
+  <div class="overlay overlay--pin" id="pinOverlay" role="dialog" aria-modal="true"
+       aria-labelledby="pinTitle" hidden>
+    <button class="overlay-close" data-action="pin-close" aria-label="Schließen" data-a11y="common.close"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <h2 id="pinTitle" data-t="pin.title"></h2>
+    <output id="pinOut" aria-live="polite"></output>
+    <p class="pin-hint" id="pinHint" data-t="pin.hint"></p>
+    <div class="pinpad" id="pinpad"></div>
+  </div>
+
+  <!-- Was der Betreiber an der Box tun kann, nachdem er die Ecke gedrückt hat. -->
+  <div class="overlay overlay--menu" id="boothMenu" role="dialog" aria-modal="true"
+       aria-labelledby="menuTitel" hidden>
+    <button class="overlay-close" data-action="menu-close" aria-label="Schließen" data-a11y="common.close"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <h2 id="menuTitel" data-t="menu.title"></h2>
+    <div class="menu-actions">
+      <button class="btn-primary" data-action="menu-lock"><span id="menuLockLabel"></span></button>
+      <button class="btn-secondary" data-action="menu-admin"><span data-t="menu.admin"></span></button>
+      <button class="btn-secondary" data-action="menu-pin"><span data-t="menu.pin"></span></button>
+    </div>
+  </div>
+  <div class="notice" id="notice" role="status" aria-live="polite" hidden><i></i><span id="noticeText"></span></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script src="/static/i18n.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/osk.js"></script>
+<script src="/static/pan.js"></script>
+</body>
+</html>

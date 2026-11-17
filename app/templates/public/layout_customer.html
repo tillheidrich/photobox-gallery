@@ -1,0 +1,153 @@
+{% extends "layout_public.html" %}
+{# The customer's page for one layout invitation (app/layout_freigabe.py).
+   Four steps on one page; the picture on the right (below on a phone) is the
+   server's render, the same one the booth prints. No tracking, no request to
+   another host. The token never appears in the page except in `base`, which
+   is the address the customer already opened. #}
+{% set editable = v.status in ('offen', 'entwurf', 'zurueck') %}
+{% block title %}{{ t('lc.title') }} · {{ v.event_name }}{% endblock %}
+{% block meta_desc %}{{ t('lc.meta', name=v.event_name) }}{% endblock %}
+{% block head %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<link rel="stylesheet" href="/static/css/layout-kunde.css">
+{% endblock %}
+{% block nav %}
+<nav class="public-nav" aria-label="{{ t('a11y.nav') }}">
+  <div class="container"><span class="nav-logo"><span class="nav-logo-text">{{ t('lc.title') }}</span></span></div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="lk" data-base="{{ base }}" data-status="{{ v.status }}">
+  <header class="lk-head">
+    <p class="lk-eyebrow">{{ t('lc.eyebrow') }}</p>
+    <h1 class="lk-title">{{ v.event_name }}</h1>
+    {% if editable %}
+    <p class="lk-lead">{{ t('lc.lead') }}</p>
+    {% endif %}
+  </header>
+
+  {% if v.status == 'eingereicht' %}
+  <section class="lk-state" data-tone="wait" role="status">
+    <h2>{{ t('lc.sent_title') }}</h2>
+    <p>{{ t('lc.sent_text') }}</p>
+  </section>
+  {% elif v.status == 'freigegeben' %}
+  <section class="lk-state" data-tone="done" role="status">
+    <h2>{{ t('lc.done_title') }}</h2>
+    <p>{{ t('lc.done_text') }}</p>
+  </section>
+  <figure class="lk-final">
+    <img src="{{ base }}/ergebnis.jpg" alt="{{ t('lc.done_alt') }}" width="600" height="900">
+  </figure>
+  {% elif v.status == 'zurueck' %}
+  <section class="lk-state" data-tone="back" role="status">
+    <h2>{{ t('lc.back_title') }}</h2>
+    <p class="lk-note">{{ v.note or t('lc.back_note') }}</p>
+    <p>{{ t('lc.back_text') }}</p>
+  </section>
+  {% endif %}
+
+  {% if v.status != 'freigegeben' %}
+  <form class="lk-grid" id="lk-form" novalidate>
+    <fieldset class="lk-steps" {% if not editable %}disabled{% endif %}>
+      <legend class="sr-only">{{ t('lc.legend') }}</legend>
+
+      <section class="lk-step" aria-labelledby="lk-s1">
+        <h2 id="lk-s1"><span class="lk-num">1</span>{{ t('lc.step1') }}</h2>
+        <div class="lk-tiles" role="radiogroup" aria-labelledby="lk-s1">
+          {% for tpl in v.templates %}
+          <label class="lk-tile">
+            <input type="radio" name="template" value="{{ v.template_files[tpl.index] }}"
+                   {% if v.current.template == v.template_files[tpl.index] or (not v.current.template and loop.first) %}checked{% endif %}>
+            <span class="lk-tile-img"><img src="{{ base }}/kachel/{{ tpl.index }}.jpg" alt="" loading="lazy"></span>
+            <span class="lk-tile-name">{{ tpl.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </section>
+
+      {% if v.fields %}
+      <section class="lk-step" aria-labelledby="lk-s2">
+        <h2 id="lk-s2"><span class="lk-num">2</span>{{ t('lc.step2') }}</h2>
+        {% for f in v.fields %}
+        <div class="lk-field">
+          <label for="lk-f-{{ f.key }}">{{ f.label }}</label>
+          <input id="lk-f-{{ f.key }}" name="field" data-key="{{ f.key }}" type="text" maxlength="{{ f.max }}"
+                 autocomplete="off" value="{{ v.current.fields[f.key] if v.current.fields and f.key in v.current.fields else '' }}"
+                 placeholder="{{ f.default or {'namen': t('lc.example_namen'), 'datum': t('lc.example_datum'), 'spruch': t('lc.example_spruch')}.get(f.key, '') }}" aria-describedby="lk-h-{{ f.key }}">
+          <small id="lk-h-{{ f.key }}" class="lk-hint">{{ t('lc.max_default', n=f.max, default=f.default) if f.default else t('lc.max', n=f.max) }}</small>
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if v.palettes or v.fonts or v.logo_allowed %}
+      <section class="lk-step" aria-labelledby="lk-s3">
+        <h2 id="lk-s3"><span class="lk-num">3</span>{{ t('lc.step3') }}</h2>
+        {% if v.palettes %}
+        <p class="lk-sub" id="lk-pal">{{ t('lc.colours') }}</p>
+        <div class="lk-chips" role="radiogroup" aria-labelledby="lk-pal">
+          {% for p in v.palettes %}
+          <label class="lk-chip">
+            <input type="radio" name="palette" value="{{ p.id }}"
+                   {% if v.current.palette == p.id or (not v.current.palette and loop.first) %}checked{% endif %}>
+            <span class="lk-swatch" aria-hidden="true">{% for c in p.colours %}<i style="background:{{ c }}"></i>{% endfor %}</span>
+            <span>{{ p.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if v.fonts %}
+        <p class="lk-sub" id="lk-font">{{ t('lc.font') }}</p>
+        <div class="lk-chips" role="radiogroup" aria-labelledby="lk-font">
+          {% for f in v.fonts %}
+          <label class="lk-chip">
+            <input type="radio" name="font" value="{{ f.id }}"
+                   {% if v.current.font == f.id or (not v.current.font and loop.first) %}checked{% endif %}>
+            <span>{{ f.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if v.logo_allowed %}
+        <p class="lk-sub">{{ t('lc.logo') }} <span class="lk-opt">{{ t('lc.optional') }}</span></p>
+        <div class="lk-logo">
+          <label class="lk-upload" for="lk-logo-file">{{ t('lc.logo_other') if v.has_logo else t('lc.logo_upload') }}</label>
+          <input id="lk-logo-file" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only"
+                 aria-describedby="lk-logo-hint">
+          <button type="button" class="lk-link" id="lk-logo-remove" {% if not v.has_logo %}hidden{% endif %}>{{ t('lc.logo_remove') }}</button>
+          <input type="hidden" id="lk-has-logo" value="{{ '1' if v.has_logo else '' }}">
+        </div>
+        <small id="lk-logo-hint" class="lk-hint">{{ t('lc.logo_hint') }}</small>
+        <p class="lk-error" id="lk-logo-error" role="alert" hidden></p>
+        {% endif %}
+      </section>
+      {% endif %}
+    </fieldset>
+
+    <section class="lk-step lk-preview" aria-labelledby="lk-s4">
+      <h2 id="lk-s4"><span class="lk-num">4</span>{{ t('lc.step4') }}</h2>
+      <figure class="lk-sheet" id="lk-sheet" data-loading="1">
+        <img id="lk-img" alt="{{ t('lc.preview_alt') }}">
+        <figcaption>{{ t('lc.preview_caption') }}</figcaption>
+      </figure>
+      <p class="lk-error" id="lk-error" role="alert" hidden></p>
+      {% if editable %}
+      <div class="lk-actions">
+        <button type="button" class="lk-send" id="lk-send">{{ t('lc.send') }}</button>
+        <span class="lk-saved" id="lk-saved" aria-live="polite">{% if v.status != 'offen' %}{{ t('lc.saved') }}{% endif %}</span>
+      </div>
+      <p class="lk-hint">{{ t('lc.autosave', date=v.expires_at) }}</p>
+      {% endif %}
+    </section>
+  </form>
+  <a class="lk-jump" id="lk-jump" href="#lk-s4" hidden>{{ t('lc.jump') }}</a>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+{% if v.status != 'freigegeben' %}
+{#- The script's own words, in the page's language (layout-kunde.js falls back to German). -#}
+<script type="application/json" id="lk-texts">{{ {"preview_failed": t('lc.js.preview_failed'), "too_wide": t('lc.js.too_wide'), "offline": t('lc.js.offline'), "saved": t('lc.saved'), "not_saved": t('lc.js.not_saved'), "saving": t('lc.js.saving'), "send_failed": t('lc.js.send_failed'), "uploading": t('lc.js.uploading'), "logo_other": t('lc.logo_other'), "logo_upload": t('lc.logo_upload'), "logo_failed": t('lc.js.logo_failed')}|tojson }}</script>
+<script src="/static/js/layout-kunde.js" defer></script>{% endif %}
+{% endblock %}

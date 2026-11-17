@@ -1,0 +1,301 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}Startseite – Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'homepage' %}
+{% set settings_subtitle = 'Startseite, Galerie-Features und Footer' %}
+{% include 'admin/settings/_tabs.html' %}
+
+{% with ss_scope='#homepageForm', ss_card='.settings-section', ss_head='.settings-section-title', ss_field='.form-group' %}
+{% include "admin/_settings_search.html" %}
+{% endwith %}
+
+<form method="post" enctype="multipart/form-data" id="homepageForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div class="settings-section">
+    <h2 class="settings-section-title">Hero-Bereich</h2>
+    <p class="settings-section-desc">Titel, Untertitel und optionales Hintergrundbild der Startseite.</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="site_languages">Sprachen der Gästeseiten</label>
+          <select id="site_languages" name="site_languages" class="form-control" style="max-width:320px">
+            {% for v, l in [('both','Deutsch und Englisch (Gast wählt)'),('de','nur Deutsch'),('en','nur Englisch')] %}
+            <option value="{{ v }}" {% if (settings.site_languages or 'both') == v %}selected{% endif %}>{{ l }}</option>
+            {% endfor %}
+          </select>
+          <p class="form-hint">Nur eine Sprache heißt: kein Umschalter, und alles erscheint in dieser Sprache.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="headline">Überschrift</label>
+          <input type="text" id="headline" name="homepage_headline" class="form-control"
+                 value="{{ settings.homepage_headline or '' }}" placeholder="Willkommen bei unserer Fotobox-Galerie!">
+          <p class="form-hint">Erscheint als Überschrift auf der Startseite und oben in der Navigation.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="headline_en">Überschrift (englisch)</label>
+          <input type="text" id="headline_en" name="homepage_headline_en" class="form-control"
+                 value="{{ settings.homepage_headline_en or '' }}" placeholder="leer = deutsche Fassung">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="subtext">Untertitel</label>
+          <textarea id="subtext" name="homepage_subtext" class="form-control" rows="3"
+                    placeholder="Gib deinen Galerie-Code ein, um deine Fotos zu sehen.">{{ settings.homepage_subtext or '' }}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="subtext_en">Untertitel (englisch)</label>
+          <textarea id="subtext_en" name="homepage_subtext_en" class="form-control" rows="3"
+                    placeholder="leer = deutsche Fassung">{{ settings.homepage_subtext_en or '' }}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="hero_image">Hintergrundbild</label>
+          {% if settings.homepage_hero_image_path %}
+          <div style="margin-bottom:var(--sp-3)">
+            <img src="/data/{{ settings.homepage_hero_image_path }}" alt="Hintergrund"
+                 style="max-height:120px;border-radius:var(--r-md);border:1px solid var(--color-border)">
+          </div>
+          <label class="toggle" style="margin-bottom:var(--sp-3)">
+            <input type="checkbox" name="remove_hero_image" value="1">
+            <span class="toggle-track"></span>
+            Aktuelles Hintergrundbild entfernen
+          </label>
+          {% endif %}
+          <input type="file" id="hero_image" name="hero_image" class="form-control" accept="image/*">
+          <p class="form-hint">Optional. Wird hinter dem Titel abgedunkelt angezeigt. JPG/PNG, quer, min. 1600 px breit.</p>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="settings-section-title">Galerien</h2>
+    <p class="settings-section-desc">Standardmäßig ist die Startseite neutral – Gäste finden ihre Galerie über Code oder Link.</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="toggle">
+            <input type="checkbox" name="homepage_show_galleries" value="1"
+                   {% if settings.homepage_show_galleries == '1' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            Galerie-Liste öffentlich auf der Startseite anzeigen
+          </label>
+          <p class="form-hint" style="margin-top:var(--sp-2)">Aus lassen, wenn nicht jeder alle Galerien sehen soll.</p>
+        </div>
+        <div class="form-group">
+          <label class="toggle">
+            <input type="checkbox" name="homepage_show_empty_events" value="1"
+                   {% if settings.homepage_show_empty_events == '1' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            Auch Galerien ohne Fotos anzeigen
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="settings-section-title">Stiller Betrieb</h2>
+    <p class="settings-section-desc">Für Veranstaltungen, bei denen die Bilder gesichert, aber nicht verteilt werden sollen.</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="toggle">
+            <input type="checkbox" name="silent_mode" value="1"
+                   {% if settings.silent_mode == '1' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            Stiller Betrieb für alle Galerien
+          </label>
+          <p class="form-hint" style="margin-top:var(--sp-2)">
+            Die Box nimmt auf, der Sync lädt hoch, du siehst alles im Admin. Die Gäste merken nichts davon:
+            kein QR-Code auf dem Schirm und auf dem Abzug, kein Sharepic, keine Gästemail, keine öffentliche
+            Galerie — auch nicht mit Passwort. Einzelne Events lassen sich in den Galerie-Einstellungen
+            still schalten; dieser Schalter hier gilt für alle und lässt sich je Event nicht aufheben.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="settings-section-title">Galerie-Features</h2>
+    <p class="settings-section-desc">Was Gäste in einer Galerie tun dürfen.</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="toggle">
+            <input type="checkbox" name="selection_download_enabled" value="1"
+                   {% if settings.selection_download_enabled != '0' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            „Meine Auswahl“ – Gäste wählen Fotos und laden sie als ZIP
+          </label>
+          <p class="form-hint" style="margin-top:var(--sp-2)">Empfohlen. Funktioniert unabhängig vom kompletten ZIP-Download.</p>
+        </div>
+        <div class="form-group">
+          <label class="toggle">
+            <input type="checkbox" name="zip_download_enabled" value="1"
+                   {% if settings.zip_download_enabled == '1' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            Kompletten Galerie-Download (alle Fotos als ZIP) anbieten
+          </label>
+        </div>
+        <div class="form-group" style="margin-left:var(--sp-6)">
+          <label class="toggle">
+            <input type="checkbox" name="zip_download_admin_only" value="1"
+                   {% if settings.zip_download_admin_only != '0' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            Kompletten Download nur für Admin (Gäste sehen ihn nicht)
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="toggle">
+            <input type="checkbox" name="download_sizes_enabled" value="1"
+                   {% if settings.download_sizes_enabled != '0' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            Download-Größe wählbar (640 / 1024 / 2048 px / Original)
+          </label>
+          <p class="form-hint" style="margin-top:var(--sp-2)">
+            Empfohlen. Aus = Gäste bekommen immer die Originaldatei (oft mehrere MB pro Foto).
+            Welche Größen ein einzelnes Event anbietet, steht in den Galerie-Einstellungen.
+          </p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="download_pattern">Dateinamen für Downloads</label>
+          <input type="text" id="download_pattern" name="download_pattern" class="form-control"
+                 value="{{ settings.download_pattern or '' }}" maxlength="120"
+                 placeholder="{{ muster_beispiel }}">
+          <p class="form-hint" style="margin-top:var(--sp-2)">
+            Ergibt: <code>{{ muster_vorschau }}</code><br>
+            {% for schluessel, was, _b in muster_platzhalter %}<code>{{ schluessel }}</code> {{ was }}{% if not loop.last %} · {% endif %}{% endfor %}<br>
+            Leer lassen heißt: der Name, unter dem die Aufnahme angekommen ist. Einzelne Events
+            dürfen davon abweichen. Die Dateien auf der Platte bleiben unberührt — geändert wird
+            nur der Name, unter dem der Gast sie bekommt.
+          </p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="file_naming">{{ t('naming.label') }}</label>
+          <select id="file_naming" name="file_naming" class="form-control" style="max-width:360px">
+            <option value="original" {% if (settings.file_naming or 'original') == 'original' %}selected{% endif %}>{{ t('naming.original') }}</option>
+            <option value="event_datetime" {% if settings.file_naming == 'event_datetime' %}selected{% endif %}>{{ t('naming.event_datetime') }}</option>
+          </select>
+          <p class="form-hint" style="margin-top:var(--sp-2)">{{ t('naming.hint') }} Jedes Event kann davon abweichen.</p>
+        </div>
+        <div class="form-group" id="aufbewahrung-standard">
+          <label class="form-label" for="retention_days_default">{{ t('kind.defaults_days') }}</label>
+          <input type="number" id="retention_days_default" name="retention_days_default" class="form-control"
+                 value="{{ retention_days_default }}" min="1" max="3650" inputmode="numeric" style="max-width:120px">
+          <p class="form-hint" style="margin-top:var(--sp-2)">{{ t('kind.defaults_days_hint') }}</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="retention_auto_default">{{ t('kind.defaults_auto') }}</label>
+          <select id="retention_auto_default" name="retention_auto_default" class="form-control" style="max-width:360px">
+            <option value="1" {% if retention_auto_default %}selected{% endif %}>{{ t('kind.defaults_auto_on') }}</option>
+            <option value="0" {% if not retention_auto_default %}selected{% endif %}>{{ t('kind.deletion_off') }}</option>
+          </select>
+          <p class="form-hint" style="margin-top:var(--sp-2)">{{ t('kind.defaults_auto_hint') }} {{ t('kind.deletion_hint') }}</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="storage_warn_percent">Speicher-Warnung ab (%)</label>
+          <input type="number" id="storage_warn_percent" name="storage_warn_percent" class="form-control"
+                 value="{{ settings.storage_warn_percent or 85 }}" min="50" max="99" style="max-width:120px">
+          <p class="form-hint" style="margin-top:var(--sp-2)">
+            Ab diesem Füllstand warnt das Dashboard. Standard: 85 %.
+          </p>
+        </div>
+        <div class="form-group">
+          <label class="toggle">
+            <input type="checkbox" name="guest_upload_enabled" value="1"
+                   {% if settings.guest_upload_enabled == '1' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            Gäste-Upload aktivieren
+          </label>
+          <p class="form-hint" style="margin-top:var(--sp-2)">Gäste können eigene Fotos zur Galerie hinzufügen.</p>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="settings-section-title">Footer</h2>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <p class="form-hint" style="margin:0 0 var(--sp-4)">
+          Impressum und Datenschutz stehen immer in der Fußzeile — ihre Texte pflegst du unter
+          <a href="/admin/settings/legal">Rechtliches</a>. Die FAQ erscheint nur, wenn es
+          <a href="/admin/settings/faq">welche gibt</a>. Alles Weitere bestimmst du hier.
+        </p>
+        <div id="footerLinks">
+          {% for link in footer_links %}
+          <div class="footer-row" style="display:grid;grid-template-columns:1fr 1fr 1.4fr auto;gap:.5rem;align-items:end;margin-bottom:.5rem">
+            <div><label class="form-label">Titel</label>
+              <input type="text" name="footer_label" class="form-control" value="{{ link.label }}" maxlength="60"></div>
+            <div><label class="form-label">Titel (EN)</label>
+              <input type="text" name="footer_label_en" class="form-control" value="{{ link.label_en }}" maxlength="60" placeholder="leer = wie oben"></div>
+            <div><label class="form-label">Adresse</label>
+              <input type="text" name="footer_url" inputmode="url" autocapitalize="off" spellcheck="false" class="form-control" value="{{ link.url }}" placeholder="https://mein-studio.de"></div>
+            <label class="gs-check" style="white-space:nowrap;padding-bottom:.6rem">
+              <input type="checkbox" name="footer_new_tab" value="{{ loop.index0 }}" {% if link.new_tab %}checked{% endif %}> neues Fenster
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="button" class="btn btn--secondary btn--sm" id="addFooterLink" style="margin-bottom:var(--sp-4)">Weiteren Link hinzufügen</button>
+        <p class="form-hint" style="margin:0 0 var(--sp-4)">Eine Zeile ohne Titel oder ohne Adresse wird beim Speichern verworfen — so löschst du einen Link.</p>
+        <script>
+        (function () {
+          var box = document.getElementById('footerLinks');
+          var knopf = document.getElementById('addFooterLink');
+          if (!box || !knopf) return;
+          knopf.addEventListener('click', function () {
+            var n = box.querySelectorAll('.footer-row').length;
+            if (n >= 8) { knopf.disabled = true; return; }
+            var row = document.createElement('div');
+            row.className = 'footer-row';
+            row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1.4fr auto;gap:.5rem;align-items:end;margin-bottom:.5rem';
+            row.innerHTML =
+              '<div><label class="form-label">Titel</label><input type="text" name="footer_label" class="form-control" maxlength="60"></div>' +
+              '<div><label class="form-label">Titel (EN)</label><input type="text" name="footer_label_en" class="form-control" maxlength="60" placeholder="leer = wie oben"></div>' +
+              '<div><label class="form-label">Adresse</label><input type="text" name="footer_url" inputmode="url" autocapitalize="off" spellcheck="false" class="form-control" placeholder="https://mein-studio.de"></div>' +
+              '<label class="gs-check" style="white-space:nowrap;padding-bottom:.6rem"><input type="checkbox" name="footer_new_tab" value="' + n + '"> neues Fenster</label>';
+            box.appendChild(row);
+          });
+        })();
+        </script>
+        <div class="form-group">
+          <label class="toggle">
+            <input type="checkbox" name="footer_show_powered_by" value="1"
+                   {% if settings.footer_show_powered_by != '0' %}checked{% endif %}>
+            <span class="toggle-track"></span>
+            „Powered by“-Hinweis im Footer anzeigen
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="settings-section-title">Texte der Galerie</h2>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <p class="form-hint" style="margin-top:0">
+          Hausstandard für alle Galerien. Je Event lässt sich jeder Text nochmal einzeln überschreiben
+          (im Event unter „Texte dieser Galerie“). Leeres Feld heißt: mitgelieferter Text, er steht grau im Feld.
+        </p>
+        {% for lang, lang_label in [('de', 'Deutsch'), ('en', 'Englisch')] %}
+        <details {% if lang == 'de' %}open{% endif %} style="margin-bottom:1rem">
+          <summary style="cursor:pointer;font-weight:600;margin:.5rem 0">{{ lang_label }}</summary>
+          {% for key, label in text_keys %}
+          <div class="form-group">
+            <label class="form-label" for="gtext_{{ lang }}_{{ key }}">{{ label }}</label>
+            <input class="form-control" id="gtext_{{ lang }}_{{ key }}" name="gtext_{{ lang }}_{{ key }}"
+                   value="{{ (global_texts.get(lang) or {}).get(key, '') }}"
+                   placeholder="{{ default_text(key, lang) }}">
+          </div>
+          {% endfor %}
+        </details>
+        {% endfor %}
+        <div class="form-group">
+          <label class="form-label" for="gtexts_extra_json">Weitere Texte (JSON)</label>
+          <textarea class="form-control" id="gtexts_extra_json" name="gtexts_extra_json" rows="4"
+                    spellcheck="false" placeholder='{"de": {"gallery.btn.like": "Schön!"}}'>{{ gtexts_extra }}</textarea>
+          <p class="form-hint">Die Schlüssel stehen in <code>app/i18n/de.py</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn--primary">Einstellungen speichern</button>
+  </div>
+</form>
+{% endblock %}

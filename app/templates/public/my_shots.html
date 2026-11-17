@@ -1,0 +1,113 @@
+{% extends "layout_public.html" %}
+{% block title %}{{ t('mine.title') }}{% endblock %}
+{% block head %}
+{% include "public/_brand_style.html" %}
+<style>
+  .mine{max-width:860px;margin:0 auto;padding:28px 18px 80px}
+  .mine-eyebrow{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 8px}
+  .mine h1{font-size:clamp(1.6rem,5vw,2.3rem);letter-spacing:-.02em;line-height:1.12;margin:0 0 12px}
+  .mine-lead{color:var(--color-text-2);line-height:1.6;max-width:56ch;margin:0 0 18px}
+  .mine-note{border:1px solid var(--color-border-subtle);border-radius:var(--r-lg);padding:14px 16px;
+             background:var(--color-surface);font-size:.85rem;line-height:1.6;color:var(--color-text-2);max-width:60ch}
+  .mine-note strong{color:var(--color-text)}
+  .mine-group{margin:30px 0 0;border-top:1px solid var(--color-border-subtle);padding-top:18px}
+  .mine-head{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+  .mine-when{font-size:.85rem;color:var(--color-text-muted);font-variant-numeric:tabular-nums}
+  .mine-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+  .mine-card{margin:0;border-radius:var(--r-lg);overflow:hidden;background:var(--color-surface);
+             border:1px solid var(--color-border-subtle)}
+  .mine-card img,.mine-card video{display:block;width:100%;height:auto;background:var(--color-surface-3)}
+  .mine-actions{display:flex;gap:8px;padding:10px}
+  .mine-actions .btn{flex:1;justify-content:center;min-height:44px}
+  .mine-clear{margin-top:34px}
+  @media(max-width:520px){.mine-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="mine">
+  <p class="mine-eyebrow">{{ t('mine.eyebrow') }}</p>
+  <h1>{{ t('mine.title') }}</h1>
+
+  {% if groups %}
+  <p class="mine-lead">{{ t('mine.lead', n=groups|length) }}</p>
+  {% endif %}
+
+  <div class="mine-note">
+    <strong>{{ t('mine.privacy_title') }}</strong><br>
+    {{ t('mine.privacy_text') }}
+  </div>
+
+  {% if not groups %}
+  <div class="mine-note" style="margin-top:18px">
+    <strong>{{ t('mine.empty_title') }}</strong><br>
+    {{ t('mine.empty_text') }}
+  </div>
+  {% endif %}
+
+  {% for group in groups %}
+  <section class="mine-group" aria-label="{{ group.event.name }}">
+    <div class="mine-head">
+      <div>
+        <h2 style="font-weight:600; font-size:1rem; margin:0">{{ group.event.name }}</h2>
+        <div class="mine-when">{{ group.taken[:16]|replace('T', ' ') }} · {{ t('mine.shots', n=group.shots|length) }}</div>
+      </div>
+      <a class="btn btn--ghost btn--sm" href="/p/{{ group.code }}">{{ t('mine.open_session') }}</a>
+    </div>
+    <div class="mine-grid">
+      {% for it in group.shots %}
+      <figure class="mine-card">
+        {% if it.is_video %}
+        {#- width/height: a 9:16 boomerang takes its portrait box at once, not after loading -#}
+        <video src="{{ it.src }}" {% if it.poster %}poster="{{ it.poster }}"{% endif %} width="{{ it.width }}" height="{{ it.height }}" controls playsinline loop muted preload="metadata"></video>
+        {% else %}
+        <img src="{{ it.src }}" alt="" width="{{ it.width }}" height="{{ it.height }}" loading="lazy" decoding="async">
+        {% endif %}
+        <div class="mine-actions">
+          {% if group.share.native or group.share.link %}
+          <button class="btn btn--primary btn--sm" type="button"
+                  onclick="mineShare({{ it.src|tojson|forceescape }}, {{ it.filename|tojson|forceescape }}, {{ it.share_token|tojson|forceescape }}, {{ group.share|tojson|forceescape }})">{{ t('gallery.share') }}</button>
+          {% endif %}
+          {% if group.allow_download %}
+            {% if it.is_video %}
+            <a class="btn btn--secondary btn--sm" href="{{ it.src }}" download="{{ it.filename }}">{{ t('session.download') }}</a>
+            {% else %}
+            <a class="btn btn--secondary btn--sm"
+               href="/gallery/{{ group.event.slug }}/photo/{{ it.id }}/download?size={{ group.download_size or 'original' }}&code={{ group.code }}">{{ t('session.download') }}</a>
+            {% if group.allow_original %}
+            <a class="btn btn--ghost btn--sm"
+               href="/gallery/{{ group.event.slug }}/photo/{{ it.id }}/download?size=original&code={{ group.code }}">{{ t('session.original') }}</a>
+            {% endif %}
+            {% endif %}
+          {% endif %}
+        </div>
+      </figure>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+  {% if groups %}
+  <form class="mine-clear" method="post" action="/meine/leeren"
+        onsubmit="return confirm({{ t('mine.clear_confirm')|tojson|forceescape }})">
+    <button class="btn btn--ghost btn--sm" type="submit">{{ t('mine.clear') }}</button>
+  </form>
+  {% endif %}
+</div>
+<script>
+async function mineShare(src, name, token, allow) {
+  allow = allow || {native: true, link: true};
+  var link = token ? (location.origin + '/s/' + token) : location.href;
+  try {
+    if (allow.native && navigator.canShare) {
+      var blob = await (await fetch(src, {credentials: 'same-origin'})).blob();
+      var file = new File([blob], name || 'foto.jpg', {type: blob.type || 'image/jpeg'});
+      if (navigator.canShare({files: [file]})) { await navigator.share({files: [file], title: document.title}); return; }
+    }
+    if (allow.native && navigator.share) { await navigator.share({url: link, title: document.title}); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  if (!allow.link) return;
+  try { await navigator.clipboard.writeText(link); alert({{ t('gallery.link_copied')|tojson }}); }
+  catch (e) { prompt({{ t('gallery.link_copied')|tojson }}, link); }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{
+ "id": "gold-hoch-4",
+ "name": "Schwarz & Gold · hoch · 4 Fotos",
+ "paper": "10x15",
+ "canvas": [
+  1200,
+  1800
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 492,
+   "h": 448,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  },
+  {
+   "x": 612,
+   "y": 96,
+   "w": 492,
+   "h": 448,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-2"
+  },
+  {
+   "x": 96,
+   "y": 568,
+   "w": 492,
+   "h": 448,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-3"
+  },
+  {
+   "x": 612,
+   "y": 568,
+   "w": 492,
+   "h": 448,
+   "shot": 3,
+   "radius": 0,
+   "id": "foto-4"
+  }
+ ],
+ "texts": [
+  {
+   "x": 600,
+   "y": 1074,
+   "size": 200,
+   "bold": false,
+   "align": "center",
+   "value": "30",
+   "color": "#c9a45c",
+   "id": "zahl",
+   "font": "DMSerifDisplay-Regular.ttf"
+  },
+  {
+   "x": 600,
+   "y": 1382,
+   "size": 82,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#f4eee2",
+   "id": "t2",
+   "font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 600,
+   "y": 1482,
+   "size": 45,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#bfb6a6",
+   "id": "t3",
+   "font": "CormorantSC-SemiBold.ttf"
+  }
+ ],
+ "shots": 4,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 1800,
+   "fill": "#121212",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 44,
+   "y": 44,
+   "w": 1112,
+   "h": 1712,
+   "fill": "",
+   "stroke": "#c9a45c",
+   "stroke_width": 3,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-1"
+  },
+  {
+   "kind": "rect",
+   "x": 56,
+   "y": 56,
+   "w": 1088,
+   "h": 1688,
+   "fill": "",
+   "stroke": "#c9a45c",
+   "stroke_width": 3,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-2"
+  }
+ ],
+ "images": [
+  {
+   "file": "kol-gold-funken-300x300.png",
+   "x": 106,
+   "y": 1080,
+   "w": 300,
+   "h": 300,
+   "opacity": 100,
+   "id": "bild-3"
+  },
+  {
+   "file": "kol-gold-funken-300x300-b.png",
+   "x": 794,
+   "y": 1344,
+   "w": 300,
+   "h": 300,
+   "opacity": 100,
+   "id": "bild-4"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "form-1",
+  "form-2",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "foto-4",
+  "bild-3",
+  "bild-4",
+  "zahl",
+  "t2",
+  "t3"
+ ]
+}

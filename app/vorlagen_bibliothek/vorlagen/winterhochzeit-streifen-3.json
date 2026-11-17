@@ -1,0 +1,186 @@
+{
+ "id": "winterhochzeit-streifen-3",
+ "name": "Winter · Streifen · 3 Fotos",
+ "paper": "streifen",
+ "canvas": [
+  1200,
+  1800
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 60,
+   "y": 72,
+   "w": 480,
+   "h": 360,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  },
+  {
+   "x": 60,
+   "y": 452,
+   "w": 480,
+   "h": 360,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-2"
+  },
+  {
+   "x": 60,
+   "y": 832,
+   "w": 480,
+   "h": 360,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-3"
+  },
+  {
+   "x": 660,
+   "y": 72,
+   "w": 480,
+   "h": 360,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-4"
+  },
+  {
+   "x": 660,
+   "y": 452,
+   "w": 480,
+   "h": 360,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-5"
+  },
+  {
+   "x": 660,
+   "y": 832,
+   "w": 480,
+   "h": 360,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-6"
+  }
+ ],
+ "texts": [
+  {
+   "x": 300,
+   "y": 1320,
+   "size": 53,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#1f3a2e",
+   "id": "t1-0",
+   "font": "DMSerifDisplay-Italic.ttf"
+  },
+  {
+   "x": 300,
+   "y": 1388,
+   "size": 31,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#4c5f54",
+   "id": "t2-0",
+   "font": "CormorantSC-SemiBold.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1320,
+   "size": 53,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#1f3a2e",
+   "id": "t1-1",
+   "font": "DMSerifDisplay-Italic.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1388,
+   "size": 31,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#4c5f54",
+   "id": "t2-1",
+   "font": "CormorantSC-SemiBold.ttf"
+  }
+ ],
+ "shots": 3,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 1800,
+   "fill": "#f8f4ec",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  }
+ ],
+ "images": [
+  {
+   "file": "kol-winter-tanne-200x140.png",
+   "x": 95,
+   "y": 1447,
+   "w": 200,
+   "h": 140,
+   "opacity": 100,
+   "id": "bild-1"
+  },
+  {
+   "file": "kol-winter-tanne-200x140-sp.png",
+   "x": 305,
+   "y": 1447,
+   "w": 200,
+   "h": 140,
+   "opacity": 100,
+   "id": "bild-2"
+  },
+  {
+   "file": "kol-winter-tanne-200x140.png",
+   "x": 695,
+   "y": 1447,
+   "w": 200,
+   "h": 140,
+   "opacity": 100,
+   "id": "bild-3"
+  },
+  {
+   "file": "kol-winter-tanne-200x140-sp.png",
+   "x": 905,
+   "y": 1447,
+   "w": 200,
+   "h": 140,
+   "opacity": 100,
+   "id": "bild-4"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "foto-4",
+  "foto-5",
+  "foto-6",
+  "bild-1",
+  "bild-2",
+  "bild-3",
+  "bild-4",
+  "t1-0",
+  "t2-0",
+  "t1-1",
+  "t2-1"
+ ]
+}

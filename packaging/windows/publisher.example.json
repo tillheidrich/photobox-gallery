@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy to publisher.json (git-ignored) and fill in. Placeholder values below are dropped from every build, so a build without publisher.json names only the publisher and the project.",
+  "name": "Till Heidrich",
+  "project_url": "https://github.com/tillheidrich/photobox-gallery",
+  "support_url": "https://github.com/tillheidrich/photobox-gallery/issues",
+  "address": "Strasse Hausnummer, PLZ Ort, Deutschland",
+  "email": "kontakt@example.invalid",
+  "phone": ""
+}

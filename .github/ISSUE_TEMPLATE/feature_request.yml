@@ -1,0 +1,28 @@
+name: Feature request
+description: Something the booth or the gallery should be able to do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The scope is deliberately narrow. Out of scope, permanently: face
+        recognition and any other biometrics, AI features in the product,
+        anything that needs a paid service to work, stickers and 360 rigs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What happens at an event today that should not. Not the solution — the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How you would solve it
+    validations:
+      required: true
+  - type: dropdown
+    id: offer
+    attributes:
+      label: Would you build it?
+      options: ["Yes, I want to open a pull request", "Maybe, with guidance", "No, just reporting"]

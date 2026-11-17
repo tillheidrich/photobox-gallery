@@ -1,0 +1,19 @@
+{# Branding einer Galerie als CSS-Variablen.
+
+   Wird von jeder Gastseite eingebunden (Galerie, Durchgang, Freigabe-Link,
+   Kiosk, Slideshow). Ist ``brand`` nicht gesetzt, holen wir es hier selbst —
+   so kommt jede Seite ohne eigenes Zutun an dasselbe Branding.
+   Gesetzt wird nur, was der Betreiber wirklich gewählt hat. #}
+{% set b = brand if brand is defined and brand else brand_for(event if event is defined else None) %}
+{% set vars = brand_css_vars(b) %}
+{% if vars %}
+<style>
+  :root, [data-theme="dark"], [data-theme="light"] {
+  {%- for name, value in vars.items() %}
+    {{ name }}: {{ value }};
+  {%- endfor %}
+  }
+  {% if b.bg %}body { background: {{ b.bg }}; }{% endif %}
+  {% if b.font_stack %}body { font-family: {{ b.font_stack }}; }{% endif %}
+</style>
+{% endif %}

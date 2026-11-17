@@ -1,0 +1,1612 @@
+{% extends "layout_public.html" %}
+{% block title %}{{ event.name }} – Photobox Gallery{% endblock %}
+
+{% block head %}
+{% if gs and gs.theme != 'auto' %}<script>window.PB_FORCE_THEME = {{ gs.theme|tojson }};</script>{% endif %}
+{% if gs and gs.tint %}<style>body{background:color-mix(in oklab, {{ gs.tint }} 7%, var(--color-surface-2))}</style>{% endif %}
+{# Branding pro Event: Akzent, Hintergrund, Textfarbe, Schrift. Die Textfarbe
+   auf dem Akzent wird serverseitig berechnet — unlesbar kann es nicht werden. #}
+{% include "public/_brand_style.html" %}
+{% endblock %}
+
+{% block nav %}
+{% if owner %}
+{#- The owner's slim bar (Picdrop's "Vorschau"): exactly the guest's page
+    below it in preview, the same page with tools in manage mode. -#}
+<div class="pv-bar" id="pvBar" data-view="{{ owner.view }}" role="region" aria-label="{{ t('preview.label') if owner.view == 'vorschau' else t('manage.label') }}">
+  <div class="pv-bar-in">
+    <p class="pv-state"><strong>{{ t('preview.label') if owner.view == 'vorschau' else t('manage.label') }}</strong><span aria-hidden="true"> · </span><span>{{ owner.state|join(' · ') }}</span></p>
+    <div class="pv-actions">
+      {% if owner.view == 'vorschau' %}
+      <a class="pv-btn" href="{{ owner.manage_url }}">{{ t('manage.label') }}</a>
+      {% if owner.slideshow_url %}<a class="pv-btn pv-wide" href="{{ owner.slideshow_url }}" target="_blank" rel="noopener">{{ t('preview.slideshow') }}</a>{% endif %}
+      {% else %}
+      <a class="pv-btn" href="{{ owner.preview_url }}">{{ t('manage.to_guest') }}</a>
+      {% endif %}
+      <button type="button" class="pv-btn pv-icon" id="pvShare" data-url="{{ owner.share_url }}" aria-label="{{ t('preview.share') }}" title="{{ t('preview.share') }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      </button>
+      <a class="pv-btn pv-icon" href="{{ owner.close_url }}" aria-label="{{ t('preview.close') }}" title="{{ t('manage.back') }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+<nav class="public-nav" aria-label="{{ t('a11y.nav') }}">
+  <div class="container">
+    <a href="/" class="nav-logo">
+      {% if brand and brand.logo_url %}
+        {# Event-Logo hat Vorrang vor dem Logo der Installation #}
+        <img src="{{ brand.logo_url }}" alt="{{ event.name }}">
+      {% elif global_logo().has %}
+        {% from "_brand_logo.html" import brand_logo %}{{ brand_logo() }}
+      {% else %}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/>
+          <path d="m21 15-5-5L5 21"/>
+        </svg>
+        <span class="nav-logo-text">{% if g.homepage_headline %}{{ g.homepage_headline }}{% else %}{{ t('app.title') }}{% endif %}</span>
+      {% endif %}
+    </a>
+    <div class="nav-controls">
+      {% if current_client() %}
+      <a href="/kunde" class="nav-ctl" title="{{ t('client.my_galleries') }}" aria-label="{{ t('client.my_galleries') }}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="nav-ctl-label">{{ t('client.my_galleries') }}</span>
+      </a>
+      {% endif %}
+      {% if g.my_uids_count and (not gs or gs.my_shots_link) %}
+      {# Nur wenn dieser Browser QR-Codes gescannt hat — ohne Scan gibt es nichts zu zeigen. #}
+      <a href="/meine" class="nav-ctl" title="{{ t('mine.title') }}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+        <span class="nav-ctl-label">{{ t('mine.title') }}</span>
+      </a>
+      {% endif %}
+      {% if g.lang_switch %}
+      <form method="post" action="/lang/{{ 'de' if g.lang == 'en' else 'en' }}" style="margin:0">
+        <button type="submit" class="nav-ctl" lang="{{ 'en' if g.lang == 'de' else 'de' }}"
+                aria-label="{{ t('a11y.lang_to_en') if g.lang == 'de' else t('a11y.lang_to_de') }}">{{ 'EN' if g.lang == 'de' else 'DE' }}</button>
+      </form>
+      {% endif %}
+      {% if not gs or gs.theme == 'auto' %}
+      <button onclick="toggleTheme()" id="themeToggle" class="nav-ctl is-icon" title="{{ t('a11y.theme_toggle') }}" aria-label="{{ t('a11y.theme_toggle') }}">
+        <svg id="iconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<!-- Gallery Header -->
+{% if brand and brand.banner_url %}
+<div class="gallery-banner"><img src="{{ brand.banner_url }}" alt=""></div>
+{% endif %}
+{% if opener %}
+<section class="gallery-opener pg-{{ gs.corners }}" aria-labelledby="galleryTitle">
+  <img class="gallery-opener-img" src="{{ opener.cover_url }}" alt="" fetchpriority="high" decoding="async">
+  <div class="gallery-opener-text container">
+    {% if parent %}<p class="gallery-opener-kicker">{{ parent.name }}</p>{% endif %}
+    <p class="gallery-opener-title title-font-{{ opener.font or 'page' }}" aria-hidden="true">{{ gs.opener_title or event.name }}</p>
+    {% if opener.subtitle %}<p class="gallery-opener-sub">{{ opener.subtitle }}</p>{% endif %}
+    {% if opener.date %}<p class="gallery-opener-date">{{ opener.date }}</p>{% endif %}
+  </div>
+</section>
+{% endif %}
+<div class="gallery-header">
+  <div class="container">
+    <div>
+      {% if parent %}
+      <nav class="gallery-crumbs" aria-label="{{ t('folder.crumbs') }}">
+        <a href="/gallery/{{ parent.slug }}{{ view_qs }}">{{ parent.name }}</a><span aria-hidden="true">/</span><span aria-current="page">{{ event.name }}</span>
+      </nav>
+      {% endif %}
+      <h1 class="gallery-title{% if opener %} sr-only{% endif %}" id="galleryTitle">{{ gs.opener_title or event.name }}</h1>
+      <div class="gallery-meta">
+        {% if event.date and not opener %}<span>{{ event_date or event.date[:10] }}</span>{% endif %}
+        {% set n_total = photo_total if photo_total is defined else photos|length %}
+        <span id="photoCount">{{ n_total }} {{ t('gallery.photo_count_many') if n_total != 1 else t('gallery.photo_count_one') }}</span>
+        {# The remembered download size, and the way to change it (filled in by dlShowChoice). #}
+        {% if download_sizes_enabled and dl_options|length > 1 and gs.download_single %}<button type="button" class="dl-change" id="dlChange" hidden></button>{% endif %}
+        {% if live %}<span class="g-live" id="liveBadge" data-live="{{ '1' if live.on else '0' }}"{% if not live.on %} hidden{% endif %}><i aria-hidden="true"></i>{{ t('live.badge') }}</span>{% endif %}
+        {% if expiry %}
+        <span class="gallery-expiry" title="{{ t('gallery.expires_hint', date=expiry.until) }}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>
+          {{ expiry.text }}
+        </span>
+        {% endif %}
+      </div>
+      {% if event.description %}
+      {#- Picdrop's description card: three lines, then "mehr lesen". The
+          button appears only when the text is really cut (script below). -#}
+      <div class="g-desc" id="gDesc">
+        <p class="g-desc-text" id="gDescText">{{ event.description }}</p>
+        <button type="button" class="g-desc-more" id="gDescMore" aria-expanded="false" aria-controls="gDescText" hidden
+                data-more="{{ t('gallery.more') }}" data-less="{{ t('gallery.less') }}">{{ t('gallery.more') }}</button>
+      </div>
+      {% endif %}
+    </div>
+    <div class="gallery-actions">
+      {% if zip_enabled %}
+      <a href="/gallery/{{ event.slug }}/download.zip"
+         class="btn btn--primary g-dl-all"
+         onclick="trackAction('zip_download')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        {{ t('gallery.download_all') }}
+      </a>
+      {% if folder_tiles %}
+      <a href="/gallery/{{ event.slug }}/download.zip?folders=1" class="btn btn--secondary">{{ t('folder.zip_with') }}</a>
+      {% endif %}
+      {% endif %}
+      {% if gs.share_sharepic %}
+      <a href="/gallery/{{ event.slug }}/share"
+         target="_blank" rel="noopener"
+         class="btn btn--secondary" data-umami-event="sharepic"
+         title="{{ t('gallery.sharepic_hint') }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="m21 15-5-5L5 21"/>
+        </svg>
+        Sharepic
+      </a>
+      {% endif %}
+      {% if client_comments %}
+      <button type="button" class="btn btn--secondary" id="galleryComment">{{ t('comments.gallery') }}</button>
+      {% endif %}
+      {% if darf_wechseln and not manage %}
+      <a href="?mode={{ 'presentation' if proofing else 'proofing' }}" class="btn btn--secondary" rel="nofollow">{{ t('gallery.mode_presentation') if proofing else t('gallery.mode_proofing') }}</a>
+      {% endif %}
+      {% if gs.print_qr %}
+      <a href="/gallery/{{ event.slug }}/print" target="_blank"
+         class="btn btn--secondary btn--icon" data-umami-event="open-print" title="{{ t('gallery.qr_hint') }}" aria-label="{{ t('gallery.qr_hint') }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"/>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Filter Toolbar -->
+{% if has_multiple_kinds or originals_count or show_originals or source_chips %}
+<div class="gallery-toolbar">
+  <div class="container">
+    <div class="filter-group" id="filterGroup" role="group" aria-label="{{ t('gallery.filter_label') }}">
+      {% if show_originals %}
+      <a class="filter-btn" href="?">{{ t('gallery.filter_all') }}</a>
+      <a class="filter-btn active" href="?show=originals" aria-current="page">{{ t('gallery.filter_originals') }} ({{ photos|length }})</a>
+      {% else %}
+      <button class="filter-btn active" data-filter="all">{{ t('gallery.filter_all') }} ({{ photos|length }})</button>
+      {% if has_multiple_kinds %}
+      {% if kind_counts.photo %}<button class="filter-btn" data-filter="photo">{{ t('gallery.filter_photos') }} ({{ kind_counts.photo }})</button>{% endif %}
+      {% if kind_counts.collage %}<button class="filter-btn" data-filter="collage">{{ t('gallery.filter_collages') }} ({{ kind_counts.collage }})</button>{% endif %}
+      {% if kind_counts.print %}<button class="filter-btn" data-filter="print">{{ t('gallery.filter_prints') }} ({{ kind_counts.print }})</button>{% endif %}
+      {% if kind_counts.boomerang %}<button class="filter-btn" data-filter="boomerang">Boomerang ({{ kind_counts.boomerang }})</button>{% endif %}
+      {% if kind_counts.gif %}<button class="filter-btn" data-filter="gif">{{ t('gallery.filter_gifs') }} ({{ kind_counts.gif }})</button>{% endif %}
+      {% if kind_counts.video %}<button class="filter-btn" data-filter="video">{{ t('gallery.filter_videos') }} ({{ kind_counts.video }})</button>{% endif %}
+      {% endif %}
+      {% for c in source_chips %}<button class="filter-btn" data-filter="src:{{ c.key }}">{{ c.label }} ({{ c.count }})</button>{% endfor %}
+      {% if originals_count %}<a class="filter-btn" href="?show=originals">{{ t('gallery.filter_originals') }} ({{ originals_count }})</a>{% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Auswahl-Leiste („Meine Auswahl") – immer verfügbar -->
+{# A logged-in client gets one bar: the stored selection, with the ZIP as one of its actions. #}
+{% if selection_enabled and photos and not client_picks and not manage %}
+<div class="selection-bar" id="selectionBar" data-max="100">
+  <div class="container selection-bar-inner">
+    <div class="selection-lead">
+      <button id="selectToggle" type="button" onclick="toggleSelectMode()" class="btn btn--secondary btn--sm">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 11 12 14 22 4"/></svg>
+        <span id="selectToggleLabel">{{ t('gallery.select') }}</span>
+      </button>
+      <span class="selection-hint" id="selectionHint">{{ t('gallery.selection_hint') }}</span>
+      <span class="selection-count" id="selectionCount" hidden></span>
+    </div>
+    <div class="selection-actions" id="selectionActions" hidden>
+      <button type="button" onclick="selectAllVisible()" class="btn btn--ghost btn--sm" title="{{ t('gallery.select_all_hint') }}">{{ t('gallery.select_all') }}</button>
+      <button type="button" onclick="clearSelection()" class="btn btn--ghost btn--sm">{{ t('gallery.clear_selection') }}</button>
+      <button id="downloadSelected" type="button" onclick="downloadSelected()" class="btn btn--primary btn--sm" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span id="downloadCount">0</span> · {{ t('gallery.download_selected') }}
+      </button>
+    </div>
+  </div>
+</div>
+<div class="selection-bar-spacer" id="selectionBarSpacer" aria-hidden="true"></div>
+{% endif %}
+
+{% if client_picks and photos %}
+<div class="client-picks" id="clientPicks" data-api="{{ client_picks.api }}">
+  <div class="container client-picks-inner">
+    <label class="client-picks-label" for="clientPicksSelect">{{ t('picks.label') }}</label>
+    <select id="clientPicksSelect" class="form-control client-picks-select"></select>
+    <button type="button" class="btn btn--ghost btn--sm" id="clientPicksNew">{{ t('picks.new') }}</button>
+    <span class="client-picks-state">
+      <span class="client-picks-count" id="clientPicksCount" role="status" aria-live="polite"></span>
+      <label class="client-picks-only"><input type="checkbox" id="clientPicksOnly"> {{ t('picks.only') }}</label>
+    </span>
+    {% if selection_enabled and not (gs.watermark and not is_admin) %}
+    <button type="button" class="btn btn--primary btn--sm" id="clientPicksZip"
+            data-zip="/gallery/{{ event.slug }}/selection.zip" disabled>{{ t('picks.zip') }}</button>
+    {% endif %}
+  </div>
+</div>
+<script type="application/json" id="clientPicksData">{{ {
+  "max": client_picks.max, "selections": client_picks.selections, "default_name": client_picks.default_name,
+  "t": {"count": t('picks.count'), "count_max": t('picks.count_max'), "full": t('picks.full', n=client_picks.max),
+        "new_prompt": t('picks.new_prompt'), "add": t('picks.add'), "remove": t('picks.remove'), "failed": t('picks.failed')}
+} | tojson }}</script>
+{% endif %}
+
+{% if folder_tiles %}
+<div class="container">
+  <h2 class="subgallery-heading">{{ t('folder.heading') }}</h2>
+  <div class="subgallery-grid" role="list">
+    {% for f in folder_tiles %}
+    <a href="/gallery/{{ f.slug }}{{ view_qs }}" class="event-card subgallery-card" role="listitem">
+      <div class="event-card-cover">
+        {% if f.cover_url %}<img src="{{ f.cover_url }}" alt="" loading="lazy">
+        {% else %}<div class="event-card-cover-placeholder">
+          {% if f.locked %}<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          {% else %}<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>{% endif %}
+        </div>{% endif %}
+      </div>
+      <div class="event-card-body">
+        <div class="event-card-title">{{ f.name }}</div>
+        <div class="event-card-meta">{% if f.date %}<span>{{ f.date }}</span>{% endif %}<span class="tabular">{{ f.count }} {{ t('gallery.photo_count_many') if f.count != 1 else t('gallery.photo_count_one') }}</span></div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Photo Grid -->
+<div class="container" style="padding-bottom:var(--sp-12)">
+  {% if photos %}
+  {% if manage %}
+  <div class="mg-bar" id="mgBar">
+    <div class="mg-filters" role="group" aria-label="{{ t('manage.filters') }}">
+      <button type="button" class="tag-chip active" data-mgfilter="" aria-pressed="true">{{ t('manage.filter_all') }} <span class="tabular">{{ photos|length }}</span></button>
+      <button type="button" class="tag-chip" data-mgfilter="hidden" aria-pressed="false">{{ t('manage.filter_hidden') }} <span class="tabular">{{ photos|selectattr('hidden')|list|length }}</span></button>
+      <button type="button" class="tag-chip" data-mgfilter="pending" aria-pressed="false">{{ t('manage.filter_pending') }} <span class="tabular">{{ photos|selectattr('pending')|selectattr('guest_upload')|list|length }}</span></button>
+      <button type="button" class="tag-chip" data-mgfilter="liked" aria-pressed="false">{{ t('manage.filter_liked') }} <span class="tabular">{{ photos|selectattr('like_count')|list|length }}</span></button>
+      {% for tid, tlabel, tcolor in tags %}<button type="button" class="tag-chip" data-mgfilter="tag:{{ tid }}" aria-pressed="false"><i style="background:{{ tcolor }}" aria-hidden="true"></i>{{ tag_labels[tid] }}</button>{% endfor %}
+    </div>
+    <p class="mg-hint">{{ t('manage.hint') }}</p>
+    <div class="mg-select">
+      <button type="button" class="btn btn--secondary btn--sm" id="mgSelect" aria-pressed="false" data-on="{{ t('manage.done') }}" data-off="{{ t('manage.select') }}">{{ t('manage.select') }}</button>
+      <span class="mg-count" id="mgCount" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+  <div class="mg-bulk" id="mgBulk" hidden>
+    <div class="container mg-bulk-in">
+      <span class="mg-bulk-count" id="mgBulkCount"></span>
+      <button type="button" class="btn btn--secondary btn--sm" data-mgbulk="hide">{{ t('manage.hide') }}</button>
+      <button type="button" class="btn btn--secondary btn--sm" data-mgbulk="show">{{ t('manage.show') }}</button>
+      <button type="button" class="btn btn--secondary btn--sm" data-mgbulk="tag" aria-haspopup="true">{{ t('manage.mark') }}</button>
+      <button type="button" class="btn btn--danger btn--sm" data-mgbulk="delete">{{ t('manage.delete') }}</button>
+    </div>
+  </div>
+  <div class="mg-tagmenu" id="mgTagMenu" role="menu" hidden>
+    {% for tid, tlabel, tcolor in tags %}<button type="button" role="menuitem" data-mgtag="{{ tid }}"><i style="background:{{ tcolor }}" aria-hidden="true"></i>{{ tag_labels[tid] }}</button>{% endfor %}
+    <button type="button" role="menuitem" data-mgtag="">{{ t('tag.none') }}</button>
+  </div>
+  {% elif darf_markieren %}
+  <div class="tag-filter" role="group" aria-label="{{ t('gallery.tags') }}">
+    <button type="button" class="tag-chip active" data-tagfilter="">{{ t('gallery.filter_all') }}</button>
+    {% for tid, tlabel, tcolor in tags %}<button type="button" class="tag-chip" data-tagfilter="{{ tid }}"><i style="background:{{ tcolor }}"></i>{{ tag_labels[tid] }}</button>{% endfor %}
+  </div>
+  {% endif %}
+  {# Jede Kachel ist ein Behälter, kein Link: Der Link zum Öffnen liegt
+     darin, die Knöpfe daneben. Knöpfe in einem Link sind für Tastatur und
+     Screenreader kaputt — und ungültiges HTML obendrein. #}
+  {#- How wide a tile is drawn, per layout (public.css), so srcset picks the
+      thumbnail for a narrow column and the web version for the list. -#}
+  {% if gs.layout == 'list' %}{% set tile_sizes = '(max-width: 900px) 100vw, 900px' %}
+  {% elif gs.layout in ('grid', 'polaroid') %}{% set tile_sizes = '(max-width: 700px) ' ~ ('100vw' if gs.thumb_size == 'l' else '50vw') ~ ', (max-width: 1100px) 33vw, 25vw' %}
+  {% else %}{% set tile_sizes = '(max-width: 340px) 100vw, (max-width: 700px) 50vw, (max-width: 1100px) 33vw, ' ~ ('17vw' if gs.thumb_size == 's' else '33vw' if gs.thumb_size == 'l' else '25vw') %}{% endif %}
+  <div class="photo-grid photo-grid--{{ gs.layout }} pg-size-{{ gs.thumb_size }} pg-gap-{{ gs.gap }} pg-{{ gs.corners }}" id="photoGrid"
+       role="list" aria-label="{{ t('a11y.gallery') }}">
+    {% for photo in photos %}
+    <div class="photo-item pswp-gallery" role="listitem"
+       data-url="{{ photo.url }}"
+       data-pswp-width="{{ photo.width }}"
+       data-pswp-height="{{ photo.height }}"
+       data-kind="{{ photo.kind }}"{% if photo.source is defined %}
+       data-source="{{ photo.source }}"{% endif %}
+       data-video="{{ '1' if photo.is_video else '' }}"
+       data-filename="{{ photo.display_name }}"
+       data-id="{{ photo.id }}"{% if photo.unframed_id %}
+       data-unframed="{{ photo.unframed_id }}"{% endif %}
+       data-token="{{ photo.share_token }}"
+       data-tag="{{ photo.color_tag or '' }}"{% if gs.likes and photo.liked_by_me %} data-liked="1"{% endif %}{% if manage %}
+       data-likes="{{ photo.like_count }}"{% if photo.hidden %} data-hidden="1"{% endif %}{% if photo.pending and photo.guest_upload %} data-pending="1"{% endif %}{% endif %}{% if gs.layout == 'polaroid' %}
+       style="--pola-tilt:{{ '%.1f'|format(((photo.id * 37) % 9 - 4) * 0.45) }}deg"{% endif %}>
+      <a class="photo-open" href="{{ photo.url }}" aria-label="{{ t('a11y.open_photo', name=photo.display_name) }}">
+        <img src="{{ photo.thumb_url }}"{% if photo.srcset %} srcset="{{ photo.srcset }}" sizes="{{ tile_sizes }}"{% endif %} alt="" width="{{ photo.width }}" height="{{ photo.height }}" {% if loop.index <= 8 %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async">
+        {% if photo.is_video %}<span class="photo-play" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span>{% endif %}
+        {% if gs.likes %}<span class="photo-liked" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>{% endif %}
+        {% if photo.id in comment_marks %}<span class="photo-comment-mark" title="{{ t('comments.has') }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="sr-only">{{ t('comments.has') }}</span></span>{% endif %}
+        {% if manage %}{% if photo.hidden %}<span class="mg-badge">{{ t('manage.pending_badge') if (photo.pending and photo.guest_upload) else t('manage.hidden_badge') }}</span>{% endif %}{% if photo.like_count %}<span class="mg-likes" aria-label="{{ t('manage.likes', n=photo.like_count) }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{{ photo.like_count }}</span>{% endif %}{% endif %}
+        {% if photo.color_tag and (darf_markieren or manage) %}<span class="photo-tag" style="background:{{ tag_colors[photo.color_tag] }}" title="{{ tag_labels[photo.color_tag] }}"></span>{% endif %}
+        {% if gs.show_file_info or gs.show_date %}<span class="photo-info">{% if gs.show_file_info %}{{ photo.display_name }} · {{ photo.size_h }}{% endif %}{% if gs.show_date and photo.taken %} {{ photo.taken }}{% endif %}</span>{% endif %}
+      </a>
+      {% if gs.layout == 'polaroid' %}<p class="pola-cap" aria-hidden="true">{{ photo.taken[-5:] if photo.taken else '' }}</p>{% endif %}
+      {% if selection_enabled and not client_picks and not manage %}
+      {# "Meine Auswahl": shown in selection mode only. The check box is the
+         control for keyboard and screen reader (named after the photo); the
+         mark beside it is what the eye sees, drawn large in public.css. #}
+      <input type="checkbox" class="photo-select-cb" aria-label="{{ t('gallery.select_photo', name=photo.display_name) }}" hidden>
+      <span class="photo-select-mark" aria-hidden="true" hidden></span>
+      {% endif %}
+      {% if client_picks %}
+      {# Always visible, also on touch: pick without opening the large view.
+         Same visual size as the heart mark; the tap area around it is larger. #}
+      <button type="button" class="pick-dot" data-id="{{ photo.id }}" aria-pressed="false"
+              title="{{ t('picks.add') }}" aria-label="{{ t('picks.add') }}"><span aria-hidden="true"></span></button>
+      {% endif %}
+      {% if darf_markieren and not manage %}
+      {#- Nothing else on a tile: share, download and like live in the large
+          view, as in Picdrop. The flag stays where marking is the job. -#}
+      <div class="photo-item-overlay">
+        <button class="btn btn--secondary btn--sm tag-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagMenu({{ photo.id }}, this)" title="{{ t('gallery.tags') }}" aria-label="{{ t('gallery.tags') }}" aria-haspopup="true" aria-expanded="false" aria-controls="tagMenu">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 22V4m0 0h13l-2 4 2 4H4"/></svg>
+        </button>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% elif not folder_tiles %}
+  <div class="empty-state" style="padding:var(--sp-20) 0">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <path d="m21 15-5-5L5 21"/>
+    </svg>
+    <h2>{{ t('gallery.no_photos_title') }}</h2>
+    <p>{{ t('gallery.no_photos_text') }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Guest Upload -->
+
+  {# ─── Subscribe Section ──────────────────────────────── #}
+  {% if event.published and gs.notify_signup and not manage %}
+  <div class="subscribe-section">
+    <div style="max-width:420px;margin:0 auto">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="1.5" style="margin:0 auto .75rem;display:block"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      <h2 style="font-size:1.125rem;font-weight:600;margin:0 0 .5rem">{{ t('gallery.subscribe_title') }}</h2>
+      <p style="color:var(--c-text-secondary);font-size:.9375rem;margin:0 0 1.25rem;line-height:1.5">
+        {{ t('gallery.subscribe_text') }}
+      </p>
+      <div id="subscribeForm" style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center">
+        <label class="sr-only" for="subscribeEmail">{{ t('gallery.subscribe_label') }}</label>
+        <input type="email" id="subscribeEmail" class="form-control" placeholder="{{ t('gallery.subscribe_email') }}"
+               style="flex:1;min-width:200px"
+               onkeydown="if(event.key==='Enter') submitSubscribe()">
+        <button onclick="submitSubscribe()" class="btn btn--primary" style="white-space:nowrap">
+          {{ t('gallery.subscribe_btn') }}
+        </button>
+      </div>
+      <div id="subscribeResult" role="status" aria-live="polite"
+           style="display:none;margin-top:1rem;font-size:.9375rem"></div>
+      <p style="font-size:.75rem;color:var(--c-text-muted);margin:.75rem 0 0">
+        {{ t('gallery.subscribe_no_spam') }}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if guest_upload_enabled and not manage %}
+  <div class="card" style="max-width:520px; margin:var(--sp-8) auto 0">
+    <div class="card-header">
+      <h2>{{ t('gallery.upload_title') }}</h2>
+    </div>
+    <div class="card-body">
+      {% if not upload.open %}
+      <div class="gu-closed" data-upload-closed role="status">
+        <p class="gu-closed-title">{{ t('upl.closed_title') }}</p>
+        <p class="gu-closed-text">{{ t('upl.closed_text', date=upload.until) }}</p>
+      </div>
+      {% else %}
+      {% if upload.until %}<p class="gu-until">{{ t('upl.until', date=upload.until) }}</p>{% endif %}
+      {% if upload.pin %}
+      <label class="gu-pin-label" for="guestUploadPin">{{ t('upl.pin_label') }}</label>
+      <input class="gu-pin" id="guestUploadPin" name="upload_pin" type="text" inputmode="numeric"
+             pattern="[0-9]*" autocomplete="off" maxlength="8" aria-describedby="guestUploadPinHint">
+      <p class="gu-pin-hint" id="guestUploadPinHint">{{ t('upl.pin_hint') }}</p>
+      {% endif %}
+      <div class="upload-drop-zone" id="guestUploadZone" style="position:relative">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p style="font-weight:500; margin-bottom:4px">{{ t('gallery.upload_hint') }}</p>
+        <p style="font-size:var(--text-xs); color:var(--color-text-muted)">{{ t('gallery.upload_spec') }}</p>
+        <input type="file" id="guestFileInput" accept="image/*" multiple
+               aria-label="{{ t('gallery.upload_hint') }}"
+               style="position:absolute;inset:0;opacity:0;cursor:pointer">
+      </div>
+      <ul class="gu-list" id="uploadList" aria-live="polite"></ul>
+      <button type="button" class="btn btn--secondary gu-retry" id="uploadRetry" hidden>{{ t('upl.retry') }}</button>
+      {% if upload.moderated %}<p class="gu-note">{{ t('upl.moderated_note') }}</p>{% endif %}
+      {% endif %}
+    </div>
+  </div>
+  <style>
+    .gu-closed{text-align:center;padding:var(--sp-4,16px) 0}
+    .gu-closed-title{font-weight:600;margin:0 0 6px}
+    .gu-closed-text,.gu-until,.gu-note,.gu-pin-hint{font-size:var(--text-xs,.8125rem);color:var(--color-text-muted);margin:0 0 var(--sp-3,12px)}
+    .gu-until{text-align:center}
+    .gu-pin-label{display:block;font-weight:500;margin:0 0 6px}
+    .gu-pin{display:block;width:100%;max-width:220px;min-height:44px;font-size:16px;letter-spacing:.2em;padding:8px 12px;
+      border:1px solid var(--color-border,#d4d4d8);border-radius:10px;background:var(--color-surface,#fff);color:inherit;margin:0 0 4px}
+    .gu-pin[aria-invalid="true"]{border-color:#e5484d}
+    .gu-list{list-style:none;margin:var(--sp-3,12px) 0 0;padding:0;display:grid;gap:8px}
+    .gu-item{display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:center;gap:4px 8px;
+      padding:8px 0 8px 12px;border:1px solid var(--color-border,#e4e4e7);border-radius:10px}
+    .gu-name{font-size:.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}
+    .gu-state{grid-column:1;font-size:var(--text-xs,.8125rem);color:var(--color-text-muted);margin:0}
+    .gu-item[data-state="error"] .gu-state{color:#c4363b}
+    .gu-item[data-state="done"] .gu-state{color:var(--color-primary)}
+    .gu-bar{grid-column:1;height:4px;border-radius:2px;background:var(--c-slate-200,#e4e4e7);overflow:hidden}
+    .gu-bar i{display:block;height:100%;width:0;background:var(--color-primary);transition:width .2s}
+    .gu-item[data-state="error"] .gu-bar i{width:100%!important;background:#c4363b}
+    .gu-item[data-state="cancelled"] .gu-bar i{width:0!important}
+    .gu-x{grid-column:2;grid-row:1 / span 3;width:44px;height:44px;border:0;background:none;color:inherit;
+      cursor:pointer;border-radius:10px;display:grid;place-items:center}
+    .gu-x:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
+    .gu-x[hidden]{display:none}
+    .gu-retry{margin-top:var(--sp-3,12px);min-height:44px}
+    @media (prefers-reduced-motion: reduce){.gu-bar i{transition:none}}
+  </style>
+  {% endif %}
+
+  {% include "public/_bewertung.html" %}
+  {% set _trust = gallery_trust_line() if gallery_trust_line is defined else '' %}
+  {% if _trust %}<p class="g-trust">{{ _trust }}</p>{% endif %}
+</div>
+
+{% if live and not is_embed %}
+{# "x neue Fotos" instead of a reload: the guest decides when the page
+   moves. Polls every 30 s while the tab is visible, stops when hidden. #}
+<button type="button" class="live-new" id="liveNew" hidden aria-live="polite"></button>
+<script>
+(function () {
+  var since = {{ live.since|int }}, feed = {{ live.feed|tojson }};
+  var badge = document.getElementById('liveBadge'), btn = document.getElementById('liveNew');
+  var one = {{ t('live.new_one')|tojson }}, many = {{ t('live.new_many')|tojson }};
+  var timer = null;
+  function poll() {
+    if (document.hidden) return;
+    fetch(feed + '?since=' + since, {cache: 'no-store'}).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) return;
+        if (badge) { badge.hidden = !d.live; badge.dataset.live = d.live ? '1' : '0'; }
+        if (d['new'] > 0) { btn.textContent = (d['new'] === 1 ? one : many.replace('{n}', d['new'])); btn.hidden = false; }
+      }).catch(function () {});
+  }
+  btn.addEventListener('click', function () { location.reload(); });
+  function start() { if (!timer) timer = setInterval(poll, 30000); }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { clearInterval(timer); timer = null; } else { poll(); start(); }
+  });
+  start();
+})();
+</script>
+{% endif %}
+
+<!-- Größenwahl für Downloads -->
+{% if download_sizes_enabled and dl_options|length > 1 %}
+<div class="dl-sheet" id="dlSheet" role="dialog" aria-modal="true" aria-labelledby="dlSheetTitle" hidden>
+  <div class="dl-sheet-panel">
+    <h2 class="dl-sheet-title" id="dlSheetTitle">{{ t('dl.size_title') }}</h2>
+    {% for opt in dl_options %}
+    <button type="button" class="dl-opt" data-size="{{ opt.id }}">
+      <span class="dl-opt-main">{{ opt.label }}{% if opt.px %} · {{ opt.px }} px{% endif %}</span>
+      <span class="dl-opt-hint">{{ opt.hint }}<span class="dl-opt-est" data-px="{{ opt.px }}">{% if opt.estimate %} · {{ opt.estimate }}{% endif %}</span></span>
+    </button>
+    {% endfor %}
+    <p class="dl-sheet-note">{{ t('dl.size_remember') }}</p>
+    <button type="button" class="btn btn--ghost btn--sm dl-sheet-cancel" id="dlSheetCancel">{{ t('gallery.cancel') }}</button>
+  </div>
+</div>
+{% endif %}
+
+{#- "Datei-Download" (Picdrop): Safari on iPhone and iPad does not save a
+    picture through the download attribute; it opens a file in a new view
+    or lands in "Dateien". The sheet shows the picture itself - a long press
+    offers "Zu Fotos hinzufügen" - and, where the share sheet takes files,
+    one button for it. Other platforms download directly. -#}
+<div class="dl-save" id="dlSave" role="dialog" aria-modal="true" aria-labelledby="dlSaveTitle" hidden>
+  <div class="dl-save-panel">
+    <h2 class="dl-save-title" id="dlSaveTitle">{{ t('dl.sheet_title') }}</h2>
+    <div class="dl-save-media"><img id="dlSaveImg" alt=""><video id="dlSaveVideo" playsinline controls hidden></video></div>
+    <p class="dl-save-hint">{{ t('dl.sheet_hint') }}</p>
+    <div class="dl-save-actions">
+      <button type="button" class="btn btn--secondary" id="dlSaveShare" hidden>{{ t('dl.sheet_save') }}</button>
+      <button type="button" class="btn btn--primary" id="dlSaveClose">{{ t('dl.sheet_close') }}</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox (eigen, offline) -->
+<div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-hidden="true"
+     aria-label="{{ t('a11y.lightbox') }}">
+  <div class="lb-top">
+    <span class="lb-counter" id="lbCounter" role="status" aria-live="polite">1 / 1</span>
+    <div class="lb-tools">
+      {% if gs.likes %}
+      <button class="lb-btn lb-like" id="lbLike" title="{{ t('gallery.like_hint') }}" aria-label="{{ t('gallery.like_hint') }}" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+      {% endif %}
+      {% if manage %}
+      <button class="lb-btn mg-lb" id="mgLbHide" type="button" data-hide="{{ t('manage.hide') }}" data-show="{{ t('manage.show') }}" aria-label="{{ t('manage.hide') }}" title="{{ t('manage.hide') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+      <button class="lb-btn mg-lb" id="mgLbCover" type="button" aria-label="{{ t('manage.cover') }}" title="{{ t('manage.cover') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+      </button>
+      <button class="lb-btn mg-lb" id="mgLbDelete" type="button" aria-label="{{ t('manage.delete') }}" title="{{ t('manage.delete') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
+      {% endif %}
+      {% if client_picks %}
+      <button class="lb-btn lb-pick" id="lbPick" type="button" aria-pressed="false" title="{{ t('picks.add') }}" aria-label="{{ t('picks.add') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      {% endif %}
+      {% if client_comments %}
+      <button class="lb-btn" id="lbComment" type="button" title="{{ t('comments.picture') }}" aria-label="{{ t('comments.picture') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      {% endif %}
+      {% if darf_markieren %}
+      <button class="lb-btn lb-tag" id="lbTag" type="button" data-tag="" title="{{ t('gallery.tags') }}" aria-label="{{ t('gallery.tags') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 22V4m0 0h13l-2 4 2 4H4"/></svg>
+      </button>
+      {% endif %}
+      <button class="lb-btn" id="lbShare" {% if not (gs.share_native or gs.share_link_copy) %}hidden{% endif %} title="{{ t('gallery.share') }}" aria-label="{{ t('gallery.share') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      </button>
+      {#- A picture with an unframed capture of the same shot: the download
+          button takes the framed one, this one the capture. -#}
+      <button class="lb-btn" id="lbUnframed" type="button" hidden data-download-ok="{{ '1' if gs.download_single else '' }}"
+              style="width:auto;padding:0 12px;font-size:.85rem;white-space:nowrap"
+              title="{{ t('session.without_frame_hint') }}" aria-label="{{ t('session.without_frame_hint') }}">{{ t('session.without_frame') }}</button>
+      <button class="lb-btn" id="lbDownload" {% if not (gs.download_single or manage) %}hidden{% endif %} title="{{ t('gallery.download_hint') }}" aria-label="{{ t('gallery.download_hint') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button class="lb-btn" id="lbFull" title="{{ t('a11y.fullscreen') }}" aria-label="{{ t('a11y.fullscreen') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+      <button class="lb-btn" id="lbClose" title="{{ t('lb.close') }}" aria-label="{{ t('lb.close') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <button class="lb-btn lb-nav lb-prev" id="lbPrev" aria-label="{{ t('a11y.prev') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  {% if gs.exif %}<p class="lb-exif" id="lbExif" data-base="/gallery/{{ event.slug }}/photo/" aria-live="polite"></p>{% endif %}
+  <div class="lb-stage" id="lbStage"><img class="lb-img" id="lbImg" alt=""><video class="lb-img" id="lbVideo" playsinline loop controls hidden></video></div>
+  <button class="lb-btn lb-nav lb-next" id="lbNext" aria-label="{{ t('a11y.next') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Lightbox (eigen, keine externen Abhängigkeiten) ─────────── */
+(function () {
+  const lb = document.getElementById('lightbox');
+  if (!lb) return;
+  // Die Lightbox zieht ans Ende des Dokuments. Sie steht sonst im <main> —
+  // und ein Bild, das den Rest der Seite abmeldet, darf nicht selbst darin
+  // liegen, sonst meldet es sich mit ab.
+  document.body.appendChild(lb);
+  const imgEl = document.getElementById('lbImg');
+  const counter = document.getElementById('lbCounter');
+  const items = Array.from(document.querySelectorAll('.photo-item'));
+  let order = [];        // Indizes der aktuell sichtbaren Items
+  let pos = 0;           // Position innerhalb von order
+
+  function visibleItems() {
+    return items.filter(el => el.style.display !== 'none');
+  }
+  function dataOf(el) {
+    return {
+      url: el.dataset.url || (el.querySelector('a.photo-open') || {}).href || '',
+      name: el.dataset.filename || 'foto.jpg',
+      id: el.dataset.id,
+      token: el.dataset.token || '',
+      unframed: el.dataset.unframed || '',
+      video: el.dataset.video === '1',
+      poster: (el.querySelector('img') || {}).src || '',
+    };
+  }
+  function render() {
+    const el = order[pos];
+    if (!el) return;
+    const d = dataOf(el);
+    const vid = document.getElementById('lbVideo');
+    if (d.video) {
+      imgEl.hidden = true; imgEl.removeAttribute('src');
+      vid.hidden = false; vid.poster = d.poster; vid.src = d.url; vid.play().catch(() => {});
+    } else {
+      vid.pause(); vid.hidden = true; vid.removeAttribute('src');
+      imgEl.hidden = false; imgEl.src = d.url;
+    }
+    imgEl.alt = d.name;
+    counter.textContent = (pos + 1) + ' / ' + order.length;
+    const unframedBtn = document.getElementById('lbUnframed');
+    const dlBtn = document.getElementById('lbDownload');
+    unframedBtn.hidden = !(d.unframed && unframedBtn.dataset.downloadOk);
+    const dlLabel = d.unframed ? {{ t('session.with_frame_hint')|tojson }} : {{ t('gallery.download_hint')|tojson }};
+    dlBtn.title = dlLabel; dlBtn.setAttribute('aria-label', dlLabel);
+    syncLike(el);
+    // Other scripts (the client's picks) follow the picture shown here.
+    lb.dispatchEvent(new CustomEvent('pb:show', { detail: { id: d.id } }));
+    document.getElementById('lbPrev').style.visibility = order.length > 1 ? 'visible' : 'hidden';
+    document.getElementById('lbNext').style.visibility = order.length > 1 ? 'visible' : 'hidden';
+    if (d.id) trackAction('view_photo', d.id);
+  }
+  // The heart in the large view mirrors the heart of the tile: one state,
+  // kept on the tile, so the grid is right again when the view closes.
+  const lbLike = document.getElementById('lbLike');
+  function syncLike(el) {
+    if (!lbLike) return;
+    const liked = el.hasAttribute('data-liked');
+    lbLike.classList.toggle('is-liked', liked);
+    lbLike.setAttribute('aria-pressed', liked ? 'true' : 'false');
+    lbLike.querySelector('svg').setAttribute('fill', liked ? 'currentColor' : 'none');
+  }
+  if (lbLike) lbLike.addEventListener('click', async e => {
+    e.stopPropagation();
+    const el = order[pos];
+    if (!el || !window.likePhoto) return;
+    lbLike.disabled = true;
+    try { await window.likePhoto(el.dataset.id, el.querySelector('.pb-like')); }
+    finally { lbLike.disabled = false; }
+    syncLike(el);
+  });
+
+  // Woher die Lightbox aufgerufen wurde — dorthin geht der Fokus zurück.
+  let zurueck = null;
+
+  function hinterMir(an) {
+    // Alles außerhalb der Lightbox ist währenddessen weder anklickbar noch
+    // vorlesbar. Sonst wandert der Screenreader hinter das offene Bild.
+    Array.from(document.body.children).forEach(el => {
+      if (el === lb || el.tagName === 'SCRIPT') return;
+      if (an) el.setAttribute('inert', ''); else el.removeAttribute('inert');
+    });
+  }
+  function fokussierbar() {
+    return Array.from(lb.querySelectorAll('button, [href], video[controls]'))
+      .filter(el => !el.hidden && el.offsetParent !== null);
+  }
+  function open(el) {
+    // Back to the tile, not to whatever had focus: a tap does not focus the
+    // link on iOS, and the guest may have moved on to another picture.
+    zurueck = el.querySelector('a.photo-open') || document.activeElement;
+    order = visibleItems();
+    pos = Math.max(0, order.indexOf(el));
+    render();
+    lb.classList.add('open');
+    lb.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    hinterMir(true);
+    // The phone's back gesture closes the large view instead of leaving the
+    // gallery: one history entry while it is open.
+    if (!(history.state && history.state.pbLb)) {
+      try { history.pushState({ pbLb: 1 }, ''); pushed = true; } catch (e) { pushed = false; }
+    }
+    // Erst wenn die Lightbox wirklich sichtbar ist, nimmt sie den Fokus an —
+    // ein Element, das der Browser noch als unsichtbar führt, lässt sich nicht
+    // fokussieren. Deshalb ein Bildaufbau später.
+    requestAnimationFrame(() => (document.getElementById('lbClose') || lb).focus({ preventScroll: true }));
+  }
+  let pushed = false;
+  function close(fromHistory) {
+    if (!lb.classList.contains('open')) return;
+    if (pushed && fromHistory !== true) { pushed = false; history.back(); return; }
+    pushed = false;
+    lb.classList.remove('open');
+    lb.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    imgEl.src = '';
+    const vid = document.getElementById('lbVideo'); vid.pause(); vid.removeAttribute('src');
+    hinterMir(false);
+    const shown = order[pos] && order[pos].querySelector('a.photo-open');
+    if (shown) zurueck = shown;              // the picture last shown, not the one first opened
+    if (zurueck && zurueck.focus) {
+      zurueck.focus({ preventScroll: true });
+      if (shown && shown.scrollIntoView) shown.scrollIntoView({ block: 'nearest' });
+    }
+    zurueck = null;
+  }
+  function step(n) {
+    if (!order.length) return;
+    pos = (pos + n + order.length) % order.length;
+    render();
+  }
+
+  // A tap on a photo opens the large view; in selection mode it selects.
+  items.forEach(el => {
+    el.addEventListener('click', e => {
+      if (el.classList.contains('selectable')) {
+        // In selection mode the whole picture is the target, not only the
+        // box in the corner.
+        const cb = el.querySelector('.photo-select-cb');
+        // The box toggles itself and fires "change". Cancelling its click
+        // would make the browser undo the toggle: a tap on the check mark,
+        // the most obvious place to tap, selected nothing.
+        if (cb && e.target === cb) return;
+        e.preventDefault();
+        if (cb) {
+          cb.checked = !cb.checked;
+          if (window.onCbChange) window.onCbChange(cb);
+        }
+        return;
+      }
+      e.preventDefault();
+      open(el);
+    });
+  });
+
+  document.getElementById('lbClose').addEventListener('click', () => close());
+  window.addEventListener('popstate', () => { if (lb.classList.contains('open')) close(true); });
+  document.getElementById('lbPrev').addEventListener('click', e => { e.stopPropagation(); step(-1); });
+  document.getElementById('lbNext').addEventListener('click', e => { e.stopPropagation(); step(1); });
+  document.getElementById('lbStage').addEventListener('click', e => { if (e.target.id === 'lbStage') close(); });
+  lb.addEventListener('click', e => { if (e.target === lb) close(); });
+  window.pbLightboxClose = () => close();
+
+  document.getElementById('lbShare').addEventListener('click', () => {
+    const el = order[pos]; if (el) { const d = dataOf(el); sharePhoto(d.url, d.name, d.token); }
+  });
+  document.getElementById('lbDownload').addEventListener('click', () => {
+    const el = order[pos]; if (el) { const d = dataOf(el); downloadPhoto(d.url, d.name, d.id); }
+  });
+  document.getElementById('lbUnframed').addEventListener('click', () => {
+    const el = order[pos]; if (el) { const d = dataOf(el); if (d.unframed) downloadPhoto('', d.name, d.unframed); }
+  });
+  document.getElementById('lbFull').addEventListener('click', () => {
+    if (!document.fullscreenElement) { lb.requestFullscreen?.(); }
+    else { document.exitFullscreen?.(); }
+  });
+
+  // Escape closes the top layer only: the size sheet and the tag menu lie
+  // above the large view and handle their own Escape.
+  function layerAbove() {
+    const sheet = document.getElementById('dlSheet'), tags = document.getElementById('tagMenu');
+    const save = document.getElementById('dlSave'), mg = document.getElementById('mgTagMenu');
+    return (sheet && !sheet.hidden) || (tags && !tags.hidden) || (save && !save.hidden) || (mg && !mg.hidden);
+  }
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open') || e.defaultPrevented || layerAbove()) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft') step(-1);
+    else if (e.key === 'ArrowRight') step(1);
+    else if (e.key === 'Tab') {
+      // Tabulator bleibt im Bild — sonst tabbt man blind durch die Galerie
+      // dahinter, die man gar nicht sieht.
+      const ziele = fokussierbar();
+      if (!ziele.length) return;
+      const erster = ziele[0], letzter = ziele[ziele.length - 1];
+      if (e.shiftKey && document.activeElement === erster) { e.preventDefault(); letzter.focus(); }
+      else if (!e.shiftKey && document.activeElement === letzter) { e.preventDefault(); erster.focus(); }
+    }
+  });
+
+  // Wischgesten (mobil)
+  let sx = 0;
+  lb.addEventListener('touchstart', e => { sx = e.changedTouches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - sx;
+    if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  // Ein geteilter Foto-Link (/s/<token> → #photo-<id>) öffnet das Foto direkt.
+  function openFromHash() {
+    const m = /^#photo-(\d+)$/.exec(location.hash || '');
+    if (!m) return;
+    const el = items.find(i => i.dataset.id === m[1]);
+    if (el) open(el);
+  }
+  openFromHash();
+  window.addEventListener('hashchange', openFromHash);
+})();
+</script>
+
+<script>
+const EVENT_ID = {{ event.id }};
+const EVENT_SLUG = {{ event.slug|tojson }};
+
+// i18n strings for JS
+const _t = window._t = {
+  photoOne: {{ t('gallery.photo_count_one')|tojson }},
+  photoMany: {{ t('gallery.photo_count_many')|tojson }},
+  select: {{ t('gallery.select')|tojson }},
+  cancel: {{ t('gallery.cancel')|tojson }},
+  selectedCount: {{ t('gallery.selected_count')|tojson }},
+  selectionEmpty: {{ t('gallery.selection_empty')|tojson }},
+  selectionMax: {{ t('gallery.selection_max')|tojson }},
+  selectionPreparing: {{ t('gallery.selection_preparing')|tojson }},
+  dlPreparing: {{ t('dl.preparing')|tojson }},
+  subscribeConfirm: {{ t('gallery.subscribe_confirm')|tojson }},
+  subscribeInvalid: {{ t('gallery.subscribe_invalid')|tojson }},
+  subscribeError: {{ t('gallery.subscribe_error')|tojson }},
+  subscribeBtn: {{ t('gallery.subscribe_btn')|tojson }},
+  connectionError: {{ t('gallery.connection_error')|tojson }},
+  uploading: {{ t('gallery.uploading')|tojson }},
+  uploaded: {{ t('gallery.uploaded')|tojson }},
+  uploadFailed: {{ t('gallery.upload_failed')|tojson }},
+  linkCopied: {{ t('gallery.link_copied')|tojson }},
+  filterResult: {{ t('a11y.filter_result')|tojson }},
+};
+
+// Der stille Lautsprecher: Was sichtbar passiert, muss auch hörbar sein.
+// Screenreader lesen diesen Bereich vor, ohne dass der Fokus springt.
+function pbSagen(text) {
+  let el = document.getElementById('pbStatus');
+  if (!el) {
+    el = document.createElement('p');
+    el.id = 'pbStatus';
+    el.className = 'sr-only';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+}
+window.pbSagen = pbSagen;
+
+// Kleiner Toast für Feedback (Link kopiert etc.) — was er zeigt, sagt er auch.
+function pbToast(msg) {
+  pbSagen(msg);
+  let el = document.getElementById('pbToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'pbToast';
+    el.className = 'pb-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// Einzelfoto teilen: nativ (Web Share, inkl. Bilddatei), sonst Link kopieren.
+const SHARE_NATIVE = {{ 'true' if gs.share_native else 'false' }};
+const SHARE_COPY = {{ 'true' if gs.share_link_copy else 'false' }};
+async function sharePhoto(url, filename, token) {
+  const link = token ? (location.origin + '/s/' + token) : location.href;
+  try {
+    if (SHARE_NATIVE && navigator.canShare) {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const file = new File([blob], filename || 'foto.jpg', { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: document.title });
+        trackAction('share_photo', token || null);
+        return;
+      }
+    }
+    if (SHARE_NATIVE && navigator.share) {
+      await navigator.share({ title: document.title, url: link });
+      trackAction('share_photo', token || null);
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;  // Nutzer hat abgebrochen
+  }
+  if (!SHARE_COPY) return;
+  try {
+    await navigator.clipboard.writeText(link);
+    pbToast(_t.linkCopied);
+  } catch (e) {
+    prompt(_t.linkCopied, link);
+  }
+}
+window.sharePhoto = sharePhoto;
+
+// ── Filter tabs ──────────────────────────────────────────────
+// Nur die echten Knöpfe schalten um. `aria-pressed` auf einem Link ist
+// nach ARIA unzulässig — die Links daneben führen auf eine andere Seite
+// und tragen `aria-current`.
+document.querySelectorAll('button.filter-btn').forEach(btn => {
+  btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('button.filter-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-pressed', 'true');
+    const filter = btn.dataset.filter;
+    let visible = 0;
+    document.querySelectorAll('.photo-item').forEach(item => {
+      const show = filter === 'all' || item.dataset.kind === filter
+        || (filter.startsWith('src:') && item.dataset.source === filter.slice(4));
+      item.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    document.getElementById('photoCount').textContent =
+      visible + ' ' + (visible !== 1 ? _t.photoMany : _t.photoOne);
+    pbSagen(_t.filterResult.replace('{n}', visible));
+  });
+});
+
+// ── Download mit Größenwahl ──────────────────────────────────
+// Der Gast wählt einmal (Handy / Groß / Original), danach merken wir es.
+const DL_SIZES_ON = {{ 'true' if download_sizes_enabled else 'false' }};
+const DL_ALLOWED = {{ dl_options|map(attribute='id')|list|tojson }};
+const DL_KEY = 'pb-dl-size';
+
+function dlGetSize() {
+  if (!DL_SIZES_ON) return 'original';
+  try {
+    const saved = localStorage.getItem(DL_KEY) || '';
+    // Eine gemerkte Größe, die dieses Event nicht anbietet, zählt nicht.
+    return DL_ALLOWED.indexOf(saved) >= 0 ? saved : '';
+  } catch (e) { return ''; }
+}
+function dlSetSize(size) {
+  try { localStorage.setItem(DL_KEY, size); } catch (e) { /* Privatmodus */ }
+  dlShowChoice();
+}
+// The remembered size stays visible and can be changed: the button next to the
+// photo count names it and opens the sheet again.
+const DL_CHANGE = {{ t('dl.change', size='{size}')|tojson }};
+function dlShowChoice() {
+  const c = document.getElementById('dlChange');
+  if (!c) return;
+  const size = dlGetSize();
+  // The size comes from localStorage: escaped, and a selector that still does
+  // not parse hides the button instead of stopping the page's script at load.
+  let main = null;
+  if (size) {
+    try {
+      const esc = (window.CSS && CSS.escape) ? CSS.escape(size) : String(size).replace(/[^a-z0-9_-]/gi, '');
+      main = document.querySelector('#dlSheet .dl-opt[data-size="' + esc + '"] .dl-opt-main');
+    } catch (e) { main = null; }
+  }
+  if (!DL_SIZES_ON || !main) { c.hidden = true; return; }
+  c.textContent = DL_CHANGE.replace('{size}', main.textContent.split(' · ')[0].trim());
+  c.hidden = false;
+}
+
+/** Fragt die Größe ab, falls noch keine gewählt wurde. */
+// The estimate in the sheet is this picture's, not the gallery's median: a
+// portrait collage and a landscape photo differ by half. The original has no
+// estimate per picture, so it shows none rather than a wrong one.
+const DL_ABOUT = {{ t('dl.size_about', size='{size}')|tojson }};
+function dlEstimate(sheet, mediaId) {
+  const tile = mediaId ? document.querySelector('.photo-item[data-id="' + mediaId + '"]') : null;
+  const w = tile ? +tile.dataset.pswpWidth : 0, h = tile ? +tile.dataset.pswpHeight : 0;
+  const fmt = new Intl.NumberFormat(document.documentElement.lang || 'de', { maximumFractionDigits: 1 });
+  sheet.querySelectorAll('.dl-opt-est').forEach(est => {
+    const px = +est.dataset.px;
+    if (!w || !h) return;                      // keep the server's figure
+    if (!px) { est.textContent = ''; return; }
+    const f = Math.min(1, px / Math.max(w, h));
+    const bytes = Math.round(w * f) * Math.round(h * f) * 0.18;   // as media.JPEG_BYTES_PER_PIXEL
+    const text = bytes >= 1e6 ? fmt.format(bytes / 1e6) + ' MB' : fmt.format(Math.max(1, Math.round(bytes / 1e3))) + ' KB';
+    est.textContent = ' · ' + DL_ABOUT.replace('{size}', text);
+  });
+}
+
+function dlAskSize(mediaId, change) {
+  return new Promise(resolve => {
+    const known = dlGetSize();
+    if (!DL_SIZES_ON || (known && !change)) { resolve(known || 'original'); return; }
+    const sheet = document.getElementById('dlSheet');
+    // Nur eine Größe erlaubt? Dann gibt es nichts zu fragen.
+    if (!sheet) { resolve(DL_ALLOWED[0] || 'large'); return; }
+    dlEstimate(sheet, mediaId);
+
+    // Der Fokus gehört in das Blatt, solange es offen ist. Die Lightbox in
+    // derselben Datei macht das seit jeher richtig; hier fehlte es, und
+    // `aria-modal="true"` behauptete damit etwas, was nicht stimmte: Wer
+    // „Herunterladen" drückte, tabbte weiter durch die Galerie dahinter.
+    //
+    // Und dieselbe Falle gleich mit: Das Blatt steht im <main>. Wer den
+    // <main> abmeldet, meldet das Blatt mit ab — der Fokus landete dann
+    // nirgends. Die Lightbox zieht deshalb ans Ende des Dokuments; das
+    // Blatt tut es jetzt auch. Aufgefallen erst im Browser, nicht im Test.
+    if (sheet.parentNode !== document.body) document.body.appendChild(sheet);
+    const vorher = document.activeElement;
+    const dahinter = document.querySelector('main#inhalt') || document.body;
+
+    function pick(size) { cleanup(); dlSetSize(size); resolve(size); }
+    function cancel() { cleanup(); resolve(null); }
+    function onKey(e) {
+      if (e.key === 'Escape') return cancel();
+      if (e.key !== 'Tab') return;
+      const ziele = sheet.querySelectorAll('button:not([disabled])');
+      if (!ziele.length) return;
+      const erstes = ziele[0], letztes = ziele[ziele.length - 1];
+      if (e.shiftKey && document.activeElement === erstes) { e.preventDefault(); letztes.focus(); }
+      else if (!e.shiftKey && document.activeElement === letztes) { e.preventDefault(); erstes.focus(); }
+    }
+    function cleanup() {
+      sheet.hidden = true;
+      if (dahinter !== document.body) dahinter.removeAttribute('inert');
+      document.removeEventListener('keydown', onKey);
+      sheet.querySelectorAll('.dl-opt').forEach(b => b.onclick = null);
+      const c = document.getElementById('dlSheetCancel'); if (c) c.onclick = null;
+      sheet.onclick = null;
+      if (vorher && vorher.focus) vorher.focus();
+    }
+
+    sheet.querySelectorAll('.dl-opt').forEach(b => {
+      b.onclick = () => pick(b.dataset.size);
+    });
+    const c = document.getElementById('dlSheetCancel'); if (c) c.onclick = cancel;
+    sheet.onclick = e => { if (e.target === sheet) cancel(); };
+    document.addEventListener('keydown', onKey);
+    sheet.hidden = false;
+    if (dahinter !== document.body) dahinter.setAttribute('inert', '');
+    const zuerst = sheet.querySelector('.dl-opt');
+    if (zuerst) zuerst.focus();
+  });
+}
+window.dlAskSize = dlAskSize;
+document.getElementById('dlChange')?.addEventListener('click', () => { dlAskSize(0, true); });
+dlShowChoice();
+
+// iPhone and iPad (an iPad says "Mac" but has touch points).
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
+
+/** The "Datei-Download" sheet for iOS: the picture to long-press, plus the share sheet where it takes files. */
+function dlSaveSheet(dlUrl, filename, mediaId) {
+  const sheet = document.getElementById('dlSave');
+  if (!sheet) return;
+  if (sheet.parentNode !== document.body) document.body.appendChild(sheet);
+  const img = document.getElementById('dlSaveImg'), vid = document.getElementById('dlSaveVideo');
+  const share = document.getElementById('dlSaveShare'), close = document.getElementById('dlSaveClose');
+  const tile = mediaId ? document.querySelector('.photo-item[data-id="' + mediaId + '"]') : null;
+  const video = !!(tile && tile.dataset.video === '1');
+  if (video) { img.hidden = true; img.removeAttribute('src'); vid.hidden = false; vid.src = dlUrl; }
+  else { vid.hidden = true; vid.removeAttribute('src'); img.hidden = false; img.src = dlUrl; img.alt = filename || ''; }
+  share.hidden = !(navigator.canShare && navigator.share);
+  const before = document.activeElement;
+  const lb = document.getElementById('lightbox');
+  function done() {
+    sheet.hidden = true; vid.pause(); vid.removeAttribute('src');
+    document.removeEventListener('keydown', onKey, true);
+    share.onclick = null; close.onclick = null; sheet.onclick = null;
+    if (before && before.focus) before.focus({ preventScroll: true });
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(); return; }
+    if (e.key !== 'Tab') return;
+    const ziele = Array.from(sheet.querySelectorAll('button:not([hidden]), video:not([hidden])'));
+    const i = ziele.indexOf(document.activeElement);
+    if (e.shiftKey && i <= 0) { e.preventDefault(); ziele[ziele.length - 1].focus(); }
+    else if (!e.shiftKey && i === ziele.length - 1) { e.preventDefault(); ziele[0].focus(); }
+  }
+  share.onclick = async () => {
+    try {
+      const blob = await (await fetch(dlUrl, { credentials: 'same-origin' })).blob();
+      const ext = blob.type === 'image/png' ? '.png' : (blob.type.indexOf('video') === 0 ? '.mp4' : '.jpg');
+      const file = new File([blob], (filename || 'foto').replace(/\.[^.]+$/, '') + ext, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
+    } catch (e) { /* cancelled or not possible: the picture stays to long-press */ }
+  };
+  close.onclick = done;
+  sheet.onclick = e => { if (e.target === sheet) done(); };
+  document.addEventListener('keydown', onKey, true);
+  sheet.hidden = false;
+  close.focus({ preventScroll: true });
+  trackAction('download', mediaId);
+}
+window.dlSaveSheet = dlSaveSheet;
+
+/** Download eines Einzelfotos über die Server-Route (skaliert + gecacht). */
+async function downloadPhoto(url, filename, mediaId) {
+  const size = await dlAskSize(mediaId);
+  if (size === null) return;                 // abgebrochen
+  if (!mediaId) {                            // Rückfall: Direktdatei
+    const a = document.createElement('a');
+    a.href = url; a.download = filename || 'foto.jpg'; a.click();
+    trackAction('download');
+    return;
+  }
+  const dlUrl = `/gallery/${encodeURIComponent(EVENT_SLUG)}/photo/${mediaId}/download?size=${encodeURIComponent(size)}`;
+  if (IS_IOS) { dlSaveSheet(dlUrl, filename, mediaId); return; }
+  pbToast(_t.dlPreparing);
+  const a = document.createElement('a');
+  a.href = dlUrl;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  trackAction('download', mediaId);
+}
+window.downloadPhoto = downloadPhoto;
+
+// ── Like ─────────────────────────────────────────────────────
+// Server ist die Wahrheit: er liefert liked (bool) + count zurück.
+async function likePhoto(id, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch('/api/photo/' + id + '/like', {method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({event_id: EVENT_ID})});
+    if (!r.ok) return;
+    const data = await r.json();
+    const tile = document.querySelector('.photo-item[data-id="' + id + '"]');
+    if (tile) tile.toggleAttribute('data-liked', !!data.liked);
+    // Alle Buttons zu diesem Foto synchron halten (Grid + evtl. weitere)
+    document.querySelectorAll('.pb-like[onclick*="likePhoto(' + id + ',"]').forEach(b => {
+      applyLikeState(b, data.liked, data.count);
+    });
+    if (data.liked) pbTrack('like', { slug: EVENT_SLUG, media: id });
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+window.likePhoto = likePhoto;
+
+function applyLikeState(btn, liked, count) {
+  btn.classList.toggle('is-liked', !!liked);
+  btn.setAttribute('aria-pressed', liked ? 'true' : 'false');
+  const tile = btn.closest('.photo-item');
+  if (tile) tile.toggleAttribute('data-liked', !!liked);
+  const svg = btn.querySelector('svg');
+  if (svg) svg.setAttribute('fill', liked ? 'currentColor' : 'none');
+  if (typeof count === 'number') {
+    btn.dataset.count = count;
+    const c = btn.querySelector('.pb-like-count');
+    if (c) { c.textContent = count; c.hidden = count <= 0; }
+    if (liked) { btn.classList.remove('pb-pop'); void btn.offsetWidth; btn.classList.add('pb-pop'); }
+  }
+}
+
+// ── Analytics: internes /api/track UND Umami (falls aktiv) ───
+function trackAction(action, mediaId) {
+  fetch('/api/track', {method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({event_id: EVENT_ID, action, media_id: mediaId || null})
+  }).catch(() => {});
+  pbTrack(action, { slug: EVENT_SLUG, media: mediaId || undefined });
+}
+window.trackAction = trackAction;
+
+// ── „Meine Auswahl" ──────────────────────────────────────────
+let selectMode = false;
+const SELECTION_MAX = parseInt(
+  (document.getElementById('selectionBar')?.dataset?.max) || '100', 10);
+
+function _selItems() { return document.querySelectorAll('.photo-item'); }
+
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  const bar = document.getElementById('selectionBar');
+  const label = document.getElementById('selectToggleLabel');
+  const hint = document.getElementById('selectionHint');
+  const actions = document.getElementById('selectionActions');
+  const count = document.getElementById('selectionCount');
+  // On a phone the bar leaves the flow and sits at the bottom of the
+  // screen (public.css). A spacer of its height keeps the grid where it
+  // was, so the tile under the finger does not move away on the next tap.
+  const spacer = document.getElementById('selectionBarSpacer');
+  if (spacer && bar) spacer.style.height = selectMode ? bar.offsetHeight + 'px' : '';
+  if (bar) bar.classList.toggle('is-active', selectMode);
+  document.body.classList.toggle('is-selecting', selectMode);
+  if (label) label.textContent = selectMode ? _t.cancel : _t.select;
+  if (hint) hint.hidden = selectMode;
+  if (actions) actions.hidden = !selectMode;
+  if (count) count.hidden = !selectMode;
+
+  _selItems().forEach(item => {
+    item.classList.toggle('selectable', selectMode);
+    const cb = item.querySelector('.photo-select-cb');
+    const mark = item.querySelector('.photo-select-mark');
+    if (cb) { cb.hidden = !selectMode; if (!selectMode) cb.checked = false; }
+    if (mark) mark.hidden = !selectMode;
+    // While selecting, the link would open the large view: out of the tap
+    // path (pointer-events) and out of the tab order, so the named check
+    // box is the one control per photo for keyboard and screen reader.
+    const a = item.querySelector('a.photo-open');
+    if (a) {
+      a.style.pointerEvents = selectMode ? 'none' : '';
+      if (selectMode) a.setAttribute('tabindex', '-1'); else a.removeAttribute('tabindex');
+    }
+  });
+  updateDownloadCount();
+}
+window.toggleSelectMode = toggleSelectMode;
+document.querySelectorAll('.photo-select-cb').forEach(cb => cb.addEventListener('change', () => onCbChange(cb)));
+
+window.onCbChange = onCbChange;
+function onCbChange(cb) {
+  // Deckel: nicht mehr als SELECTION_MAX gleichzeitig
+  const checked = document.querySelectorAll('.photo-select-cb:checked');
+  if (checked.length > SELECTION_MAX) {
+    cb.checked = false;
+    pbToast(_t.selectionMax.replace('{n}', SELECTION_MAX));
+  }
+  updateDownloadCount();
+}
+
+function updateDownloadCount() {
+  const n = document.querySelectorAll('.photo-select-cb:checked').length;
+  const dc = document.getElementById('downloadCount');
+  const dl = document.getElementById('downloadSelected');
+  const count = document.getElementById('selectionCount');
+  if (dc) dc.textContent = n;
+  if (dl) dl.disabled = n === 0;
+  if (count) count.textContent = _t.selectedCount.replace('{n}', n);
+  pbSagen(_t.selectedCount.replace('{n}', n));
+  _selItems().forEach(item => {
+    const cb = item.querySelector('.photo-select-cb');
+    item.classList.toggle('is-selected', !!(cb && cb.checked));
+  });
+}
+window.updateDownloadCount = updateDownloadCount;
+
+function _visibleSelItems() {
+  return Array.from(_selItems()).filter(el => el.style.display !== 'none');
+}
+
+function selectAllVisible() {
+  if (!selectMode) toggleSelectMode();
+  const vis = _visibleSelItems().slice(0, SELECTION_MAX);
+  if (_visibleSelItems().length > SELECTION_MAX) {
+    pbToast(_t.selectionMax.replace('{n}', SELECTION_MAX));
+  }
+  vis.forEach(item => { const cb = item.querySelector('.photo-select-cb'); if (cb) cb.checked = true; });
+  updateDownloadCount();
+}
+window.selectAllVisible = selectAllVisible;
+
+function clearSelection() {
+  document.querySelectorAll('.photo-select-cb:checked').forEach(cb => cb.checked = false);
+  updateDownloadCount();
+}
+window.clearSelection = clearSelection;
+
+async function downloadSelected() {
+  const ids = Array.from(document.querySelectorAll('.photo-select-cb:checked'))
+    .map(cb => cb.closest('.photo-item')?.dataset?.id).filter(Boolean);
+  if (!ids.length) { pbToast(_t.selectionEmpty); return; }
+  const size = await dlAskSize();
+  if (size === null) return;
+  pbToast(_t.selectionPreparing);
+  trackAction('download_selection');
+  const url = `/gallery/{{ event.slug }}/selection.zip?ids=${ids.slice(0, SELECTION_MAX).join(',')}`
+            + `&size=${encodeURIComponent(size)}`;
+  window.location.href = url;
+}
+window.downloadSelected = downloadSelected;
+
+// Subscribe form
+async function submitSubscribe() {
+  const email = document.getElementById('subscribeEmail').value.trim();
+  const result = document.getElementById('subscribeResult');
+  if (!email || !email.includes('@')) {
+    result.style.display = 'block';
+    result.style.color = 'var(--c-danger)';
+    result.textContent = _t.subscribeInvalid;
+    return;
+  }
+  const btn = document.querySelector('#subscribeForm button');
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const r = await fetch('/api/notify/subscribe', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({event_id: {{ event.id }}, email})
+    });
+    const data = await r.json();
+    result.style.display = 'block';
+    if (r.ok) {
+      document.getElementById('subscribeForm').style.display = 'none';
+      result.style.color = 'var(--c-green-600)';
+      result.innerHTML = _t.subscribeConfirm;
+    } else {
+      result.style.color = 'var(--c-danger)';
+      result.textContent = data.error || _t.subscribeError;
+      btn.disabled = false;
+      btn.textContent = _t.subscribeBtn;
+    }
+  } catch(e) {
+    result.style.display = 'block';
+    result.style.color = 'var(--c-danger)';
+    result.textContent = _t.connectionError;
+    btn.disabled = false;
+    btn.textContent = _t.subscribeBtn;
+  }
+}
+window.submitSubscribe = submitSubscribe;
+
+// ── Guest Upload ─────────────────────────────────────────────
+const zone = document.getElementById('guestUploadZone');
+const input = document.getElementById('guestFileInput');
+if (zone && input) {
+  input.addEventListener('change', () => handleUpload(Array.from(input.files)));
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    handleUpload(Array.from(e.dataTransfer.files));
+  });
+
+  // One row per file: name, state, progress bar and a cancel button. Files
+  // go one after another (a phone on venue Wi-Fi does better with one
+  // stream than with ten); cancel aborts the running one or skips a queued
+  // one. Every answer is read: a success message for an upload that failed
+  // hid a broken upload for years.
+  const U = {{ {
+    'waiting': t('upl.waiting'), 'sending': t('upl.sending'), 'done': t('upl.done'),
+    'pending': t('upl.pending'), 'cancel': t('upl.cancel'), 'cancelled': t('upl.cancelled'),
+    'pin': t('upl.err_pin'), 'pin_wait': t('upl.err_pin_wait'), 'size': t('upl.err_size'),
+    'type': t('upl.err_type'), 'many': t('upl.err_many'), 'closed': t('upl.err_closed'),
+    'net': t('upl.err_net'), 'other': t('upl.err_other')
+  }|tojson }};
+  const list = document.getElementById('uploadList');
+  const retry = document.getElementById('uploadRetry');
+  const pinField = document.getElementById('guestUploadPin');
+  const queue = [];
+  let running = false, arrivedVisible = 0;
+
+  function reason(status, body) {
+    const e = (body && body.error) || '';
+    if (e === 'pin') return 'pin';
+    if (e === 'pin_wait') return 'pin_wait';
+    if (e === 'closed') return 'closed';
+    if (status === 413) return 'size';
+    if (status === 415 || status === 400) return 'type';
+    if (status === 429) return 'many';
+    return 'other';
+  }
+
+  function row(file) {
+    const li = document.createElement('li');
+    li.className = 'gu-item';
+    li.dataset.state = 'waiting';
+    const name = document.createElement('p'); name.className = 'gu-name'; name.textContent = file.name;
+    const state = document.createElement('p'); state.className = 'gu-state'; state.textContent = U.waiting;
+    const bar = document.createElement('div'); bar.className = 'gu-bar'; bar.appendChild(document.createElement('i'));
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'gu-x'; x.setAttribute('aria-label', `${U.cancel}: ${file.name}`);
+    x.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+    li.append(name, x, state, bar);
+    list.appendChild(li);
+    const item = {file, li, state, fill: bar.firstChild, x, xhr: null, cancelled: false};
+    li._item = item;
+    x.addEventListener('click', () => {
+      item.cancelled = true;
+      if (item.xhr) item.xhr.abort();
+      set(item, 'cancelled', U.cancelled);
+    });
+    return item;
+  }
+
+  function set(item, st, text) {
+    item.li.dataset.state = st;
+    item.state.textContent = text;
+    if (st === 'done' || st === 'error' || st === 'cancelled') item.x.hidden = true;
+    if (st === 'done') item.fill.style.width = '100%';
+  }
+
+  function send(item) {
+    return new Promise(resolve => {
+      const fd = new FormData();
+      fd.append('file', item.file);
+      fd.append('event_slug', {{ event.slug|tojson }});
+      if (pinField) fd.append('upload_pin', pinField.value.trim());
+      const xhr = new XMLHttpRequest();
+      item.xhr = xhr;
+      xhr.open('POST', '/api/guest-upload');
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) item.fill.style.width = Math.round(e.loaded / e.total * 95) + '%';
+      };
+      xhr.onload = () => {
+        let body = {};
+        try { body = JSON.parse(xhr.responseText); } catch (e) {}
+        if (xhr.status === 200 && body.ok === true) {
+          set(item, 'done', body.pending ? U.pending : U.done);
+          if (!body.pending) arrivedVisible++;
+          if (pinField) { pinField.removeAttribute('aria-invalid'); }
+        } else {
+          const why = reason(xhr.status, body);
+          set(item, 'error', U[why]);
+          if (why === 'pin' && pinField) { pinField.setAttribute('aria-invalid', 'true'); pinField.focus(); }
+          item.failed = true;
+        }
+        resolve();
+      };
+      xhr.onerror = () => { set(item, 'error', U.net); item.failed = true; resolve(); };
+      xhr.onabort = () => resolve();
+      set(item, 'sending', U.sending);
+      xhr.send(fd);
+    });
+  }
+
+  async function drain() {
+    if (running) return;
+    running = true;
+    while (queue.length) {
+      const item = queue.shift();
+      if (!item.cancelled) await send(item);
+    }
+    running = false;
+    const failed = Array.from(list.querySelectorAll('.gu-item[data-state="error"]')).length;
+    retry.hidden = !failed;
+    // Only a picture that shows up is worth a reload; one waiting for
+    // approval would not be there.
+    if (arrivedVisible && !failed) setTimeout(() => window.location.reload(), 1500);
+  }
+
+  function handleUpload(files) {
+    for (const file of files) queue.push(row(file));
+    input.value = '';
+    drain();
+  }
+
+  // Retry keeps the files: every failed row goes back into the queue
+  // (after a wrong PIN, the guest corrects the field and taps once).
+  retry.addEventListener('click', () => {
+    const again = [];
+    list.querySelectorAll('.gu-item[data-state="error"]').forEach(li => {
+      const item = li._item; li.remove();
+      if (item) again.push(row(item.file));
+    });
+    retry.hidden = true;
+    queue.push(...again);
+    drain();
+  });
+}
+</script>
+{% if darf_markieren %}
+<div class="tag-menu" id="tagMenu" role="menu" aria-label="{{ t('gallery.tags') }}" hidden>
+  {% for tid, tlabel, tcolor in tags %}<button type="button" role="menuitem" data-settag="{{ tid }}"><i style="background:{{ tcolor }}" aria-hidden="true"></i>{{ tag_labels[tid] }}</button>{% endfor %}
+  <button type="button" role="menuitem" data-settag="">{{ t('tag.none') }}</button>
+</div>
+<script>
+(function(){
+  const COLORS = {{ tag_colors|tojson }};
+  const menu = document.getElementById('tagMenu');
+  let current = null;
+
+  // Das Menue war mit der Maus bedienbar und sonst nicht: kein Fokus im
+  // Menue, kein Weg mit der Tastatur heraus, und der Knopf behauptete
+  // weiter `aria-expanded="false"`, waehrend das Menue offen stand.
+  function schliesse(zurueck){
+    if (menu.hidden) return;
+    menu.hidden = true;
+    const knopf = current && current.btn;
+    if (knopf) knopf.setAttribute('aria-expanded', 'false');
+    if (zurueck && knopf) knopf.focus();
+  }
+
+  window.openTagMenu = function(id, btn){
+    current = {id, item: btn.closest('.photo-item'), btn};
+    const r = btn.getBoundingClientRect();
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    const w = menu.offsetWidth, h = menu.offsetHeight;
+    menu.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + window.scrollX - w/2 + r.width/2)) + 'px';
+    menu.style.top = (r.top + window.scrollY - h - 8 < window.scrollY ? r.bottom + window.scrollY + 8 : r.top + window.scrollY - h - 8) + 'px';
+    const erstes = menu.querySelector('[data-settag]');
+    if (erstes) erstes.focus();
+  };
+
+  document.addEventListener('click', e => { if (!menu.hidden && !e.target.closest('#tagMenu') && !e.target.closest('.tag-btn')) schliesse(false); });
+  document.addEventListener('keydown', e => {
+    if (menu.hidden) return;
+    if (e.key === 'Escape') { e.preventDefault(); return schliesse(true); }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const ziele = Array.from(menu.querySelectorAll('[data-settag]'));
+    const i = ziele.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const schritt = e.key === 'ArrowDown' ? 1 : -1;
+    ziele[(i + schritt + ziele.length) % ziele.length].focus();
+  });
+  menu.addEventListener('click', async e => {
+    const b = e.target.closest('[data-settag]'); if (!b || !current) return;
+    const tag = b.dataset.settag;
+    const r = await fetch('/api/photo/' + current.id + '/tag', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tag})});
+    schliesse(true);
+    if (!r.ok) return;
+    const it = current.item; it.dataset.tag = tag;
+    let dot = it.querySelector('.photo-tag');
+    if (tag) { if (!dot) { dot = document.createElement('span'); dot.className = 'photo-tag'; it.appendChild(dot); } dot.style.background = COLORS[tag]; }
+    else if (dot) dot.remove();
+  });
+  document.querySelectorAll('[data-tagfilter]').forEach(chip => chip.addEventListener('click', () => {
+    document.querySelectorAll('[data-tagfilter]').forEach(c => c.classList.toggle('active', c === chip));
+    const f = chip.dataset.tagfilter;
+    document.querySelectorAll('.photo-item').forEach(it => { it.style.display = (!f || it.dataset.tag === f) ? '' : 'none'; });
+  }));
+})();
+</script>
+{% endif %}
+{% if client_picks %}<script src="{{ url_for('static', filename='js/client-picks.js') }}" defer></script>{% endif %}
+{% if client_comments %}
+<dialog class="comment-panel" id="commentPanel" aria-labelledby="commentTitle">
+  <form method="dialog" class="comment-panel-inner">
+    <h2 id="commentTitle" class="comment-title"></h2>
+    <ol class="comment-list" id="commentList"></ol>
+    <label class="form-label" for="commentBody">{{ t('comments.write') }}</label>
+    <textarea id="commentBody" class="form-control" rows="3" maxlength="1000"></textarea>
+    <p class="comment-note">{{ t('comments.note', name=current_client().name) }}</p>
+    <div class="comment-actions">
+      <button type="submit" value="cancel" class="btn btn--ghost btn--sm">{{ t('gallery.cancel') }}</button>
+      <button type="button" id="commentSend" class="btn btn--primary btn--sm">{{ t('comments.send') }}</button>
+    </div>
+  </form>
+</dialog>
+<script type="application/json" id="commentData">{{ {"api": "/kunde/api/" ~ event.slug ~ "/comments",
+  "t": {"picture": t('comments.picture'), "gallery": t('comments.gallery'), "empty": t('comments.empty'),
+        "failed": t('picks.failed'), "too_often": t('comments.too_often'), "operator": t('comments.operator')}} | tojson }}</script>
+<script src="{{ url_for('static', filename='js/client-comments.js') }}" defer></script>
+{% endif %}
+{% if darf_markieren or gs.exif %}
+<script type="application/json" id="lbExtraData">{{ {"tags": tag_colors.keys()|list, "colors": tag_colors, "labels": tag_labels} | tojson }}</script>
+<script src="{{ url_for('static', filename='js/lightbox-extras.js') }}" defer></script>
+{% endif %}
+<script>
+(function () {
+  // "mehr lesen": only when the three-line card really cuts the text.
+  var text = document.getElementById('gDescText'), more = document.getElementById('gDescMore');
+  if (text && more) {
+    var cut = function () { return text.scrollHeight > text.clientHeight + 2; };
+    if (cut()) more.hidden = false;
+    more.addEventListener('click', function () {
+      var open = text.classList.toggle('is-open');
+      more.setAttribute('aria-expanded', open ? 'true' : 'false');
+      more.textContent = open ? more.dataset.less : more.dataset.more;
+    });
+  }
+  // The owner's bar: share the guests' link (native sheet, else copy).
+  var share = document.getElementById('pvShare');
+  if (share) share.addEventListener('click', async function () {
+    var url = share.dataset.url;
+    try { if (navigator.share) { await navigator.share({ title: document.title, url: url }); return; } }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); window.pbToast && pbToast({{ t('preview.copied')|tojson }}); }
+    catch (e) { prompt({{ t('preview.copied')|tojson }}, url); }
+  });
+})();
+</script>
+{% if manage and owner %}
+<script type="application/json" id="mgData">{{ {
+  "api": owner.api, "csrf": owner.csrf, "slug": event.slug, "colors": tag_colors,
+  "t": {"selected": t('manage.selected'), "deleted": t('manage.deleted'), "undo": t('manage.undo'),
+        "ok": t('manage.ok'), "failed": t('manage.failed'), "confirm_delete": t('manage.confirm_delete'),
+        "cover_set": t('manage.cover_set'), "hide": t('manage.hide'), "show": t('manage.show'),
+        "hidden": t('manage.hidden_badge'), "restored": t('manage.restored')}
+} | tojson }}</script>
+<script src="{{ url_for('static', filename='js/gallery-manage.js') }}" defer></script>
+{% endif %}
+{% endblock %}

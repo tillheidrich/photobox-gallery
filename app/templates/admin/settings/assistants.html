@@ -1,0 +1,81 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}{{ t('oauth.admin.title') }} – {{ t('nav.settings') }}{% endblock %}
+{% block page_title %}{{ t('nav.settings') }}{% endblock %}
+
+{% block content %}
+{% set active_tab = 'assistants' %}
+{% set settings_subtitle = t('oauth.admin.subtitle') %}
+{% include 'admin/settings/_tabs.html' %}
+
+<div class="settings-section">
+  <div class="alert alert--info" style="margin-bottom:var(--sp-6)">
+    {{ t('oauth.admin.intro') }}
+  </div>
+
+  <h2 class="settings-section-title">{{ t('oauth.admin.connect_title') }}</h2>
+  <p class="settings-section-desc">{{ t('oauth.admin.connect_desc') }}</p>
+  <div class="form-group">
+    <label class="form-label" for="mcp-url">{{ t('oauth.admin.address') }}</label>
+    <input class="form-control" id="mcp-url" value="{{ mcp_url }}" readonly style="font-family:ui-monospace,monospace">
+  </div>
+  <form method="post" style="margin-bottom:var(--sp-8)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if enabled %}
+      <p class="settings-section-desc">{{ t('oauth.admin.state_on') }}</p>
+      <button class="btn btn-secondary" name="action" value="disable">{{ t('oauth.admin.disable') }}</button>
+    {% else %}
+      <p class="settings-section-desc">{{ t('oauth.admin.state_off') }}</p>
+      <button class="btn btn-primary" name="action" value="enable">{{ t('oauth.admin.enable') }}</button>
+    {% endif %}
+  </form>
+
+  <h2 class="settings-section-title">{{ t('oauth.admin.list_title') }}</h2>
+  {% if clients %}
+  <table class="table table--stack">
+    <thead><tr>
+      <th>{{ t('oauth.admin.col_name') }}</th><th>{{ t('oauth.admin.col_redirect') }}</th>
+      <th>{{ t('oauth.admin.col_scope') }}</th><th>{{ t('oauth.admin.col_seen') }}</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for c in clients %}
+      <tr>
+        <td class="td-main"><strong>{{ c.name }}</strong><br><small style="color:var(--c-slate-500)">{{ c.client_id }}</small></td>
+        <td data-label="{{ t('oauth.admin.col_redirect') }}">{{ c.redirect_hosts | join(', ') }}</td>
+        <td data-label="{{ t('oauth.admin.col_scope') }}">
+          {% if c.active %}{{ c.scopes }}{% elif c.consented_at %}{{ t('oauth.admin.none_active') }}{% else %}{{ t('oauth.admin.never_approved') }}{% endif %}
+        </td>
+        <td data-label="{{ t('oauth.admin.col_seen') }}">{{ c.last_used_at or '—' }}</td>
+        <td class="td-actions">
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="client_id" value="{{ c.client_id }}">
+            {% if c.active and (('control' in c.scopes) or ('photos' in c.scopes) or ('secure' in c.scopes) or ('updates' in c.scopes)) %}
+            <button class="btn btn-sm btn-secondary" name="action" value="withdraw_extras">{{ t('oauth.admin.withdraw_extras') }}</button>
+            {% endif %}
+            <button class="btn btn-sm btn-danger" name="action" value="revoke_client">{{ t('oauth.admin.revoke') }}</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" style="margin-top:var(--sp-4)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-danger" name="action" value="revoke_all">{{ t('oauth.admin.revoke_all') }}</button>
+  </form>
+  {% else %}
+  <p class="settings-section-desc">{{ t('oauth.admin.empty') }}</p>
+  {% endif %}
+  <h2 class="settings-section-title" style="margin-top:var(--sp-6)">{{ t('oauth.admin.rights_legend') }}</h2>
+  <dl class="settings-section-desc" style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px">
+    <dt><code>read</code> {{ t('oauth.scope.read') }}</dt><dd style="margin:0">{{ t('oauth.scope.read_desc') }}</dd>
+    <dt><code>manage</code> {{ t('oauth.scope.manage') }}</dt><dd style="margin:0">{{ t('oauth.scope.manage_desc') }}</dd>
+    <dt><code>control</code> {{ t('oauth.scope.control') }}</dt><dd style="margin:0">{{ t('oauth.scope.control_desc') }}</dd>
+    <dt><code>photos</code> {{ t('oauth.scope.photos') }}</dt><dd style="margin:0">{{ t('oauth.scope.photos_desc') }}</dd>
+    <dt><code>secure</code> {{ t('oauth.scope.secure') }}</dt><dd style="margin:0">{{ t('oauth.scope.secure_desc') }}</dd>
+    <dt><code>updates</code> {{ t('oauth.scope.updates') }}</dt><dd style="margin:0">{{ t('oauth.scope.updates_desc') }}</dd>
+  </dl>
+  <p class="settings-section-desc" style="margin-top:var(--sp-6)">{{ t('oauth.admin.password_note') }}</p>
+</div>
+{% endblock %}

@@ -1,0 +1,147 @@
+{
+ "id": "party-quer-6",
+ "name": "Bunte Party · quer · 6 Fotos",
+ "paper": "10x15-quer",
+ "canvas": [
+  1800,
+  1200
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 520,
+   "h": 388,
+   "shot": 0,
+   "radius": 14,
+   "id": "foto-1"
+  },
+  {
+   "x": 640,
+   "y": 96,
+   "w": 520,
+   "h": 388,
+   "shot": 1,
+   "radius": 14,
+   "id": "foto-2"
+  },
+  {
+   "x": 1184,
+   "y": 96,
+   "w": 520,
+   "h": 388,
+   "shot": 2,
+   "radius": 14,
+   "id": "foto-3"
+  },
+  {
+   "x": 96,
+   "y": 508,
+   "w": 520,
+   "h": 388,
+   "shot": 3,
+   "radius": 14,
+   "id": "foto-4"
+  },
+  {
+   "x": 640,
+   "y": 508,
+   "w": 520,
+   "h": 388,
+   "shot": 4,
+   "radius": 14,
+   "id": "foto-5"
+  },
+  {
+   "x": 1184,
+   "y": 508,
+   "w": 520,
+   "h": 388,
+   "shot": 5,
+   "radius": 14,
+   "id": "foto-6"
+  }
+ ],
+ "texts": [
+  {
+   "x": 900,
+   "y": 960,
+   "size": 70,
+   "bold": true,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#ffffff",
+   "id": "t1",
+   "font": "display"
+  },
+  {
+   "x": 900,
+   "y": 1026,
+   "size": 30,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#232056",
+   "id": "t2",
+   "font": "display"
+  }
+ ],
+ "shots": 6,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1800,
+   "h": 1200,
+   "fill": "#232056",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 380,
+   "y": 924,
+   "w": 1040,
+   "h": 176,
+   "fill": "#ff4f79",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 18,
+   "id": "form-2",
+   "rotation": 358
+  }
+ ],
+ "images": [
+  {
+   "file": "kol-party-konfetti-1800x1200.png",
+   "x": 0,
+   "y": 0,
+   "w": 1800,
+   "h": 1200,
+   "opacity": 100,
+   "id": "bild-1"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "bild-1",
+  "form-2",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "foto-4",
+  "foto-5",
+  "foto-6",
+  "t1",
+  "t2"
+ ]
+}

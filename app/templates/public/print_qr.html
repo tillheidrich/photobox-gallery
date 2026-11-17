@@ -1,0 +1,58 @@
+{% extends "layout_public.html" %}
+{% block title %}QR-Code – {{ event.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="print-qr-card">
+    {% if g.branding_logo %}
+    <img src="/branding/logo" alt="Logo" class="print-qr-logo">
+    {% endif %}
+    <h1 class="print-qr-title">{{ event.name }}</h1>
+    <p class="print-qr-sub">{{ t('print.scan_hint') }}</p>
+
+    <div class="print-qr-frame">
+      <img src="/gallery/{{ event.slug }}/qr.png" alt="QR-Code">
+    </div>
+
+    <a href="/gallery/{{ event.slug }}" class="print-qr-link">
+      {{ request.host }}/gallery/{{ event.slug }}
+    </a>
+
+    {% if event.code %}
+    <p class="print-qr-code">
+      {{ t('print.or_code') }} <strong>{{ event.code }}</strong>
+    </p>
+    {% endif %}
+
+    <div class="print-qr-actions">
+      <button onclick="copyLink()" class="btn btn--secondary" id="copyBtn" data-umami-event="copy-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>{{ t('print.copy') }}</span>
+      </button>
+      <button onclick="window.print()" class="btn btn--primary" data-umami-event="print">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        {{ t('print.print') }}
+      </button>
+    </div>
+
+    <a href="/gallery/{{ event.slug }}" class="print-qr-back">{{ t('common.back') }}</a>
+  </div>
+</div>
+
+<script>
+function copyLink() {
+  var url = location.origin + "/gallery/{{ event.slug }}";
+  var btn = document.getElementById('copyBtn');
+  var label = btn.querySelector('span');
+  var done = function () {
+    var old = label.textContent;
+    label.textContent = {{ t('print.copied')|tojson }};
+    btn.classList.add('is-copied');
+    setTimeout(function () { label.textContent = old; btn.classList.remove('is-copied'); }, 1500);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done, function(){});
+  }
+}
+</script>
+{% endblock %}

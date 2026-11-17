@@ -1,0 +1,135 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}Benachrichtigungen – Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'notifications' %}
+{% set settings_subtitle = 'Benachrichtigungskanäle konfigurieren' %}
+{% include 'admin/settings/_tabs.html' %}
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div class="settings-section">
+    <!-- Telegram -->
+    <h2 class="settings-section-title">Telegram</h2>
+    <p class="settings-section-desc">Erhalte Echtzeit-Benachrichtigungen bei neuen Uploads direkt im Telegram-Chat.</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="tg_token">Bot-Token</label>
+          <input type="text" id="tg_token" name="notify_tg_token" class="form-control"
+                 value="{{ settings.notify_tg_token or '' }}" placeholder="123456789:ABCdef…" autocomplete="off">
+          <p class="form-hint">Erstelle einen Bot via <a href="https://t.me/BotFather" target="_blank">@BotFather</a>.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tg_chat">Chat-ID</label>
+          <input type="text" id="tg_chat" name="notify_tg_chat_id" class="form-control"
+                 value="{{ settings.notify_tg_chat_id or '' }}" placeholder="-100123456789">
+          <p class="form-hint">Sende /start an deinen Bot, dann <code>/chatid</code> oder nutze <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a>.</p>
+        </div>
+        <div class="test-btn-wrap">
+          <button type="button" class="btn btn--secondary btn--sm" onclick="testNotification('telegram', this)">
+            Testnachricht senden
+          </button>
+          <span class="test-result" id="test-telegram"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discord -->
+    <h2 class="settings-section-title">Discord</h2>
+    <p class="settings-section-desc">Benachrichtigungen in deinen Discord-Server-Kanal.</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="discord_webhook">Webhook-URL</label>
+          <input type="url" id="discord_webhook" name="notify_discord_webhook" class="form-control"
+                 value="{{ settings.notify_discord_webhook or '' }}"
+                 placeholder="https://discord.com/api/webhooks/…">
+          <p class="form-hint">Kanal-Einstellungen → Integrationen → Webhook erstellen.</p>
+        </div>
+        <div class="test-btn-wrap">
+          <button type="button" class="btn btn--secondary btn--sm" onclick="testNotification('discord', this)">
+            Testnachricht senden
+          </button>
+          <span class="test-result" id="test-discord"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generic Webhook -->
+    <h2 class="settings-section-title">HTTP-Webhook</h2>
+    <p class="settings-section-desc">Sende Benachrichtigungen an beliebige Endpunkte (Make, Zapier, n8n, etc.).</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="webhook_url">Webhook-URL</label>
+          <input type="url" id="webhook_url" name="notify_webhook_url" class="form-control"
+                 value="{{ settings.notify_webhook_url or '' }}"
+                 placeholder="https://hook.make.com/…">
+        </div>
+        <div class="test-btn-wrap">
+          <button type="button" class="btn btn--secondary btn--sm" onclick="testNotification('webhook', this)">
+            Test senden
+          </button>
+          <span class="test-result" id="test-webhook"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quiet Hours -->
+    <h2 class="settings-section-title">Ruhezeiten</h2>
+    <p class="settings-section-desc">In diesem Zeitraum werden keine Benachrichtigungen gesendet.</p>
+    <div class="card" style="margin-bottom:var(--sp-6)">
+      <div class="card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-4)">
+          <div class="form-group">
+            <label class="form-label" for="quiet_from">Von</label>
+            <input type="time" id="quiet_from" name="notify_quiet_from" class="form-control"
+                   value="{{ settings.notify_quiet_from or '22:00' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="quiet_to">Bis</label>
+            <input type="time" id="quiet_to" name="notify_quiet_to" class="form-control"
+                   value="{{ settings.notify_quiet_to or '08:00' }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:var(--sp-3)">
+      <button type="submit" class="btn btn--primary">Einstellungen speichern</button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function testNotification(channel, btn) {
+  const resultEl = document.getElementById('test-' + channel);
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = 'Wird gesendet…';
+  resultEl.textContent = '';
+  resultEl.className = 'test-result';
+  try {
+    const r = await fetch('/admin/settings/notifications/test/' + channel, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrf_token]').value }
+    });
+    const d = await r.json();
+    resultEl.textContent = d.ok ? '✓ Gesendet!' : '✗ ' + (d.error || 'Fehler');
+    resultEl.className = 'test-result ' + (d.ok ? 'ok' : 'err');
+  } catch (e) {
+    resultEl.textContent = '✗ Netzwerkfehler';
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+</script>
+{% endblock %}

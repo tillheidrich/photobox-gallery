@@ -1,0 +1,109 @@
+{% extends "layout_admin.html" %}
+{#- An empty column is None; printed as is it became the word "None" in the
+    field and was saved back as text. "None" stored that way reads as empty. -#}
+{% macro blank(v) %}{{ '' if v is none or v == 'None' else v }}{% endmacro %}
+{% block title %}{% if device %}Box bearbeiten{% else %}Neue Box{% endif %} – Photobox Gallery Admin{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div style="display:flex; align-items:center; gap:var(--spacing-md);">
+    <a href="{{ url_for('admin.devices') }}" class="btn btn-secondary btn-sm">← Zurück</a>
+    <h1 class="page-title">{% if device %}{{ device.name }} bearbeiten{% else %}Neue Box{% endif %}</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" name="name" class="form-control" required
+               value="{{ device.name if device else '' }}"
+               placeholder="z.B. Fotobox Hauptbühne">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Standard-Watchpath (optional)</label>
+        <input type="text" name="default_watch_path" class="form-control"
+               value="{{ blank(device.default_watch_path) if device else '' }}"
+               placeholder="C:\Fotobox\Fotos">
+        <small style="color:var(--color-text-secondary);">Pfad auf dem Windows-PC, der überwacht wird.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Event-Glob-Pattern (für Auto-Event)</label>
+        <input type="text" name="default_event_glob" class="form-control"
+               value="{{ blank(device.default_event_glob) if device else '' }}"
+               placeholder="Event_*">
+        <small style="color:var(--color-text-secondary);">Ordnermuster für automatische Event-Erkennung.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          <input type="checkbox" name="active" value="1"
+                 {% if not device or device.active %}checked{% endif %}>
+          Box aktiv
+        </label>
+      </div>
+
+      <!-- Landing Page Section -->
+      <hr style="margin:2rem 0; border:none; border-top:1px solid var(--color-border);">
+      <h3 style="font-size:1rem; font-weight:700; margin-bottom:1rem;">Landing Page für diese Box</h3>
+
+      <div class="form-group">
+        <label class="form-label">Zugewiesenes Event (optional)</label>
+        <select name="landing_event_id" class="form-control">
+          <option value="">-- Kein Event zugewiesen --</option>
+          {% if events %}
+            {% for event in events %}
+            <option value="{{ event.id }}"
+                    {% if device and device.landing_event_id == event.id %}selected{% endif %}>
+              {{ event.name }} ({{ event.slug }})
+            </option>
+            {% endfor %}
+          {% endif %}
+        </select>
+        <small style="color:var(--color-text-secondary);">Wähle ein Event, das auf dieser Landing Page angezeigt werden soll.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Landing Page URL</label>
+        <div style="background:var(--color-surface-2); border:1px solid var(--color-border); border-radius:8px; padding:0.75rem; font-family:monospace; font-size:0.9rem; word-break:break-all;">
+          /screen/{{ device.id if device else '[Device ID]' }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Headline (optional)</label>
+        <input type="text" name="landing_headline" class="form-control"
+               value="{{ blank(device.landing_headline) if device else '' }}"
+               placeholder="z.B. Unsere Party Fotos">
+        <small style="color:var(--color-text-secondary);">Hauptüberschrift für die Landing Page. Falls leer wird der Event-Name oder der Name der Box verwendet.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Untertitel (optional)</label>
+        <textarea name="landing_subtext" class="form-control" rows="2"
+                  placeholder="z.B. Deine Fotos sind online – schau sie dir jetzt an!">{{ blank(device.landing_subtext) if device else '' }}</textarea>
+        <small style="color:var(--color-text-secondary);">Kurze Beschreibung unter der Headline.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Hintergrundbild URL (optional)</label>
+        <input type="text" name="landing_bg_path" class="form-control"
+               value="{{ blank(device.landing_bg_path) if device else '' }}"
+               placeholder="z.B. /data/events/party/bg.jpg">
+        <small style="color:var(--color-text-secondary);">Relativer oder absoluter Pfad zum Hintergrundbild für die Landing Page.</small>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div style="display:flex; gap:var(--spacing-sm);">
+        <button type="submit" class="btn btn-primary">Speichern</button>
+        <a href="{{ url_for('admin.devices') }}" class="btn btn-secondary">Abbrechen</a>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

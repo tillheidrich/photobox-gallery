@@ -1,0 +1,204 @@
+{% extends "layout_admin.html" %}
+{% block title %}Boxen – Photobox Gallery Admin{% endblock %}
+{% block page_title %}Boxen{% endblock %}
+{% block content %}
+<style>
+  @media (max-width:768px){
+    .dev-row{flex-direction:column;align-items:stretch}
+    .dev-name{font-size:var(--text-lg)!important;flex:1 0 100%;overflow-wrap:anywhere}
+    .dev-actions{flex-wrap:wrap}
+    .dev-actions>a,.dev-actions>form{flex:1 1 30%}
+    .dev-actions>form .btn{width:100%}
+    .dev-actions>a{justify-content:center}
+    .dev-config{white-space:normal;text-align:left;height:auto;padding-block:10px;line-height:1.3;width:100%;justify-content:flex-start}
+  }
+</style>
+<div class="page-header">
+  <div class="dev-pagehead" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+    <div>
+      <h1 class="page-title">Boxen</h1>
+      <p class="page-subtitle">Deine Fotoboxen und ihre Verbindung zur Galerie</p>
+    </div>
+    <a href="{{ url_for('admin.new_device') }}" class="btn btn-primary">
+      + Neue Box
+    </a>
+  </div>
+</div>
+
+{% if fresh_key %}
+{#- S-6: only the hash of a key is stored. This page is the answer to the POST
+    that made the key; it is not cached and the key is not shown again. -#}
+<div class="card" role="alert" style="padding:var(--spacing-lg); margin-bottom:var(--spacing-lg); border:2px solid var(--color-warning, #f59e0b);">
+  <h2 style="font-size:var(--text-base); font-weight:600; margin-bottom:var(--spacing-sm);">Neuer Schlüssel für „{{ fresh_key.name }}“ – nur jetzt sichtbar</h2>
+  <p style="color:var(--color-text-secondary); margin-bottom:var(--spacing-sm);">
+    Die Galerie speichert nur einen Fingerabdruck. Wenn du den Schlüssel von Hand eintragen willst, kopiere ihn jetzt.
+    Einfacher ist ein Kopplungscode.</p>
+  <div style="display:flex; align-items:center; gap:var(--spacing-sm); flex-wrap:wrap;">
+    <code style="font-size:var(--text-sm); word-break:break-all; flex:1;">{{ fresh_key.api_key }}</code>
+    <button class="btn btn-sm btn-secondary" onclick="copyText({{ fresh_key.api_key|tojson|forceescape }}, this)">Kopieren</button>
+  </div>
+</div>
+{% endif %}
+{% if rotated_all %}
+<div class="card" role="status" style="padding:var(--spacing-md); margin-bottom:var(--spacing-lg);">
+  {{ rotated_all }} Geräteschlüssel erneuert. Jede Box muss neu gekoppelt werden (Kopplungscode oder „Mit dem Handy koppeln“).
+</div>
+{% endif %}
+
+{% if not devices %}
+<div class="card" style="padding:var(--spacing-xl); text-align:center;">
+  <h2 style="font-size:var(--text-xl); margin-bottom:var(--spacing-sm);">Noch keine Boxen</h2>
+  <p style="color:var(--color-text-secondary); margin-bottom:var(--spacing-lg);">
+    Füge deine erste Fotobox hinzu, um Fotos hochzuladen.
+  </p>
+  <a href="{{ url_for('admin.new_device') }}" class="btn btn-primary">Erste Box anlegen</a>
+</div>
+{% else %}
+<div class="card">
+  {% for device in devices %}
+  <div style="padding:var(--spacing-lg); border-bottom:1px solid var(--color-border);" id="device-{{ device.id }}">
+    <div class="dev-row" style="display:flex; justify-content:space-between; align-items:flex-start; gap:var(--spacing-md);">
+      <div style="flex:1; min-width:0;">
+        <div class="dev-head" style="display:flex; align-items:center; gap:var(--spacing-sm); margin-bottom:var(--spacing-sm); flex-wrap:wrap;">
+          <h3 class="dev-name" style="font-size:var(--text-base); font-weight:600; margin:0;">{{ device.name }}</h3>
+          <span class="badge badge-{% if device.active %}success{% else %}secondary{% endif %}">
+            {% if device.active %}Aktiv{% else %}Inaktiv{% endif %}
+          </span>
+          {% if device.last_seen_at %}
+          <span style="font-size:var(--text-xs); color:var(--color-text-secondary);">
+            Zuletzt gesehen: {{ device.last_seen_at[:16] }}
+          </span>
+          {% endif %}
+        </div>
+
+        <div style="background:var(--color-bg-secondary); border-radius:var(--radius-sm); padding:var(--spacing-sm) var(--spacing-md); margin-bottom:var(--spacing-sm);">
+          <div style="display:flex; align-items:center; gap:var(--spacing-sm); flex-wrap:wrap;">
+            <button class="btn btn-sm btn-primary" onclick="pairCode({{ device.id }})">Kopplungscode erzeugen</button>
+            <span style="font-size:var(--text-xs); color:var(--color-text-secondary);">
+              erzeugt einen kurzen Code für die Box — dort in der Verwaltung unter „Galerie-Server“ bei „Kopplungscode“ eintragen
+            </span>
+          </div>
+          <div id="pair-{{ device.id }}" hidden style="margin-top:var(--spacing-sm);">
+            <div style="display:flex; align-items:center; gap:var(--spacing-sm); flex-wrap:wrap;">
+              <code id="pairshort-{{ device.id }}" style="font-size:1.25rem; letter-spacing:.06em; font-weight:600;"></code>
+              <button class="btn btn-sm btn-secondary" onclick="copyText(document.getElementById('pairshort-{{ device.id }}').textContent, this)">Kopieren</button>
+              <span id="pairttl-{{ device.id }}" style="font-size:var(--text-xs); color:var(--color-text-secondary);"></span>
+            </div>
+            <details style="margin-top:6px">
+              <summary style="cursor:pointer; font-size:var(--text-xs); color:var(--color-text-secondary);">Langer Code (wenn der PC beim Koppeln noch kein Internet hat)</summary>
+              <p style="font-size:var(--text-xs); color:var(--color-text-secondary); margin-top:6px;">Der lange Code enthält den Schlüssel selbst. Ihn zu erzeugen erneuert den Schlüssel — eine Box, die gerade läuft, wird getrennt.</p>
+              <button class="btn btn-sm btn-secondary" onclick="pairCode({{ device.id }}, true)">Langen Code erzeugen</button>
+              <div style="display:flex; align-items:center; gap:var(--spacing-sm); margin-top:6px;">
+                <code id="pairlong-{{ device.id }}" style="font-size:var(--text-xs); word-break:break-all; flex:1;"></code>
+                <button class="btn btn-sm btn-secondary" onclick="copyText(document.getElementById('pairlong-{{ device.id }}').textContent, this)">Kopieren</button>
+              </div>
+            </details>
+          </div>
+          <p style="margin-top:6px; font-size:var(--text-xs); color:var(--color-text-secondary);">
+            Der Schlüssel der Box wird nur beim Erzeugen einmal angezeigt; gespeichert ist nur sein Fingerabdruck.</p>
+        </div>
+
+        {% if device.last_ip %}
+        <div style="font-size:var(--text-xs); color:var(--color-text-secondary);">
+          IP: {{ device.last_ip }}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="dev-actions" style="display:flex; gap:var(--spacing-sm); flex-shrink:0;">
+        <a href="{{ url_for('admin_booth.sync_device', device_id=device.id) }}" class="btn btn-sm btn-secondary">
+          Sync
+        </a>
+        <a href="{{ url_for('admin.device_logs', device_id=device.id) }}" class="btn btn-sm btn-secondary">
+          Logs
+        </a>
+        <a href="{{ url_for('admin.edit_device', device_id=device.id) }}" class="btn btn-sm btn-secondary">
+          Bearbeiten
+        </a>
+        <form method="post" action="{{ url_for('admin.regen_device_key', device_id=device.id) }}"
+              onsubmit="return confirm('Schlüssel neu erzeugen? Die Box kommt dann nicht mehr rein, bis du sie mit einem neuen Kopplungscode koppelst.')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm btn-secondary">Schlüssel erneuern</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.delete_device', device_id=device.id) }}"
+              onsubmit="return confirm('Box wirklich löschen?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-sm" style="background:#fee2e2; color:#991b1b; border-color:#fca5a5;">
+            Löschen
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Config Download Info -->
+<div class="card" style="margin-top:var(--spacing-lg); padding:var(--spacing-lg);">
+  <h2 style="font-size:var(--text-base); font-weight:600; margin-bottom:var(--spacing-sm);">Alle Geräteschlüssel erneuern</h2>
+  <p style="color:var(--color-text-secondary); margin-bottom:var(--spacing-md);">
+    Nach einem Passwortwechsel, einem verlorenen Laptop oder wenn ein Schlüssel in falsche Hände geraten sein könnte:
+    Jede Box wird sofort getrennt und muss neu gekoppelt werden.</p>
+  <form method="post" action="{{ url_for('admin.rotate_all_device_keys') }}"
+        onsubmit="return confirm('Wirklich alle Geräteschlüssel erneuern? Alle Boxen werden sofort getrennt.')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-sm" style="background:#fee2e2; color:#991b1b; border-color:#fca5a5;">Alle Geräteschlüssel erneuern</button>
+  </form>
+</div>
+
+<div class="card" style="margin-top:var(--spacing-lg); padding:var(--spacing-lg);">
+  <h2 style="font-size:var(--text-base); font-weight:600; margin-bottom:var(--spacing-md);">Windows-Uploader einrichten</h2>
+  <p style="color:var(--color-text-secondary); margin-bottom:var(--spacing-md);">
+    Lade die Konfigurationsdatei für den Windows-Uploader herunter und lege sie in das Uploader-Verzeichnis.
+  </p>
+  <div style="display:flex; gap:var(--spacing-sm); flex-wrap:wrap;">
+    {% for device in devices %}
+    <form method="post" action="{{ url_for('admin.device_config', device_id=device.id) }}"
+          onsubmit="return confirm('Die Datei enthält einen neuen Schlüssel. Ein Uploader, der mit dem alten läuft, wird getrennt. Weiter?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-secondary btn-sm dev-config">config.json für {{ device.name }} herunterladen (neuer Schlüssel)</button>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const old = btn.textContent;
+    btn.textContent = "Kopiert";
+    setTimeout(() => (btn.textContent = old), 1500);
+  });
+}
+async function pairCode(id, long) {
+  if (long && !confirm("Schlüssel erneuern und langen Code erzeugen? Eine laufende Box wird getrennt.")) return;
+  const box = document.getElementById("pair-" + id);
+  const ttl = document.getElementById("pairttl-" + id);
+  try {
+    const r = await fetch(`/admin/devices/${id}/pairing`, {
+      method: "POST", headers: {"Content-Type": "application/json", "X-CSRF-Token": "{{ csrf_token }}"},
+      body: JSON.stringify({long: !!long})});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || r.statusText);
+    document.getElementById("pairshort-" + id).textContent = d.short;
+    if (long) document.getElementById("pairlong-" + id).textContent = d.long;
+    box.hidden = false;
+    // Der Code ist ein Schlüssel auf Zeit — sichtbar mitzählen, nicht still ablaufen lassen
+    let left = d.minutes * 60;
+    clearInterval(box.dataset.timer);
+    const tick = () => {
+      left -= 1;
+      ttl.textContent = left > 0 ? `noch ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} gültig`
+                                 : "abgelaufen — neu erzeugen";
+      if (left <= 0) clearInterval(box.dataset.timer);
+    };
+    tick();
+    box.dataset.timer = setInterval(tick, 1000);
+  } catch (e) {
+    ttl.textContent = "Code konnte nicht erzeugt werden: " + e.message;
+    box.hidden = false;
+  }
+}
+</script>
+{% endblock %}

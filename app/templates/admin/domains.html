@@ -1,0 +1,87 @@
+{% extends "layout_admin.html" %}
+{% block title %}Eigene Domains{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Eigene Domains</h1>
+  <p class="page-subtitle">Die Galerie unter der Adresse des Kunden. Der QR-Code an der Box, der geteilte Link,
+    die Mail und das Sharepic tragen dann dieselbe Marke wie alles andere, was seine Gäste von ihm sehen.</p>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Neue Domain</h2></div>
+  <div class="card-body">
+    {% if not eigener_host %}
+    <div class="alert alert--error" style="margin:0 0 14px">
+      Diese Galerie kennt ihre eigene Hauptadresse nicht. Trag sie zuerst unter
+      <a href="/admin/settings">Einstellungen</a> ein — ohne sie lässt sich weder eine Anleitung
+      für den Kunden erzeugen noch prüfen, ob seine Domain hierher zeigt.
+    </div>
+    {% endif %}
+    <form method="post" style="display:grid;grid-template-columns:2fr 1.4fr 1.6fr auto;gap:12px;align-items:end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="tat" value="anlegen">
+      <div class="form-group" style="margin:0"><label class="form-label">Domain</label>
+        <input class="form-control" name="domain" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="bilder.kunde.de" required></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Gilt für</label>
+        <select class="form-control" name="event_id">
+          <option value="">alle Events dieser Instanz</option>
+          {% for e in events %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}
+        </select></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Notiz</label>
+        <input class="form-control" name="note" placeholder="z. B. Ansprechpartner" maxlength="200"></div>
+      <button class="btn btn-primary">Eintragen</button>
+    </form>
+    <p style="margin:12px 0 0;font-size:.85rem;color:var(--color-text-muted)">Eine Domain zählt erst, wenn sie hierher zeigt.
+      Bis dahin laufen alle Links weiter über die Hauptadresse — ein QR-Code auf eine Adresse, die noch
+      nicht antwortet, wäre schlimmer als einer auf die eigene.</p>
+  </div>
+</div>
+
+{% if domains %}
+{% for d in domains %}
+<div class="card" style="margin-bottom:14px">
+  <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+    <h2 style="font-size:.9375rem;font-weight:600;margin:0">
+      {{ d.domain }}
+      {% if d.verified_at %}<span style="color:#2f9e44;font-weight:500">· zeigt hierher</span>
+      {% else %}<span style="color:#b8860b;font-weight:500">· noch nicht bestätigt</span>{% endif %}
+    </h2>
+    <div style="display:flex;gap:8px">
+      <form method="post" style="margin:0"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="tat" value="pruefen"><input type="hidden" name="id" value="{{ d.id }}">
+        <button class="btn btn-secondary btn-sm">Jetzt prüfen</button></form>
+      <form method="post" style="margin:0" onsubmit="return confirm({{ (d.domain ~ ' entfernen? Links laufen danach wieder über die Hauptadresse.')|tojson|forceescape }})">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="tat" value="loeschen"><input type="hidden" name="id" value="{{ d.id }}">
+        <button class="btn btn-secondary btn-sm">Entfernen</button></form>
+    </div>
+  </div>
+  <div class="card-body">
+    <p style="margin:0 0 12px;font-size:.9rem">
+      Gilt für: <b>{% if d.event %}{{ d.event.name }}{% else %}alle Events{% endif %}</b>
+      {% if d.note %} · {{ d.note }}{% endif %}
+      {% if d.last_check %} · zuletzt geprüft {{ d.last_check.replace('T', ' ') }}{% endif %}
+    </p>
+    {% if d.last_result %}
+    <p class="{{ 'alert alert--success' if d.verified_at else 'alert alert--error' }}" style="margin:0 0 14px">{{ d.last_result }}</p>
+    {% endif %}
+
+    <h3 style="font-size:.9rem;margin:0 0 6px">Das trägt der Kunde bei seinem Anbieter ein</h3>
+    <table class="table" style="max-width:640px">
+      <tr><th style="width:120px">Typ</th><td><code>{{ d.anleitung.typ }}</code></td></tr>
+      <tr><th>Name</th><td><code>{{ d.anleitung.name }}</code></td></tr>
+      <tr><th>Ziel</th><td><code>{{ d.anleitung.ziel }}</code></td></tr>
+    </table>
+    <p style="margin:8px 0 0;font-size:.85rem;color:var(--color-text-muted)">{{ d.anleitung.hinweis }}</p>
+    <p style="margin:10px 0 0;font-size:.85rem;color:var(--color-text-muted)"><b>Noch nötig:</b> Die Domain muss auch am
+      Webserver dieser Instanz eingetragen werden, damit ein Zertifikat ausgestellt wird — in Coolify unter
+      „Domains" der Anwendung, bei Traefik/Caddy/nginx entsprechend. Das kann diese Seite nicht für dich tun;
+      sie sagt dir nur, ob DNS steht.</p>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><div class="card-body" style="color:var(--color-text-muted)">Noch keine eigene Domain eingetragen.
+  Alle Links laufen über {{ eigener_host or 'die Hauptadresse' }}.</div></div>
+{% endif %}
+{% endblock %}

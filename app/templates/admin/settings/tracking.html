@@ -1,0 +1,59 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}Tracking – Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'tracking' %}
+{% set settings_subtitle = 'Reichweitenmessung – cookieless & DSGVO-freundlich' %}
+{% include 'admin/settings/_tabs.html' %}
+
+<div class="settings-section">
+  <div class="alert alert--info" style="margin-bottom:var(--sp-6)">
+    <strong>Umami</strong> ist selbst gehostet, arbeitet ohne Cookies und ohne personenbezogene Profile.
+    Ist ein Feld leer, bleibt das Tracking aus. Alternativ per Umgebungsvariablen
+    <code>UMAMI_SRC</code> / <code>UMAMI_WEBSITE_ID</code> setzbar.
+  </div>
+
+  <h2 class="settings-section-title">Umami-Verbindung</h2>
+  <p class="settings-section-desc">
+    Beides findest du in Umami unter <em>Websites → (deine Seite) → Edit</em> bzw. im Tracking-Code.
+  </p>
+  <div class="card">
+    <form method="post" action="/admin/settings/tracking">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="umami_src">Script-URL</label>
+          <input type="url" id="umami_src" name="umami_src" class="form-control"
+                 placeholder="https://analytics.example.com/script.js"
+                 value="{{ settings.umami_src }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="umami_website_id">Website-ID</label>
+          <input type="text" id="umami_website_id" name="umami_website_id" class="form-control"
+                 placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                 value="{{ settings.umami_website_id }}">
+        </div>
+        <div class="settings-status">
+          {% if settings.umami_src and settings.umami_website_id %}
+            <span class="status-dot status-dot--on"></span> Tracking aktiv
+          {% else %}
+            <span class="status-dot status-dot--off"></span> Tracking inaktiv
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn--primary">Speichern</button>
+      </div>
+    </form>
+  </div>
+
+  <p class="settings-section-desc" style="margin-top:var(--sp-4)">
+    Erfasst werden u. a. Galerie-Aufrufe, Foto-Ansichten, Downloads, ZIP-/Auswahl-Downloads,
+    Shares, Likes, Sprachwechsel und Code-Suche – alles aggregiert und ohne Personenbezug.
+    Bei aktivem Tracking erscheint automatisch ein transparenter Hinweis in der
+    <a href="/datenschutz" target="_blank">Datenschutzerklärung</a>.
+  </p>
+</div>
+{% endblock %}

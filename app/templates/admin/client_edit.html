@@ -1,0 +1,55 @@
+{% extends "layout_admin.html" %}
+{% block title %}{{ client.name }} – {{ t('client.admin.title') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <p style="margin:0 0 4px"><a class="adm-back" href="/admin/clients">← {{ t('client.admin.title') }}</a></p>
+  <h1 class="page-title">{{ client.name }}</h1>
+  <p class="page-subtitle">{{ t('client.admin.door', url=door_url) }}</p>
+</div>
+
+{% if new_code %}
+<div class="alert alert--success" role="status" style="margin-bottom:18px">
+  <p style="margin:0 0 6px">{{ t('client.admin.code_once') }}</p>
+  <p style="margin:0;font-size:1.4rem;font-weight:700;letter-spacing:.08em"><code id="neuerCode">{{ new_code }}</code></p>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('client.admin.code') }}</h2></div>
+  <div class="card-body">
+    <p style="margin:0 0 12px;font-size:.875rem;color:var(--color-text-secondary)">
+      {{ t('client.admin.code_set') if client.code_hash else t('client.admin.code_none') }} · {{ t('client.admin.code_hint') }}</p>
+    <form method="post" action="/admin/clients/{{ client.id }}/code" style="margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-secondary">{{ t('client.admin.code_new') if client.code_hash else t('client.admin.code_make') }}</button>
+    </form>
+  </div>
+</div>
+
+<form method="post" data-dirty-watch>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('client.admin.data') }}</h2></div>
+    <div class="card-body">
+      <div class="form-group"><label class="form-label" for="c_name">{{ t('client.admin.name') }}</label>
+        <input class="form-control" id="c_name" name="name" maxlength="120" value="{{ client.name }}" required></div>
+      <div class="form-group"><label class="form-label" for="c_note">{{ t('client.admin.note') }}</label>
+        <textarea class="form-control" id="c_note" name="note" rows="2" maxlength="2000">{{ client.note or '' }}</textarea></div>
+      <label class="gs-check"><input type="checkbox" name="active" {% if client.active %}checked{% endif %}> {{ t('client.admin.active') }}</label>
+      <p style="margin:6px 0 0;font-size:.8rem;color:var(--color-text-muted)">{{ t('client.admin.last_visit') }}: {{ (client.last_seen_at or '')[:16] or '–' }}</p>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">{{ t('client.admin.galleries') }} ({{ assigned|length }})</h2></div>
+    <div class="card-body" style="max-height:420px;overflow:auto">
+      {% for e in events %}
+      <label class="gs-check" style="display:flex;gap:8px">
+        <input type="checkbox" name="event_ids" value="{{ e.id }}" {% if e.id in assigned %}checked{% endif %}>
+        <span>{% if e.parent_id %}↳ {% endif %}{{ e.name }} <small style="color:var(--color-text-muted)">/gallery/{{ e.slug }}{% if not e.published %} · {{ t('client.admin.unpublished') }}{% endif %}</small></span>
+      </label>
+      {% else %}<p style="margin:0">–</p>{% endfor %}
+    </div>
+  </div>
+  <div class="adm-savebar"><button class="btn btn-primary">{{ t('client.admin.save') }}</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="{{ g.lang or 'de' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>{{ t('oauth.consent.title') }} – Photobox Gallery</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+</head>
+<body style="background:var(--c-slate-50)">
+<div class="login-page">
+  <div class="login-card" style="max-width:480px;text-align:left">
+    <h1 style="text-align:left">{{ t('oauth.consent.title') }}</h1>
+    <p class="subtitle" style="text-align:left">{{ t('oauth.consent.lead', name=client.name) }}</p>
+
+    <dl style="margin:var(--sp-5) 0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px">
+      <dt style="color:var(--c-slate-500)">{{ t('oauth.consent.client') }}</dt>
+      <dd style="margin:0"><strong>{{ client.name }}</strong></dd>
+      <dt style="color:var(--c-slate-500)">{{ t('oauth.consent.redirect') }}</dt>
+      <dd style="margin:0"><strong style="font-family:ui-monospace,monospace">{{ redirect_host }}</strong></dd>
+    </dl>
+
+    {% if loopback %}
+    <div class="alert alert--warning" style="margin-bottom:var(--sp-5)">{{ t('oauth.consent.loopback') }}</div>
+    {% endif %}
+
+    <form method="post" action="/oauth/authorize">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="request_id" value="{{ request_id }}">
+      <fieldset style="border:0;padding:0;margin:0 0 var(--sp-5)">
+        <legend style="font-weight:600;margin-bottom:8px">{{ t('oauth.consent.scopes') }}</legend>
+        <label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+          <input type="checkbox" checked disabled>
+          <span><strong>{{ t('oauth.scope.read') }}</strong><br><small>{{ t('oauth.scope.read_desc') }}</small></span>
+        </label>
+        {% if 'manage' in scopes %}
+        <label style="display:flex;gap:10px;align-items:flex-start">
+          <input type="checkbox" name="manage" value="1" checked>
+          <span><strong>{{ t('oauth.scope.manage') }}</strong><br><small>{{ t('oauth.scope.manage_desc') }}</small></span>
+        </label>
+        {% endif %}
+      </fieldset>
+      {% if error %}<div class="alert alert--error" role="alert" style="margin-bottom:var(--sp-4)">{{ error }}</div>{% endif %}
+      <fieldset style="border:1px solid var(--c-slate-200);border-radius:10px;padding:12px 14px;margin:0 0 var(--sp-5)">
+        <legend style="font-weight:600;padding:0 6px">{{ t('oauth.consent.extras') }}</legend>
+        <p style="font-size:.85rem;color:var(--c-slate-500);margin:0 0 10px">{{ t('oauth.consent.extras_lead') }}</p>
+        {% set labels = {'control': (t('oauth.scope.control'), t('oauth.scope.control_desc')),
+                         'photos': (t('oauth.scope.photos'), t('oauth.scope.photos_desc')),
+                         'secure': (t('oauth.scope.secure'), t('oauth.scope.secure_desc')),
+                         'updates': (t('oauth.scope.updates'), t('oauth.scope.updates_desc'))} %}
+        {% for s in extras %}
+        <label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+          <input type="checkbox" name="scope_{{ s }}" value="1" {% if s in ticked %}checked{% endif %}>
+          <span><strong>{{ labels[s][0] }}</strong><br><small>{{ labels[s][1] }}</small></span>
+        </label>
+        {% endfor %}
+        <label class="form-label" for="reauth-password" style="margin-top:6px">{{ t('oauth.consent.password') }}</label>
+        <input class="form-control" type="password" id="reauth-password" name="password" autocomplete="current-password">
+        <small style="color:var(--c-slate-500)">{{ t('oauth.consent.password_hint') }}</small>
+      </fieldset>
+      <p style="font-size:.85rem;color:var(--c-slate-500);margin:0 0 var(--sp-5)">{{ t('oauth.consent.never') }}</p>
+      <div style="display:flex;gap:10px">
+        <button type="submit" name="decision" value="allow" class="btn btn--primary" style="flex:1">{{ t('oauth.consent.allow') }}</button>
+        <button type="submit" name="decision" value="deny" class="btn btn--secondary" style="flex:1">{{ t('oauth.consent.deny') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

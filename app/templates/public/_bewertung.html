@@ -1,0 +1,31 @@
+{#- Die Bitte um eine Bewertung. Ruhig, einmal, wegklickbar.
+    Siehe app/bewertung.py — dort steht auch, warum es hier keine Vorsortierung
+    nach Sternen gibt. -#}
+{% set bw = bewertung_fuer(event) %}
+{#- „Hat es euch gefallen?" unter einer leeren Galerie wäre eine Frage ohne Anlass. -#}
+{% if bw.an and (photos is not defined or photos) %}
+<aside class="bewertung" id="bewertung" aria-labelledby="bewertungText">
+  <p class="bewertung-text" id="bewertungText">{{ bw.text }}</p>
+  <div class="bewertung-knoepfe">
+    <a class="btn btn--primary btn--sm" href="/bewertung/{{ bw.slug }}"
+       target="_blank" rel="noopener noreferrer">{{ t('review.write') }}</a>
+    <button type="button" class="btn btn--ghost btn--sm" id="bewertungWeg">{{ t('review.no_thanks') }}</button>
+  </div>
+</aside>
+<script>
+(function () {
+  var karte = document.getElementById('bewertung');
+  if (!karte) return;
+  var schluessel = 'pb-bewertung-{{ bw.slug }}';
+  // Wer einmal „nein, danke" gesagt oder den Link benutzt hat, wird nicht
+  // wieder gefragt. Das steht nur im Browser dieses Gastes — wir erfahren es nicht.
+  try { if (localStorage.getItem(schluessel)) { karte.remove(); return; } } catch (e) {}
+  function merken() { try { localStorage.setItem(schluessel, '1'); } catch (e) {} }
+  document.getElementById('bewertungWeg').addEventListener('click', function () {
+    merken();
+    karte.remove();
+  });
+  karte.querySelector('a').addEventListener('click', merken);
+})();
+</script>
+{% endif %}

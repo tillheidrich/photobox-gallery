@@ -1,0 +1,42 @@
+{% extends "layout_public.html" %}
+{% block title %}{{ t('about.title') }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="legal-page">
+    <div class="legal-content about-page">
+      <h1>{{ t('about.title') }}</h1>
+      <p class="about-lede">{{ t('about.lede') }}</p>
+
+      <dl class="about-facts">
+        <dt>{{ t('about.version') }}</dt>
+        <dd><code>{{ info.version }}</code>{% if info.commit %} · <code>{{ info.commit }}</code>{% endif %}</dd>
+        <dt>{{ t('about.project') }}</dt>
+        <dd><a href="{{ info.project_url }}" rel="noopener">{{ info.project_url | replace('https://', '') }}</a></dd>
+        <dt>{{ t('about.source') }}</dt>
+        <dd><a href="{{ info.repo_url }}" target="_blank" rel="noopener">{{ info.repo_url | replace('https://', '') }}</a> · {{ info.license }}</dd>
+        {% if operator %}
+        <dt>{{ t('about.operator') }}</dt>
+        <dd>{{ operator }}</dd>
+        {% endif %}
+      </dl>
+      <p class="about-source-offer">{{ t('about.source_offer') }}</p>
+
+      <h2>{{ t('about.what_title') }}</h2>
+      <p>{{ t('about.what_text') }}</p>
+
+      <h2>{{ t('about.privacy_title') }}</h2>
+      <p>{{ t('about.privacy_text') }}</p>
+      <p><a href="/datenschutz">{{ t('layout.datenschutz') }}</a> · <a href="/impressum">{{ t('layout.impressum') }}</a></p>
+
+      {% if is_admin and env %}
+      <h2>{{ t('about.system_title') }}</h2>
+      <dl class="about-facts">
+        <dt>Python</dt><dd><code>{{ env.python }}</code></dd>
+        <dt>{{ t('about.platform') }}</dt><dd><code>{{ env.platform }}</code></dd>
+        <dt>{{ t('about.data_dir') }}</dt><dd><code>{{ env.data_dir }}</code></dd>
+      </dl>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

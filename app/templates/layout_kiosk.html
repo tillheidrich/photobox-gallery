@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ g.lang | default('de') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Kiosk{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-event.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+  <style>
+    body { overflow: hidden; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="kiosk-body">
+  {% block content %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

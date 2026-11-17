@@ -1,0 +1,113 @@
+{% extends "layout_admin.html" %}
+{% block title %}Vorlage bearbeiten{% endblock %}
+{% block page_title %}Druckvorlagen{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">{{ 'Vorlage bearbeiten' if datei else 'Neue Vorlage' }}</h1>
+  <p class="page-subtitle">Bildfelder, Texte und QR-Code anordnen, speichern. Farben und Schrift der
+    @-Platzhalter kommen aus dem Stil der Box — die Vorschau zeigt den Hausstil.</p>
+</div>
+
+{# On a phone the sheet is a picture you can zoom, the layers and the text of
+   the selected layer sit in a panel at the bottom, and the tools that move
+   things are hidden: dragging with a finger on a sheet 260 px wide placed
+   elements wrong more often than right. What works on a phone is said here,
+   in words, instead of a bare "use a computer". #}
+<p class="alert alert-info editor-small-screen" role="note">{{ t('editor.small_screen') }}</p>
+<div class="ed-zoom" role="group" aria-label="{{ t('editor.zoom_in') }}">
+  <button type="button" class="btn btn-secondary btn-sm" data-zoom="1" aria-pressed="true">{{ t('editor.zoom_fit') }}</button>
+  <button type="button" class="btn btn-secondary btn-sm" data-zoom="2" aria-pressed="false">{{ t('editor.zoom_in') }}</button>
+</div>
+<style>
+  .editor-small-screen, .ed-zoom { display: none; }
+  .ed-sheet-head { display: none; }
+  @media (max-width: 768px) {
+    .editor-small-screen { display: block; }
+    #editor { overflow-x: auto; }
+    .ed-zoom { display: flex; gap: 8px; margin: 0 0 12px; }
+    .ed-zoom .btn { flex: 1 1 0; }
+    .ed-zoom .btn[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--color-primary); }
+    .ed-card > .card-body { padding: 12px; }
+    /* The sheet: fitted to the width, pannable when zoomed, not draggable. */
+    .ed-phone .vle-haupt { display: block; }
+    .ed-phone .vle-blattbox { padding: 12px; overflow: auto; max-height: 72dvh; -webkit-overflow-scrolling: touch; }
+    .ed-phone .vle-blatt { pointer-events: none; margin: 0 auto; }
+    .ed-phone.ed-zoomed .vle-blatt { zoom: 2; }
+    .ed-phone .vle-hinweis, .ed-phone .vle-griff, .ed-phone .vle-dreh { display: none; }
+    /* Toolbar: undo, redo, preview, save. The tools that place things stay on the desk. */
+    .ed-phone .vle-leiste > :not(.ed-keep) { display: none !important; }
+    .ed-phone .vle-leiste { gap: 8px; }
+    .ed-phone .vle-leiste .btn { min-height: 44px; min-width: 44px; }
+    .ed-phone .vle-leiste .ed-keep-save { margin-left: auto; }
+    /* Layers and properties: a panel at the bottom, folded to its title bar. */
+    .ed-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: var(--color-surface);
+      border-top: 1px solid var(--color-border); border-radius: 16px 16px 0 0; box-shadow: 0 -10px 30px rgb(0 0 0 / .18);
+      padding: 0 max(12px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(12px, env(safe-area-inset-left)); }
+    .ed-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+      min-height: 56px; border: 0; background: none; color: var(--color-text); font: inherit; font-weight: 600; cursor: pointer; padding: 0 4px; }
+    .ed-sheet-head::before { content: ""; position: absolute; left: 50%; top: 6px; width: 40px; height: 4px; margin-left: -20px;
+      border-radius: 2px; background: var(--color-border); }
+    .ed-sheet-head > span { white-space: nowrap; }
+    .ed-sheet-head small { font-weight: 400; color: var(--color-text-muted); font-size: .8125rem; }
+    .ed-sheet .vle-seite { display: none; max-width: none; min-width: 0; max-height: 58dvh; overflow: auto; padding-bottom: 12px; }
+    .ed-sheet.is-open .vle-seite { display: grid; }
+    .ed-sheet .vle-ebene { min-height: 44px; font-size: .9375rem; }
+    .ed-sheet .vle-schalter { width: 44px; height: 44px; }
+    .ed-sheet .vle-ebenen-knoepfe .btn { min-height: 44px; min-width: 44px; }
+    .ed-sheet .vle-ebenen { max-height: none; gap: 4px; }
+    .ed-sheet .vle-feld { font-size: .875rem; }
+    .ed-sheet .vle-gruppe > b { font-size: .9375rem; }
+    .ed-sheet .vle-feld .form-control { min-height: 44px; }
+    .ed-sheet :is(input:not([type=checkbox]):not([type=radio]):not([type=color]), select, textarea) { font-size: 16px; }
+    .ed-sheet input[type=color] { min-width: 44px; min-height: 44px; }
+    .ed-sheet label:has(> input[type=checkbox]) { min-height: 44px; display: flex; align-items: center; gap: 10px; }
+    .ed-sheet .vle-ebenen-knoepfe, .ed-sheet .vle-ebene { gap: 8px; }
+    #pbTestdruckMarke { width: 20px; height: 20px; }
+    body.ed-has-sheet .admin-content { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    .ed-more { display: grid; gap: 10px; margin-top: 14px; }
+    .ed-more .btn { width: 100%; }
+    #pbTestdruck select { width: 100% !important; margin-bottom: 8px; }
+    #pbTestdruck label { display: inline-flex; align-items: center; min-height: 44px; }
+    #pbTestdruck .btn { width: 100%; margin-top: 8px; }
+    #vorlageImport { flex-direction: column; align-items: stretch !important; }
+    #vorlageImport label { display: grid; gap: 6px; }
+    #vorlageImport .btn, #vorlageLoeschen .btn { width: 100%; }
+  }
+</style>
+
+<div class="card ed-card"><div class="card-body">
+  <div id="editor"></div>
+</div></div>
+
+<div class="card" style="margin-top:14px"><div class="card-body" id="pbTestdruck"></div></div>
+
+<p style="margin:14px 0 0"><a class="adm-back" href="{{ url_for('admin_booth.templates_list') }}">← Alle Vorlagen</a></p>
+
+{% if datei %}
+<p class="ed-actions" style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+  <a class="btn btn-secondary btn-sm" href="/admin/vorlagen/export?datei={{ datei|urlencode }}">Als Paket exportieren (.abzug)</a>
+  <button type="button" class="btn btn-secondary btn-sm" id="vorlageDuplizieren"
+          data-url="{{ url_for('admin_booth.templates_duplicate') }}">Kopieren</button>
+</p>
+{% endif %}
+<form method="post" action="{{ url_for('admin_booth.templates_import') }}" enctype="multipart/form-data"
+      id="vorlageImport" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label style="margin:0">Paket einlesen (.abzug) <input type="file" name="paket" accept=".abzug,.zip" required></label>
+  <button class="btn btn-secondary btn-sm">Einlesen</button>
+</form>
+
+{% if datei %}
+<form method="post" action="{{ url_for('admin_booth.templates_delete') }}" style="margin-top:10px" id="vorlageLoeschen"
+      data-frage="Vorlage wirklich löschen? Boxen, die sie benutzen, fallen auf die mitgelieferten zurück.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="datei" value="{{ datei }}">
+  <button class="btn btn-secondary btn-sm">Vorlage löschen</button>
+</form>
+{% endif %}
+
+<script type="application/json" id="pbEditorPhone">{{ {"panel": t('editor.phone_panel'), "hint": t('editor.phone_panel_hint')}|tojson }}</script>
+<script type="application/json" id="pbEditorDaten">{{ editor_daten|tojson }}</script>
+<script src="/static/js/vorlagen-editor.js"></script>
+<script src="/static/js/vorlagen-editor-seite.js"></script>
+{% endblock %}

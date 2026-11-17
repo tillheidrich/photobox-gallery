@@ -1,0 +1,250 @@
+{
+ "id": "nachtblau-streifen-4",
+ "name": "Nachtblau & Gold · Streifen · 4 Fotos",
+ "paper": "streifen",
+ "canvas": [
+  1200,
+  1800
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 60,
+   "y": 72,
+   "w": 480,
+   "h": 300,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  },
+  {
+   "x": 60,
+   "y": 388,
+   "w": 480,
+   "h": 300,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-2"
+  },
+  {
+   "x": 60,
+   "y": 704,
+   "w": 480,
+   "h": 300,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-3"
+  },
+  {
+   "x": 60,
+   "y": 1020,
+   "w": 480,
+   "h": 300,
+   "shot": 3,
+   "radius": 0,
+   "id": "foto-4"
+  },
+  {
+   "x": 660,
+   "y": 72,
+   "w": 480,
+   "h": 300,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-5"
+  },
+  {
+   "x": 660,
+   "y": 388,
+   "w": 480,
+   "h": 300,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-6"
+  },
+  {
+   "x": 660,
+   "y": 704,
+   "w": 480,
+   "h": 300,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-7"
+  },
+  {
+   "x": 660,
+   "y": 1020,
+   "w": 480,
+   "h": 300,
+   "shot": 3,
+   "radius": 0,
+   "id": "foto-8"
+  }
+ ],
+ "texts": [
+  {
+   "x": 300,
+   "y": 1450,
+   "size": 49,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#f4eee2",
+   "id": "t1-0",
+   "font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 300,
+   "y": 1512,
+   "size": 30,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#d9b874",
+   "id": "t2-0",
+   "font": "CormorantSC-SemiBold.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1450,
+   "size": 49,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#f4eee2",
+   "id": "t1-1",
+   "font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1512,
+   "size": 30,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#d9b874",
+   "id": "t2-1",
+   "font": "CormorantSC-SemiBold.ttf"
+  }
+ ],
+ "shots": 4,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 1800,
+   "fill": "#172338",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 28,
+   "y": 28,
+   "w": 544,
+   "h": 1744,
+   "fill": "",
+   "stroke": "#d9b874",
+   "stroke_width": 4,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-1"
+  },
+  {
+   "kind": "rect",
+   "x": 42,
+   "y": 42,
+   "w": 516,
+   "h": 1716,
+   "fill": "",
+   "stroke": "#d9b874",
+   "stroke_width": 4,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-2"
+  },
+  {
+   "kind": "rect",
+   "x": 628,
+   "y": 28,
+   "w": 544,
+   "h": 1744,
+   "fill": "",
+   "stroke": "#d9b874",
+   "stroke_width": 4,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-3"
+  },
+  {
+   "kind": "rect",
+   "x": 642,
+   "y": 42,
+   "w": 516,
+   "h": 1716,
+   "fill": "",
+   "stroke": "#d9b874",
+   "stroke_width": 4,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-4"
+  },
+  {
+   "kind": "rect",
+   "x": 291,
+   "y": 1405,
+   "w": 18,
+   "h": 18,
+   "fill": "#d9b874",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-5",
+   "rotation": 45
+  },
+  {
+   "kind": "rect",
+   "x": 891,
+   "y": 1405,
+   "w": 18,
+   "h": 18,
+   "fill": "#d9b874",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-6",
+   "rotation": 45
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "form-1",
+  "form-2",
+  "form-3",
+  "form-4",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "foto-4",
+  "foto-5",
+  "foto-6",
+  "foto-7",
+  "foto-8",
+  "form-5",
+  "form-6",
+  "t1-0",
+  "t2-0",
+  "t1-1",
+  "t2-1"
+ ]
+}

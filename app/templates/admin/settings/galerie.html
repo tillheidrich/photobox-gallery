@@ -1,0 +1,53 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}Galerie-Vorgaben – Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'galerie' %}
+{% set settings_subtitle = 'Was für alle Galerien und den Kundenbereich gilt' %}
+{% include 'admin/settings/_tabs.html' %}
+
+<div class="settings-section">
+  <form method="post" action="/admin/settings/galerie" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="card-body">
+      {% block gv_fields %}
+      <div class="form-group">
+        <label class="form-label gs-check" style="font-weight:600;display:flex;gap:8px;align-items:flex-start;min-height:44px">
+          <input type="checkbox" name="client_hub" {% if v.client_hub == '1' %}checked{% endif %}>
+          Kundenbereich als Zentrale
+        </label>
+        <p class="form-hint">Unter <code>/kunde</code> bekommt jede Galerie Kacheln: Galerie ansehen, Auswahl,
+          alle Fotos laden (wenn erlaubt), Drucklayout, Tisch-Schild (mit Gäste-Upload), Bewertung, Kontakt
+          (Adresse aus „Rechtliches“). Nur Kacheln, die für die Galerie gelten. Aus: die bisherige Liste.</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label gs-check" style="font-weight:600;display:flex;gap:8px;align-items:flex-start;min-height:44px">
+          <input type="hidden" name="new_event_gallery_default" value="normal">
+          <input type="checkbox" name="new_event_gallery_default" value="schlicht" {% if v.new_event_gallery_default == 'schlicht' %}checked{% endif %}>
+          Schlichte Galerie für neue Events
+        </label>
+        <p class="form-hint">Neue Box-Events starten ohne QR-Druckknopf, Benachrichtigung, Teilen-Knöpfe, Likes,
+          Rahmenwahl und „Meine Aufnahmen“. Downloads bleiben. Kundengalerien und bestehende Events bleiben, wie sie sind;
+          jedes Event lässt sich danach einzeln umstellen.</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="gv_trust" style="font-weight:600">Vertrauenszeile unter jeder Galerie</label>
+        <input class="form-control" id="gv_trust" name="gallery_trust_line" maxlength="160" value="{{ v.gallery_trust_line }}"
+               placeholder="z. B. Gespeichert auf einem Server in Deutschland. Keine Werbung, kein Tracking." style="font-size:16px;min-height:44px">
+        <p class="form-hint">Ein kurzer Satz, höchstens 160 Zeichen. Leer: keine Zeile (wie bisher). Bitte nur schreiben, was stimmt.</p>
+      </div>
+      {% endblock %}
+      <div class="form-group">
+        <p class="form-label" style="font-weight:600;margin-bottom:4px">Papierkorb</p>
+        <p class="form-hint" style="margin:0">{% if trash_days %}Gelöschte Bilder liegen {{ trash_days }} Tage im Papierkorb.{% else %}Aus: Gelöschtes ist sofort weg.{% endif %}
+          <a href="/admin/trash">Papierkorb einstellen</a></p>
+      </div>
+    </div>
+    <div class="card-footer" style="padding:var(--sp-4,16px)">
+      <button class="btn btn--primary" type="submit" style="min-height:44px">Speichern</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

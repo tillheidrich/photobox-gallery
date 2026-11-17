@@ -1,0 +1,78 @@
+{% extends "layout_admin.html" %}
+{% block title %}QR & Sharepic – Einstellungen{% endblock %}
+{% block content %}
+{% set active_tab = 'qr' %}
+{% include 'admin/settings/_tabs.html' %}
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start">
+<form method="post" enctype="multipart/form-data" class="card"><div class="card-body">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2 style="font-size:1rem;margin:0 0 6px">Adresse der Galerie</h2>
+  <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0 0 10px">
+    Steht auf jedem QR-Code, in jedem Kopplungscode und in jeder E-Mail. Läuft die Galerie unter mehreren
+    Adressen, entscheidet dieses Feld — sonst gilt die, unter der du gerade angemeldet bist
+    (<code>{{ request_base }}</code>). Bereits gedruckte QR-Codes zeigen weiter auf ihre alte Adresse;
+    die bleibt gültig, solange sie auf diese Galerie zeigt.</p>
+  <div class="form-group"><input name="app_base_url" inputmode="url" autocapitalize="off" class="form-control" value="{{ app_base_url }}"
+    placeholder="{{ request_base }}" spellcheck="false"></div>
+  <hr style="border:none;border-top:1px solid var(--color-border);margin:18px 0">
+  <h2 style="font-size:1rem;margin:0 0 6px">QR-Code-Stil</h2>
+  <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0 0 14px">Gilt für Galerie-QR, Druckseite und Sharepic. Die Box hat ein eigenes QR-Profil in den Box-Einstellungen. Zu wenig Kontrast wird automatisch auf Schwarz/Weiß zurückgesetzt, damit jeder Scanner den Code liest.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+    <div class="form-group"><label class="form-label">Punkte</label><input type="color" name="dark" class="form-control" value="{{ cfg.qr_style.dark }}" style="height:42px"></div>
+    <div class="form-group"><label class="form-label">Hintergrund</label><input type="color" name="light" class="form-control" value="{{ cfg.qr_style.light }}" style="height:42px"></div>
+    <div class="form-group"><label class="form-label">Form</label>
+      <select name="modules" class="form-control">{% for v, l in [('square','Quadrate'),('rounded','abgerundet'),('dots','Punkte'),('gapped','Quadrate mit Abstand')] %}<option value="{{ v }}" {% if cfg.qr_style.modules == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="form-group"><label class="form-label">Ecken</label>
+      <select name="eyes" class="form-control"><option value="square">eckig</option><option value="rounded" {% if cfg.qr_style.eyes == 'rounded' %}selected{% endif %}>rund</option></select></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+    <div class="form-group"><label class="form-label">Logo in der Mitte (PNG)</label><input type="file" name="logo" accept="image/*" class="form-control">
+      {% if cfg.qr_logo_path %}<label style="font-size:.85rem"><input type="checkbox" name="remove_logo"> Logo entfernen</label>{% endif %}</div>
+    <div class="form-group"><label class="form-label">Logo-Größe ({{ (cfg.qr_style.logo_scale*100)|round|int }} %)</label><input type="range" name="logo_scale" min="0.1" max="0.28" step="0.01" value="{{ cfg.qr_style.logo_scale }}" class="form-control"></div>
+    <div class="form-group"><label style="display:flex;gap:6px;margin-top:28px"><input type="checkbox" name="logo_pad" {% if cfg.qr_style.logo_pad %}checked{% endif %}> weiße Fläche hinter dem Logo</label></div>
+  </div>
+  <hr style="border:none;border-top:1px solid var(--color-border);margin:18px 0">
+  <h2 style="font-size:1rem;margin:0 0 6px">Sharepic (9:16 für WhatsApp-Status und Story)</h2>
+  <p class="form-hint" style="margin:0 0 10px">Gilt für alle Galerien. Einzelne Events können das
+    unter <b>Event → Sharepic</b> überschreiben — dort steht überall „wie global" als Voreinstellung.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+    <div class="form-group"><label class="form-label">Hintergrund</label>
+      <select name="background" class="form-control">{% for v, l in [('blur','unscharfes Foto aus der Galerie'),('image','eigenes Bild'),('color','eigene Farbe'),('dark','dunkel'),('light','hell')] %}<option value="{{ v }}" {% if cfg.background == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="form-group"><label class="form-label">Eigenes Hintergrundbild</label>
+      <input type="file" name="bg_image" accept="image/*" class="form-control">
+      {% if cfg.bg_path %}<label style="font-size:.85rem"><input type="checkbox" name="remove_bg"> Bild entfernen</label>{% endif %}</div>
+    <div class="form-group"><label class="form-label">Hintergrundfarbe</label>
+      <input name="bg_color" class="form-control" value="{{ cfg.bg_color }}" placeholder="#1d1a16"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+    <div class="form-group"><label class="form-label">Unschärfe ({{ cfg.blur }})</label>
+      <input type="range" name="blur" min="0" max="40" step="1" value="{{ cfg.blur }}" class="form-control">
+      <p class="form-hint">Gilt für Fotos aus der Galerie und für ein eigenes Bild.</p></div>
+    <div class="form-group"><label class="form-label">Abdunkeln ({{ cfg.dim }} %)</label>
+      <input type="range" name="dim" min="0" max="85" step="5" value="{{ cfg.dim }}" class="form-control">
+      <p class="form-hint">Je dunkler, desto sicherer bleibt die Schrift lesbar.</p></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+    <div class="form-group"><label class="form-label">Zeile über dem Namen</label><input name="eyebrow" class="form-control" value="{{ cfg.eyebrow }}"></div>
+    <div class="form-group"><label class="form-label">Ausrichtung des Titels</label>
+      <select name="align" class="form-control">{% for v, l in [('center','mittig'),('left','linksbündig'),('right','rechtsbündig')] %}<option value="{{ v }}" {% if cfg.align == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="form-group"><label class="form-label">Titel statt Eventname</label>
+      <input name="title" class="form-control" value="{{ cfg.title }}" placeholder="leer = Name des Events"></div>
+    <div class="form-group"><label class="form-label">Hinweis unter dem QR</label><input name="hint" class="form-control" value="{{ cfg.hint }}"></div>
+  </div>
+  <label style="display:flex;gap:6px;margin-bottom:14px"><input type="checkbox" name="show_url" {% if cfg.show_url %}checked{% endif %}> Adresse unter dem QR-Code zeigen</label>
+  <button class="btn btn-primary">Speichern</button>
+</div></form>
+<aside class="card"><div class="card-body">
+  <p style="margin:0 0 8px;font-weight:600">Vorschau</p>
+  <img src="{{ url_for('admin_booth.settings_qr_preview') }}?t={{ range(1,99999)|random }}" alt="QR-Vorschau" style="width:100%;border-radius:10px;border:1px solid var(--color-border)">
+  <p style="margin:16px 0 8px;font-weight:600">So sieht das Sharepic aus</p>
+  <img src="{{ url_for('admin_booth.settings_sharepic_preview') }}?t={{ range(1,99999)|random }}" alt="Sharepic-Vorschau" loading="lazy" style="width:100%;max-width:280px;border-radius:10px;border:1px solid var(--color-border)">
+  {% if events %}
+  <p style="margin:16px 0 6px;font-weight:600">Sharepic je Galerie</p>
+  <ul class="sp-list" style="list-style:none;padding:0;margin:0;font-size:.875rem;display:grid;gap:6px">
+  {% for ev in events[:12] %}<li><a href="/gallery/{{ ev.slug }}/sharepic.png" target="_blank">{{ ev.name }}</a> <span aria-hidden="true">·</span> <a href="/gallery/{{ ev.slug }}/sharepic.png?download=1">laden<span class="sr-only"> ({{ ev.name }})</span></a></li>{% endfor %}
+  </ul>{% endif %}
+</div></aside>
+</div>
+{% endblock %}

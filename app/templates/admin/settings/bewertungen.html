@@ -1,0 +1,83 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}Bewertungen – Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'bewertungen' %}
+{% set settings_subtitle = 'Nach dem Event einmal um eine Bewertung bitten' %}
+{% include 'admin/settings/_tabs.html' %}
+
+<div class="settings-section">
+  <div class="alert alert--info" style="margin-bottom:var(--sp-6)">
+    Die Bitte steht unter den Bildern und auf der Seite des eigenen Durchgangs — in dem Augenblick,
+    in dem ein Gast seine Fotos in der Hand hat. Als ruhige Karte, nicht als Fenster. Wer einmal
+    „nein, danke“ sagt, wird in diesem Browser nicht wieder gefragt.
+  </div>
+
+  <h2 class="settings-section-title">Wohin der Link führt</h2>
+  <p class="settings-section-desc">
+    Bei Google steht die Adresse im Unternehmensprofil unter <em>Rezensionen → Bewertungen erhalten</em>
+    (sie beginnt mit <code>https://g.page/r/</code>). ProvenExpert, Trustpilot oder ein eigenes
+    Formular gehen genauso — es muss nur eine Web-Adresse sein. Einzelne Events dürfen davon abweichen.
+  </p>
+  <div class="card">
+    <form method="post" action="/admin/settings/bewertungen">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label gs-check" style="font-weight:600">
+            <input type="checkbox" name="review_enabled" {% if enabled %}checked{% endif %}>
+            Gäste um eine Bewertung bitten
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="review_url">Adresse der Bewertungsseite</label>
+          <input type="url" id="review_url" name="review_url" class="form-control"
+                 placeholder="https://g.page/r/…" maxlength="300" value="{{ url }}">
+          {% if url_ungueltig %}
+          <p class="form-hint" style="color:var(--pb-danger)">Das war keine Web-Adresse — das Feld blieb leer.</p>
+          {% endif %}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="review_text">Text der Bitte</label>
+          <input type="text" id="review_text" name="review_text" class="form-control"
+                 placeholder="{{ standardtext }}" maxlength="200" value="{{ text }}">
+          <p class="form-hint">Leer lassen heißt: „{{ standardtext }}“</p>
+        </div>
+      </div>
+      <div class="card-footer" style="padding:var(--sp-4) var(--sp-6)">
+        <button class="btn btn--primary" type="submit">Speichern</button>
+      </div>
+    </form>
+  </div>
+
+  <h2 class="settings-section-title" style="margin-top:var(--sp-8)">Was hier nicht geht</h2>
+  <div class="card"><div class="card-body">
+    <p style="margin:0 0 10px">Manche Programme fragen zuerst intern nach Sternen und schicken nur
+      die guten Bewertungen weiter, während die schlechten in einem stillen Formular landen. Das
+      ist nach dem UWG unlauter, verstößt gegen die Richtlinien von Google und ProvenExpert — und
+      es täuscht am Ende jeden, der sich auf die Sterne verlässt. Hier führt ein Link an eine
+      Stelle, für alle.</p>
+    <p style="margin:0">Wer auch Kritik hören will, die nicht öffentlich werden soll, trägt als
+      Adresse ein eigenes Formular ein und verlinkt darin beides nebeneinander — nicht das eine
+      als Filter vor dem anderen.</p>
+  </div></div>
+
+  {% if top %}
+  <h2 class="settings-section-title" style="margin-top:var(--sp-8)">Wie oft gefolgt wurde</h2>
+  <div class="card"><div class="card-body">
+    <table class="table table--stack" style="margin:0">
+      <thead><tr><th>Event</th><th style="width:20%">Gesamt</th><th style="width:26%">Letzte 30 Tage</th></tr></thead>
+      <tbody>{% for z in top %}
+        <tr><td class="td-main"><a href="/admin/events/{{ z.event_id }}/edit">{{ z.name }}</a></td>
+            <td data-label="Gesamt">{{ z.gesamt }}</td><td data-label="Letzte 30 Tage">{{ z.monat }}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+    <p class="form-hint" style="margin:10px 0 0">Gezählt werden Klicks als Tagessumme je Event —
+      keine Zeile je Person, kein Zählpixel eines Dritten. Ob jemand am Ende wirklich etwas
+      geschrieben hat, weiß nur die Plattform.</p>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}

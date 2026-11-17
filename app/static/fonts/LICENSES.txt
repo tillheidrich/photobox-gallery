@@ -1,0 +1,9 @@
+The fonts in this folder are licensed under the SIL Open Font License,
+Version 1.1. Copyright lines and full licence texts, relative to the
+project root (the builds keep the same layout):
+
+  Archivo         docs/lizenzen/OFL-Archivo.txt
+  Inter           docs/lizenzen/OFL-Inter.txt
+  JetBrains Mono  docs/lizenzen/OFL-JetBrains-Mono.txt
+
+All third-party components and their licences: THIRD_PARTY.md

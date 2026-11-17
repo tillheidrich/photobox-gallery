@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+{% set brand_name = login_name() %}
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Passwort zurücksetzen{% if brand_name %} – {{ brand_name }}{% endif %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+  <meta name="robots" content="noindex">
+  <style>
+    .rc-wrap{max-width:520px;margin:8vh auto;padding:0 18px}
+    .rc-card{background:#fff;border:1px solid var(--c-slate-200,#e5e5e5);border-radius:16px;padding:28px 26px}
+    .rc-card h1{font-size:1.4rem;margin:0 0 8px}
+    .rc-card p{color:var(--color-text-2);font-size:.92rem;line-height:1.55;margin:0 0 16px}
+    .rc-code{font-size:1.3rem;letter-spacing:.08em;font-weight:600;word-break:break-all;
+      background:#f5f5f5;border-radius:10px;padding:14px 16px;margin:12px 0;text-align:center}
+    .rc-bad{color:#b91c1c}
+    .form-group{margin-bottom:14px}
+    .rc-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  </style>
+</head>
+<body style="background:var(--c-slate-50,#f8fafc)">
+<div class="rc-wrap">
+  <div class="rc-card">
+  {% set own_logo = global_logo() %}
+  {% from "_brand_logo.html" import brand_logo %}
+  {% if own_logo.has %}<div style="margin:0 0 18px">{{ brand_logo("max-height:56px;max-width:200px;width:auto;height:auto;object-fit:contain", brand_name or "Logo") }}</div>{% endif %}
+  {% if done %}
+    <h1>Passwort gesetzt</h1>
+    <p>{{ message }}</p>
+    <div class="rc-code">{{ new_code }}</div>
+    <p>Dieser Code ersetzt den eben benutzten. Leg ihn in deinen Passwortspeicher — er wird nicht wieder
+      angezeigt, und ohne ihn führt der Weg zurück nur über den Server.</p>
+    <div class="rc-actions"><a class="btn btn--primary" href="{{ url_for('admin.login') }}">Zur Anmeldung</a></div>
+  {% else %}
+    <h1>Passwort zurücksetzen</h1>
+    {% if notice %}<p style="color:#15803d">{{ notice }}</p>{% endif %}
+    {% if error and not available %}<p class="rc-bad">{{ error }}</p>{% endif %}
+    {% if token %}
+      <p>Der Link ist gültig. Vergib jetzt ein neues Passwort.</p>
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="token" value="{{ token }}">
+        <div class="form-group"><label class="form-label" for="pw2">Neues Passwort (mindestens acht Zeichen)</label>
+          <input class="form-control" id="pw2" name="new_password" type="password"
+                 autocomplete="new-password" minlength="10" required autofocus data-staerke></div>
+        {% if error or blocked %}<p class="rc-bad">{{ error or blocked_message }}</p>{% endif %}
+        <div class="rc-actions"><button class="btn btn--primary" type="submit">Passwort setzen</button></div>
+      </form>
+    {% else %}
+    {% if token_bad %}<p class="rc-bad">Dieser Link ist abgelaufen oder schon benutzt worden.</p>{% endif %}
+    <p>Mit dem Wiederherstellungscode aus der Einrichtung. Kein Zugang zum Server nötig.</p>
+    {% if not available %}
+      <p class="rc-bad">Für diese Galerie ist kein Wiederherstellungscode hinterlegt. Dann geht es nur über
+        den Server: Passwort in der Datenbank neu setzen und danach in der Verwaltung unter
+        <b>Einstellungen → Konto</b> einen Code erzeugen.</p>
+    {% elif blocked %}
+      <p class="rc-bad">{{ blocked_message }}</p>
+    {% else %}
+      {% if error %}<p class="rc-bad">{{ error }}</p>{% endif %}
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group"><label class="form-label" for="username">Benutzername</label>
+          <input class="form-control" id="username" name="username" autocomplete="username" required></div>
+        <div class="form-group"><label class="form-label" for="code">Wiederherstellungscode</label>
+          <input class="form-control" id="code" name="code" placeholder="ABCD-EFGH-JKLM-NPQR"
+                 autocomplete="off" spellcheck="false" required></div>
+        <div class="form-group"><label class="form-label" for="new_password">Neues Passwort (mindestens acht Zeichen)</label>
+          <input class="form-control" id="new_password" name="new_password" type="password"
+                 autocomplete="new-password" minlength="10" required data-staerke></div>
+        <div class="rc-actions">
+          <button class="btn btn--primary" type="submit">Passwort setzen</button>
+          <a class="btn btn--ghost" href="{{ url_for('admin.login') }}">Abbrechen</a>
+        </div>
+      </form>
+    {% endif %}
+    {% if mail_possible %}
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:22px 0">
+    <p>Code auch weg? Dann schickt die Galerie einen Link an die hinterlegte E-Mail-Adresse.</p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn--ghost" type="submit" name="send_link" value="1">Link per E-Mail anfordern</button>
+    </form>
+    {% endif %}
+    {% endif %}
+  {% endif %}
+  </div>
+</div>
+  <script src="/static/js/passwortstaerke.js" defer></script>
+</body>
+</html>

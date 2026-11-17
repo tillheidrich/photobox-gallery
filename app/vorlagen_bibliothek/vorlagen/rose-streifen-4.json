@@ -1,0 +1,298 @@
+{
+ "id": "rose-streifen-4",
+ "name": "Rosé Aquarell · Streifen · 4 Fotos",
+ "paper": "streifen",
+ "canvas": [
+  1200,
+  1800
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 60,
+   "y": 72,
+   "w": 480,
+   "h": 300,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  },
+  {
+   "x": 60,
+   "y": 388,
+   "w": 480,
+   "h": 300,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-2"
+  },
+  {
+   "x": 60,
+   "y": 704,
+   "w": 480,
+   "h": 300,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-3"
+  },
+  {
+   "x": 60,
+   "y": 1020,
+   "w": 480,
+   "h": 300,
+   "shot": 3,
+   "radius": 0,
+   "id": "foto-4"
+  },
+  {
+   "x": 660,
+   "y": 72,
+   "w": 480,
+   "h": 300,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-5"
+  },
+  {
+   "x": 660,
+   "y": 388,
+   "w": 480,
+   "h": 300,
+   "shot": 1,
+   "radius": 0,
+   "id": "foto-6"
+  },
+  {
+   "x": 660,
+   "y": 704,
+   "w": 480,
+   "h": 300,
+   "shot": 2,
+   "radius": 0,
+   "id": "foto-7"
+  },
+  {
+   "x": 660,
+   "y": 1020,
+   "w": 480,
+   "h": 300,
+   "shot": 3,
+   "radius": 0,
+   "id": "foto-8"
+  }
+ ],
+ "texts": [
+  {
+   "x": 300,
+   "y": 1434,
+   "size": 64,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#7c3f48",
+   "id": "t1-0",
+   "font": "GreatVibes-Regular.ttf"
+  },
+  {
+   "x": 300,
+   "y": 1519,
+   "size": 31,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#6e5559",
+   "id": "t2-0",
+   "font": "CormorantSC-SemiBold.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1434,
+   "size": 64,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#7c3f48",
+   "id": "t1-1",
+   "font": "GreatVibes-Regular.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1519,
+   "size": 31,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#6e5559",
+   "id": "t2-1",
+   "font": "CormorantSC-SemiBold.ttf"
+  }
+ ],
+ "shots": 4,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 1800,
+   "fill": "#fdf8f5",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 48,
+   "y": 60,
+   "w": 504,
+   "h": 324,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-3"
+  },
+  {
+   "kind": "rect",
+   "x": 48,
+   "y": 376,
+   "w": 504,
+   "h": 324,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-4"
+  },
+  {
+   "kind": "rect",
+   "x": 48,
+   "y": 692,
+   "w": 504,
+   "h": 324,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-5"
+  },
+  {
+   "kind": "rect",
+   "x": 48,
+   "y": 1008,
+   "w": 504,
+   "h": 324,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-6"
+  },
+  {
+   "kind": "rect",
+   "x": 648,
+   "y": 60,
+   "w": 504,
+   "h": 324,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-7"
+  },
+  {
+   "kind": "rect",
+   "x": 648,
+   "y": 376,
+   "w": 504,
+   "h": 324,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-8"
+  },
+  {
+   "kind": "rect",
+   "x": 648,
+   "y": 692,
+   "w": 504,
+   "h": 324,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-9"
+  },
+  {
+   "kind": "rect",
+   "x": 648,
+   "y": 1008,
+   "w": 504,
+   "h": 324,
+   "fill": "#ffffff",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-10"
+  }
+ ],
+ "images": [
+  {
+   "file": "kol-rose-wash-480x520.png",
+   "x": 60,
+   "y": 1272,
+   "w": 480,
+   "h": 520,
+   "opacity": 100,
+   "id": "bild-1"
+  },
+  {
+   "file": "kol-rose-wash-480x520.png",
+   "x": 660,
+   "y": 1272,
+   "w": 480,
+   "h": 520,
+   "opacity": 100,
+   "id": "bild-2"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "bild-1",
+  "bild-2",
+  "form-3",
+  "form-4",
+  "form-5",
+  "form-6",
+  "form-7",
+  "form-8",
+  "form-9",
+  "form-10",
+  "foto-1",
+  "foto-2",
+  "foto-3",
+  "foto-4",
+  "foto-5",
+  "foto-6",
+  "foto-7",
+  "foto-8",
+  "t1-0",
+  "t2-0",
+  "t1-1",
+  "t2-1"
+ ]
+}

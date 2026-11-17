@@ -1,0 +1,315 @@
+{# Kiosk für Gäste: ein iPad auf dem Tresen, ein Handy am Ständer, ein zweiter
+   Rechner neben der Box. Die Fotos laufen als Show; ein Tipp hält an und zeigt,
+   wie man dieses eine Foto mitnimmt. Alles mit dem Finger, alles mit der
+   Tastatur, nichts, was eine App bräuchte. #}
+<!DOCTYPE html>
+<html lang="{{ g.lang or 'de' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{{ event.name }} – {{ t('kiosk_guests.title') }}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-event.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+  {% include "public/_brand_style.html" %}
+</head>
+<body class="gk-body">
+
+<!-- Die Show -->
+<div class="ss-stage" id="stage">
+  <div class="ss-layer is-active" data-layer="0"><div class="ss-backdrop"></div><img class="ss-photo" alt=""></div>
+  <div class="ss-layer" data-layer="1"><div class="ss-backdrop"></div><img class="ss-photo" alt=""></div>
+</div>
+
+<div class="ss-empty" id="gkEmpty" {% if photos %}hidden{% endif %}>
+  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>
+  </svg>
+  <h1>{{ t('kiosk_guests.waiting') }}</h1>
+  <p>{{ t('kiosk_guests.waiting_hint') }}</p>
+</div>
+
+<!-- Die Fläche, die den Tipp auf das Bild annimmt. Ein Knopf, kein <div>:
+     so geht es auch mit Tabulator und Eingabetaste. -->
+<button type="button" class="gk-tap" id="gkTap" aria-label="{{ t('kiosk_guests.tap_hint') }}"></button>
+
+<div class="gk-hint" id="gkHint">{{ t('kiosk_guests.tap_hint') }}</div>
+
+<!-- Was mit dem angehaltenen Foto geht -->
+<div class="gk-actions" id="gkActions" hidden>
+  <p class="gk-paused" role="status" aria-live="polite" id="gkPaused">{{ t('kiosk_guests.paused') }}</p>
+  <div class="gk-actions-row">
+    {% if teilen %}
+    <button type="button" class="btn btn--primary gk-btn" id="gkShare" hidden>{{ t('kiosk_guests.share') }}</button>
+    <button type="button" class="btn btn--secondary gk-btn" id="gkQr">{{ t('kiosk_guests.qr') }}</button>
+    {% endif %}
+    {% if laden %}
+    <a class="btn btn--secondary gk-btn" id="gkDownload" href="#" download>{{ t('kiosk_guests.download') }}</a>
+    {% endif %}
+    <button type="button" class="btn btn--secondary gk-btn" id="gkAll">{{ t('kiosk_guests.all') }}</button>
+    <button type="button" class="btn btn--ghost gk-btn" id="gkResume">{{ t('kiosk_guests.back') }}</button>
+  </div>
+</div>
+
+<!-- Alle Fotos -->
+<section class="gk-grid-wrap" id="gkGridWrap" hidden aria-label="{{ t('kiosk_guests.all') }}">
+  <header class="gk-grid-top">
+    <h1>{{ event.name }}</h1>
+    <button type="button" class="btn btn--secondary gk-btn" id="gkGridClose">{{ t('kiosk_guests.back') }}</button>
+  </header>
+  <div class="gk-grid" id="gkGrid"></div>
+</section>
+
+<!-- QR zum einzelnen Foto -->
+<div class="gk-qr" id="gkQrBox" hidden role="dialog" aria-modal="true" aria-label="{{ t('kiosk_guests.qr') }}">
+  <div class="gk-qr-card">
+    <img id="gkQrImg" alt="" width="320" height="320">
+    <p>{{ t('kiosk_guests.qr_hint') }}</p>
+    <button type="button" class="btn btn--primary gk-btn" id="gkQrClose">{{ t('kiosk_guests.close') }}</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var SLUG     = {{ event.slug|tojson }};
+  var ORDER    = {{ show_order|tojson }};      // chrono | random
+  var TEILEN   = {{ 'true' if teilen else 'false' }};
+  var HOLD_MS  = 6500;
+  var POLL_MS  = 15000;
+  var IDLE_MS  = 60000;                        // so lange darf ein Foto angehalten bleiben
+
+  var fotos   = {{ photos|tojson }};           // neueste zuerst
+  var gesehen = new Set(fotos.map(function (p) { return p.id; }));
+  var reihe   = fotos.slice().reverse();       // älteste zuerst
+  var neu     = [];
+  var idx     = -1;
+  var aktuell = null;
+  var ebenen  = Array.prototype.slice.call(document.querySelectorAll('.ss-layer'));
+  var aktiv   = 0;
+  var pause   = false;
+  var timer   = null, idleTimer = null;
+  var leer    = document.getElementById('gkEmpty');
+  var aktionen = document.getElementById('gkActions');
+  var hinweis  = document.getElementById('gkHint');
+
+  function mischen(liste) {
+    for (var i = liste.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = liste[i]; liste[i] = liste[j]; liste[j] = t;
+    }
+    return liste;
+  }
+  if (ORDER === 'random') mischen(reihe);
+
+  function naechstes() {
+    if (neu.length) return neu.shift();
+    if (!reihe.length) return null;
+    idx = idx + 1;
+    if (idx >= reihe.length) {           // Runde vorbei: zufällig neu mischen
+      idx = 0;
+      if (ORDER === 'random') mischen(reihe);
+    }
+    return reihe[idx];
+  }
+
+  function zeigen(foto) {
+    if (!foto) return;
+    aktuell = foto;
+    var ziel = ebenen[1 - aktiv];
+    var bild = ziel.querySelector('.ss-photo');
+    var back = ziel.querySelector('.ss-backdrop');
+    var vor = new Image();
+    vor.onload = function () {
+      bild.src = vor.src;
+      bild.alt = foto.name || '';
+      back.style.backgroundImage = 'url("' + vor.src + '")';
+      ebenen[aktiv].classList.remove('is-active');
+      ziel.classList.add('is-active');
+      aktiv = 1 - aktiv;
+      if (leer && !leer.hidden) leer.hidden = true;
+    };
+    vor.onerror = function () { planen(); };
+    vor.src = foto.url;
+  }
+
+  function planen() {
+    clearTimeout(timer);
+    if (pause) return;
+    timer = setTimeout(weiter, HOLD_MS);
+  }
+  function weiter() { zeigen(naechstes()); planen(); }
+
+  function anhalten(an) {
+    pause = an;
+    if (aktionen) aktionen.hidden = !an;
+    if (hinweis) hinweis.hidden = an;
+    document.body.classList.toggle('gk-paused', an);
+    clearTimeout(idleTimer);
+    if (an) {
+      clearTimeout(timer);
+      aktualisiereAktionen();
+      // Niemand räumt einen Kiosk auf: Nach einer Minute läuft die Show weiter.
+      idleTimer = setTimeout(function () { anhalten(false); }, IDLE_MS);
+      var ersterKnopf = aktionen && aktionen.querySelector('button, a');
+      if (ersterKnopf) ersterKnopf.focus({ preventScroll: true });
+    } else {
+      planen();
+    }
+  }
+
+  function aktualisiereAktionen() {
+    var dl = document.getElementById('gkDownload');
+    if (dl && aktuell) {
+      dl.href = '/gallery/' + encodeURIComponent(SLUG) + '/photo/' + aktuell.id + '/download';
+      dl.setAttribute('download', aktuell.name || 'foto.jpg');
+    }
+    var share = document.getElementById('gkShare');
+    // Der Teilen-Knopf erscheint nur, wo der Browser ihn wirklich kann —
+    // auf dem iPad öffnet er das Blatt mit AirDrop.
+    if (share) share.hidden = !(TEILEN && navigator.share);
+  }
+
+  document.getElementById('gkTap').addEventListener('click', function () { anhalten(!pause); });
+
+  var resume = document.getElementById('gkResume');
+  if (resume) resume.addEventListener('click', function () { anhalten(false); });
+
+  var share = document.getElementById('gkShare');
+  if (share) share.addEventListener('click', function () {
+    if (!aktuell) return;
+    clearTimeout(idleTimer);
+    var daten = { title: {{ event.name|tojson }}, url: location.origin + '/s/' + (aktuell.token || '') };
+    fetch(aktuell.url).then(function (r) { return r.blob(); }).then(function (b) {
+      var datei = new File([b], aktuell.name || 'foto.jpg', { type: b.type || 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [datei] })) {
+        return navigator.share({ files: [datei], title: daten.title });
+      }
+      return navigator.share(daten);
+    }).catch(function () { /* abgebrochen ist kein Fehler */ })
+      .then(function () { idleTimer = setTimeout(function () { anhalten(false); }, IDLE_MS); });
+  });
+
+  // QR zum einzelnen Foto
+  var qrBox = document.getElementById('gkQrBox');
+  var qrKnopf = document.getElementById('gkQr');
+  if (qrKnopf) qrKnopf.addEventListener('click', function () {
+    if (!aktuell) return;
+    clearTimeout(idleTimer);
+    document.getElementById('gkQrImg').src =
+      '/gallery/' + encodeURIComponent(SLUG) + '/photo/' + aktuell.id + '/qr.png';
+    dahinter(true);
+    qrBox.hidden = false;
+    document.getElementById('gkQrClose').focus({ preventScroll: true });
+  });
+  var qrZu = document.getElementById('gkQrClose');
+  if (qrZu) qrZu.addEventListener('click', function () {
+    qrBox.hidden = true;
+    dahinter(false);
+    idleTimer = setTimeout(function () { anhalten(false); }, IDLE_MS);
+    if (qrKnopf) qrKnopf.focus({ preventScroll: true });
+  });
+
+  // Alle Fotos: eine Wand aus Kacheln, jede ein Knopf.
+  var gridWrap = document.getElementById('gkGridWrap');
+  var grid = document.getElementById('gkGrid');
+
+  function gridFuellen() {
+    grid.innerHTML = '';
+    fotos.forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'gk-kachel';
+      b.setAttribute('aria-label', p.name || '');
+      var i = document.createElement('img');
+      i.src = p.thumb || p.url; i.alt = ''; i.loading = 'lazy';
+      b.appendChild(i);
+      b.addEventListener('click', function () {
+        gridSchliessen();
+        zeigen(p);
+        anhalten(true);
+      });
+      grid.appendChild(b);
+    });
+  }
+  function dahinter(an) {
+    // Was hinter einer offenen Fläche liegt, ist weder anklickbar noch
+    // ertastbar — sonst tabbt man in die Show, die man gar nicht sieht.
+    ['gkTap', 'gkActions'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (an) el.setAttribute('inert', ''); else el.removeAttribute('inert');
+    });
+  }
+  function gridOeffnen() {
+    gridFuellen();
+    dahinter(true);
+    gridWrap.hidden = false;
+    document.body.classList.add('gk-grid-open');
+    clearTimeout(timer);
+    clearTimeout(idleTimer);
+    var erste = grid.querySelector('.gk-kachel') || document.getElementById('gkGridClose');
+    if (erste) erste.focus({ preventScroll: true });
+  }
+  function gridSchliessen() {
+    gridWrap.hidden = true;
+    document.body.classList.remove('gk-grid-open');
+    dahinter(false);
+  }
+  document.getElementById('gkAll').addEventListener('click', gridOeffnen);
+  document.getElementById('gkGridClose').addEventListener('click', function () {
+    gridSchliessen();
+    anhalten(false);
+  });
+
+  // Tastatur: Leertaste hält an, Pfeile blättern, Esc führt zurück zur Show.
+  document.addEventListener('keydown', function (e) {
+    if (!qrBox.hidden) {
+      if (e.key === 'Escape') { qrZu.click(); }
+      return;
+    }
+    if (!gridWrap.hidden) {
+      if (e.key === 'Escape') { document.getElementById('gkGridClose').click(); }
+      return;
+    }
+    if (e.key === ' ') { e.preventDefault(); anhalten(!pause); }
+    else if (e.key === 'ArrowRight') { clearTimeout(timer); weiter(); }
+    else if (e.key === 'ArrowLeft') {
+      clearTimeout(timer);
+      idx = (idx - 2 + reihe.length) % reihe.length;
+      weiter();
+    }
+    else if (e.key === 'Escape' && pause) { anhalten(false); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+      else { document.exitFullscreen && document.exitFullscreen(); }
+    }
+  });
+
+  // Neue Fotos nachladen, ohne die Seite neu zu bauen
+  function holen() {
+    fetch('/gallery/' + encodeURIComponent(SLUG) + '/slideshow.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.photos) return;
+        var frisch = d.photos.filter(function (p) { return !gesehen.has(p.id); });
+        if (!frisch.length) return;
+        frisch.forEach(function (p) { gesehen.add(p.id); });
+        frisch.slice().reverse().forEach(function (p) { neu.push(p); reihe.push(p); fotos.unshift(p); });
+        if (!pause) { clearTimeout(timer); weiter(); }
+      })
+      .catch(function () {});
+  }
+
+  if (reihe.length) weiter();
+  setInterval(holen, POLL_MS);
+})();
+</script>
+</body>
+</html>

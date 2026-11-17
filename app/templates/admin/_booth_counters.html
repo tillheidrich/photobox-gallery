@@ -1,0 +1,32 @@
+{# The booth's counters of an evening (app.stats.zusammenfassung). One macro for
+   the booth page ("Heute") and the event's analytics, so both read the same. #}
+{% macro zaehler_karte(z, titel, kennung, untertitel='') %}
+{% set modi = {'photo': t('counters.mode.photo'), 'collage': t('counters.mode.collage'), 'gif': t('counters.mode.gif'),
+               'boomerang': t('counters.mode.boomerang'), 'video': t('counters.mode.video')} %}
+<section class="bp-card card" id="{{ kennung }}" style="padding:var(--spacing-md, 16px)">
+  <h2 style="margin:0 0 4px">{{ titel }}</h2>
+  {% if untertitel %}<p style="margin:0 0 10px;color:var(--color-text-muted)">{{ untertitel }}</p>{% endif %}
+  <dl class="bp-status">
+    <dt>{{ t('counters.runs') }}</dt>
+    <dd><b>{{ z.runs_total }}</b>
+      {%- for modus, n in z.runs.items() if n %} · {{ modi.get(modus, modus) }} {{ n }}{% endfor %}</dd>
+    <dt>{{ t('counters.aborted') }}</dt>
+    <dd>{{ z.aborted.total }} ({{ t('counters.cancel') }} {{ z.aborted.cancel }} · {{ t('counters.timeout') }} {{ z.aborted.timeout }})
+      · {{ t('counters.retakes') }} {{ z.retakes }}</dd>
+    <dt>{{ t('counters.prints') }}</dt>
+    <dd>{{ z.prints }}{% if z.print_errors %} · {{ t('counters.print_errors') }} {{ z.print_errors }}{% endif %}
+      {%- if z.prints_backup %} · {{ t('counters.prints_backup') }} {{ z.prints_backup }}{% endif %}
+      {%- if z.paper_prints_left is not none and z.paper_prints_left is defined %} · {{ t('counters.paper_left', n=z.paper_prints_left) }}{% endif %}</dd>
+    {% if z.consent.gallery or z.consent.print or z.consent.notice %}
+    <dt>{{ t('counters.consent') }}</dt>
+    <dd>{{ t('counters.consent.gallery') }} {{ z.consent.gallery }} · {{ t('counters.consent.print') }} {{ z.consent.print }}
+      {%- if z.consent.notice %} · {{ t('counters.consent.notice') }} {{ z.consent.notice }}{% endif %}</dd>
+    {% endif %}
+    <dt>{{ t('counters.peak') }}</dt>
+    <dd>{% if z.peak_hour is not none %}{{ '%02d' % z.peak_hour }}–{{ '%02d' % ((z.peak_hour + 1) % 24) }} {{ t('counters.oclock') }} · {{ z.peak_runs }} {{ t('counters.runs_short') }}{% else %}–{% endif %}</dd>
+    <dt>{{ t('counters.camera') }}</dt>
+    <dd>{{ t('counters.camera_errors') }} {{ z.camera.errors }} · {{ t('counters.reconnects') }} {{ z.camera.reconnects }}
+      · {{ t('counters.qr_big') }} {{ z.qr_big }}</dd>
+  </dl>
+</section>
+{% endmacro %}

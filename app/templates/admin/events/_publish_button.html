@@ -1,0 +1,43 @@
+{#- "Live schalten" / "Zurück auf Entwurf" — the one obvious way, from the list
+    and from the event page. Expects: pe = {id, name, published, no_password,
+    kind}, back = 'list' | 'edit', csrf_token. A draft with a password goes
+    live in one tap; without a password, and going back to draft, a small
+    panel says what will happen first (no script: <details>, works with the
+    page's CSP and without JavaScript). Nothing here blocks. -#}
+{%- macro pub_form(pe, back, token, live, label, cls) -%}
+<form method="post" action="/admin/events/{{ pe.id }}/publish" class="pub-form">
+  <input type="hidden" name="csrf_token" value="{{ token }}">
+  <input type="hidden" name="live" value="{{ '1' if live else '0' }}">
+  <input type="hidden" name="back" value="{{ back }}">
+  <button type="submit" class="btn {{ cls }} btn--sm pub-btn">{{ label }}</button>
+</form>
+{%- endmacro -%}
+<div class="pub-switch" data-publish="{{ 'live' if pe.published else 'draft' }}"
+     data-dirty-note="{{ t('publish.dirty_note') }}">
+{% if not pe.published %}
+  {% if not pe.no_password %}
+  {{ pub_form(pe, back, csrf_token, true, t('publish.go_live'), 'btn--primary') }}
+  {% else %}
+  <details class="pub-confirm">
+    <summary class="btn btn--primary btn--sm pub-btn">{{ t('publish.go_live') }}<span class="sr-only">: {{ pe.name }}</span></summary>
+    <div class="pub-panel" role="group" aria-label="{{ t('publish.go_live') }}">
+      <p class="pub-panel-text">{{ t('publish.confirm_nopw') }}</p>
+      <div class="pub-panel-actions">
+        {{ pub_form(pe, back, csrf_token, true, t('publish.confirm_live_yes'), 'btn--primary') }}
+        <a class="btn btn--secondary btn--sm pub-btn" href="/admin/events/{{ pe.id }}/edit#password">{{ t('publish.set_password') }}</a>
+      </div>
+    </div>
+  </details>
+  {% endif %}
+{% else %}
+  <details class="pub-confirm">
+    <summary class="btn btn--secondary btn--sm pub-btn">{{ t('publish.go_draft') }}<span class="sr-only">: {{ pe.name }}</span></summary>
+    <div class="pub-panel" role="group" aria-label="{{ t('publish.go_draft') }}">
+      <p class="pub-panel-text">{{ t('publish.confirm_draft_client' if pe.kind == 'client' else 'publish.confirm_draft_booth') }}</p>
+      <div class="pub-panel-actions">
+        {{ pub_form(pe, back, csrf_token, false, t('publish.confirm_draft_yes'), 'btn--secondary') }}
+      </div>
+    </div>
+  </details>
+{% endif %}
+</div>

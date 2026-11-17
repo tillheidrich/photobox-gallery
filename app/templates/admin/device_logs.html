@@ -1,0 +1,158 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'devices' %}
+
+{% block title %}Logs – {{ device.name }}{% endblock %}
+{% block page_title %}Protokoll der Box{% endblock %}
+
+{% block topbar_actions %}
+<a href="/admin/devices/{{ device.id }}/logs.txt?level={{ level }}&range={{ period }}&q={{ query|urlencode }}"
+   class="btn btn--ghost btn--sm">Als Text</a>
+<a href="/admin/devices/{{ device.id }}/booth" class="btn btn--ghost btn--sm adm-desk-only">Box steuern</a>
+{% endblock %}
+
+{% block content %}
+{% set level_labels = {'error': 'Fehler', 'warning': 'Warnung', 'info': 'Ereignis'} %}
+<style>
+  .lg-head{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin-bottom:1rem}
+  .lg-counts{display:flex;gap:.5rem;flex-wrap:wrap}
+  .lg-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;
+           font-size:.78rem;font-weight:600;background:var(--color-surface-3);color:var(--color-text-2)}
+  .lg-chip--error{background:var(--color-danger-bg);color:var(--color-danger)}
+  .lg-chip--warning{background:var(--color-warning-bg);color:var(--color-warning)}
+  .lg-filters{display:flex;flex-wrap:wrap;gap:.5rem;align-items:flex-end;margin-bottom:1rem}
+  .lg-filters .form-control{min-width:0}
+  .lg-table{width:100%;border-collapse:collapse;font-size:.8125rem}
+  .lg-table th{text-align:left;font-weight:500;color:var(--color-text-muted);padding:8px 10px}
+  .lg-table td{padding:8px 10px;border-top:1px solid var(--color-border-subtle);vertical-align:top}
+  .lg-when{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--color-text-muted)}
+  .lg-code{font-family:var(--font-mono);font-size:.75rem;color:var(--color-text-2);word-break:break-all}
+  .lg-msg{max-width:60ch}
+  .lg-context{margin-top:.35rem}
+  .lg-context summary{cursor:pointer;font-size:.75rem;color:var(--color-text-muted)}
+  .lg-context pre{margin:.35rem 0 0;padding:.6rem .75rem;background:var(--color-surface-3);
+                  border-radius:var(--r-sm);font-size:.72rem;overflow:auto;max-height:280px}
+  .lg-row--error td{background:color-mix(in oklch, var(--color-danger) 6%, transparent)}
+  .lg-name{font-weight:600;margin:0;font-size:inherit}
+  @media (max-width:768px){
+    .lg-chip{font-size:.8125rem;padding:4px 10px}
+    .lg-name{font-size:1.375rem;line-height:1.25;overflow-wrap:anywhere}
+    .lg-head{gap:.75rem}
+    .lg-filters>div{flex:1 1 100%}
+    .lg-filters select.form-control{width:100%!important}
+    .lg-filters .btn{flex:1 1 auto}
+    /* Every entry a small card: time and weight on one line, code, message. */
+    .lg-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    .lg-table,.lg-table tbody{display:block}
+    .lg-table tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px 14px;border-top:1px solid var(--color-border-subtle)}
+    .lg-table td{display:block;border:0;padding:0;background:none!important}
+    .lg-table td.lg-code{grid-column:1/-1}
+    .lg-table td.lg-msg{grid-column:1/-1;max-width:none;font-size:.9375rem}
+    .lg-table .lg-row--error{background:color-mix(in oklch, var(--color-danger) 6%, transparent)}
+    .lg-context pre{white-space:pre-wrap;overflow-wrap:anywhere}
+  }
+</style>
+
+<div class="lg-head">
+  <div>
+    <h1 class="lg-name">{{ device.name }}</h1>
+    <div style="font-size:.8125rem;color:var(--color-text-muted)">
+      Meldungen der Box und des Sync-Clients. Aufbewahrung: {{ retention_days }} Tage.
+    </div>
+  </div>
+  <div class="lg-counts">
+    <span class="lg-chip lg-chip--error">{{ counts.error }} Fehler · 24 h</span>
+    <span class="lg-chip lg-chip--warning">{{ counts.warning }} Warnungen</span>
+    <span class="lg-chip">{{ counts.info }} Ereignisse</span>
+  </div>
+</div>
+
+<div class="lg-ack" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin-bottom:1rem">
+  <form method="post" action="/admin/devices/{{ device.id }}/logs/ack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="logs">
+    <button class="btn btn--secondary btn--sm">{{ t('admin.logs.ack_button') }}</button>
+  </form>
+  {% if acked_at %}<span class="text-sm text-muted">{{ t('admin.logs.seen_note', when=acked_at[:16]) }}</span>{% endif %}
+</div>
+{% if groups and not query and level in ('', 'error') %}
+<div class="card lg-groups" style="margin-bottom:1rem"><div class="card-body" style="padding:.75rem 1rem">
+  <div class="text-sm text-muted" style="margin-bottom:.35rem">{{ t('admin.logs.by_reason') }}</div>
+  <ul style="margin:0;padding-left:1.1rem;font-size:.875rem">
+    {% for g in groups[:6] %}
+    <li><b>{{ g.count }}×</b> {{ g.reason }} <span class="text-muted">· {{ t('admin.logs.repeats', incidents=g.incidents) }} · {{ g.last_at[:16] }}</span></li>
+    {% endfor %}
+  </ul>
+</div></div>
+{% endif %}
+
+<div class="adm-actions adm-phone-only" style="margin-bottom:1rem">
+  <a href="/admin/devices/{{ device.id }}/booth" class="btn btn--secondary btn--sm">Box steuern</a>
+</div>
+
+<form class="lg-filters" method="get">
+  <div>
+    <label class="form-label" for="level">Schwere</label>
+    <select id="level" name="level" class="form-control" style="width:160px">
+      <option value="">alle</option>
+      {% for lv in levels %}
+      <option value="{{ lv }}" {% if level == lv %}selected{% endif %}>{{ level_labels.get(lv, lv) }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="form-label" for="range">Zeitraum</label>
+    <select id="range" name="range" class="form-control" style="width:160px">
+      {% for value, label in ranges %}
+      <option value="{{ value }}" {% if period == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="flex:1;min-width:min(200px,100%)">
+    <label class="form-label" for="q">Suche in Meldung &amp; Code</label>
+    <input id="q" name="q" class="form-control" value="{{ query }}" placeholder="z. B. printer oder timeout">
+  </div>
+  <button class="btn btn--secondary">Filtern</button>
+  <a class="btn btn--ghost" href="/admin/devices/{{ device.id }}/logs">Zurücksetzen</a>
+</form>
+
+{% if not entries %}
+<div class="card">
+  <div class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+    <h3>Keine Einträge</h3>
+    <p>Für diesen Filter liegt nichts vor. Meldet die Box gar nichts, schickt der Sync-Client noch keine Logs.</p>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <table class="lg-table">
+    <thead><tr><th style="width:150px">Zeitpunkt</th><th style="width:90px">Schwere</th><th style="width:170px">Code</th><th>Meldung</th></tr></thead>
+    <tbody>
+    {% for e in entries %}
+    <tr class="{{ 'lg-row--error' if e.level == 'error' }}">
+      <td class="lg-when">{{ e.when }}</td>
+      <td>
+        <span class="lg-chip {% if e.level == 'error' %}lg-chip--error{% elif e.level == 'warning' %}lg-chip--warning{% endif %}">{{ level_labels.get(e.level, e.level) }}</span>
+      </td>
+      <td class="lg-code">{{ e.code or '–' }}</td>
+      <td class="lg-msg">
+        {{ e.message }}
+        {% if e.context %}
+        <details class="lg-context">
+          <summary>Kontext</summary>
+          <pre>{{ e.context }}</pre>
+        </details>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p style="font-size:.78rem;color:var(--color-text-muted);margin:.75rem 0 0">
+  {{ entries|length }} Einträge angezeigt, neueste zuerst.
+</p>
+{% endif %}
+{% endblock %}

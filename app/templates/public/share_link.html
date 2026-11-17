@@ -1,0 +1,93 @@
+{% extends "layout_public.html" %}
+{#- A run page and a share link belong to one guest: the link preview never shows photos. -#}
+{% block og %}{% if event %}{% with og = link_meta(event, True) %}{% include "public/_og.html" %}{% endwith %}{% endif %}{% endblock %}
+{% block title %}{{ (link.title if link and link.title) or (event.name if event else t('share.title_fallback')) }}{% endblock %}
+{% block nav %}{% endblock %}
+{% block head %}
+{% include "public/_brand_style.html" %}
+<style>
+  .sl{max-width:1080px;margin:0 auto;padding:40px 20px 72px}
+  .sl-eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 10px}
+  .sl h1{font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:-.02em;margin:0 0 8px;line-height:1.1}
+  .sl-note{color:var(--color-text-2,#555);max-width:62ch;line-height:1.6;margin:0 0 8px}
+  .sl-meta{font-size:.8rem;color:var(--color-text-muted);margin:0 0 22px;font-variant-numeric:tabular-nums}
+  .sl-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 18px}
+  .sl-hint{margin:0 0 22px;padding:12px 14px;border:1px solid var(--color-border-subtle,#e5e5e5);border-radius:12px;font-size:.875rem;color:var(--color-text-2,#555);line-height:1.55;max-width:66ch}
+  .sl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .sl-grid.single{grid-template-columns:minmax(0,760px)}
+  .sl-card{margin:0;border-radius:16px;overflow:hidden;background:var(--color-surface,#fff);border:1px solid var(--color-border-subtle)}
+  .sl-card>a{display:block;line-height:0;background:var(--color-surface-3,#f3f3f3)}
+  .sl-card img,.sl-card video{width:100%;height:auto;display:block}
+  .sl-card figcaption{display:flex;justify-content:flex-end;gap:8px;padding:10px 12px}
+  .sl-card .btn{min-height:44px}
+  .sl-privacy{margin:32px 0 0;padding-top:16px;border-top:1px solid var(--color-border-subtle);font-size:.78rem;color:var(--color-text-muted);line-height:1.6;max-width:66ch}
+  .sl-gate{max-width:460px;margin:12vh auto 0;padding:0 18px;text-align:center;min-height:52dvh}
+  .sl-gate h1{font-size:1.45rem}
+  .sl-gate p{color:var(--color-text-2,#555);line-height:1.6}
+  .sl-gate form{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:18px}
+  .sl-gate .btn{min-height:48px;justify-content:center}
+  @media(max-width:480px){.sl-gate form{grid-template-columns:1fr}}
+  .sl-gate input{flex:1;min-height:48px;font-size:16px}
+  .sl-err{color:#c2272d;margin-top:12px;font-size:.9rem}
+  @media(max-width:640px){.sl{padding:26px 14px 56px}.sl-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<main class="sl">
+{% if st == 'ok' %}
+  <p class="sl-eyebrow">{{ event.name }}</p>
+  <h1>{{ link.title or t('share.title_fallback') }}</h1>
+  {% if link.note %}<p class="sl-note">{{ link.note }}</p>{% endif %}
+  <p class="sl-meta">{{ items|length }} {{ t('gallery.photo_count_many') if items|length != 1 else t('gallery.photo_count_one') }}{% if link.expires_at %} · {{ t('share.valid_until', date=link.expires_at[8:10] ~ '.' ~ link.expires_at[5:7] ~ '.' ~ link.expires_at[:4]) }}{% endif %}</p>
+  {% if link.allow_download and items|length > 1 %}
+  <div class="sl-bar"><a class="btn btn--primary btn--lg" href="/l/{{ link.slug }}/all.zip">{{ t('share.zip', n=items|length) }}</a></div>
+  {% endif %}
+  <p class="sl-hint">{{ t('share.hint') if link.allow_download else t('share.view_only') }}</p>
+  <div class="sl-grid{% if items|length == 1 %} single{% endif %}">
+    {% for it in items %}
+    {% if it.folder and (loop.first or loop.previtem.folder != it.folder) %}
+    <h2 class="sl-folder" style="grid-column:1/-1;column-span:all;margin:18px 0 4px;font-size:.8rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted)">{{ it.folder }}</h2>
+    {% endif %}
+    <figure class="sl-card">
+      {% if it.is_video %}
+        <video src="/l/{{ link.slug }}/file/{{ it.id }}" poster="/l/{{ link.slug }}/file/{{ it.id }}?thumb=1" controls playsinline loop muted></video>
+      {% else %}
+        <a href="/l/{{ link.slug }}/file/{{ it.id }}" target="_blank" rel="noopener"><img src="/l/{{ link.slug }}/file/{{ it.id }}{% if items|length > 1 %}?thumb=1{% endif %}" width="{{ it.w }}" height="{{ it.h }}" alt="" loading="lazy" decoding="async"></a>
+      {% endif %}
+      <figcaption>
+        {% if link.allow_download %}<button class="btn btn--secondary" data-save="/l/{{ link.slug }}/file/{{ it.id }}?download=1" data-name="{{ it.name }}">{{ t('session.download') }}</button>{% else %}<span class="sl-meta" style="margin:0">{{ t('share.view_only') }}</span>{% endif %}
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+  <p class="sl-privacy">{{ t('share.privacy') }}</p>
+  <script>
+  document.querySelectorAll('[data-save]').forEach(btn => btn.addEventListener('click', async () => {
+    const url = btn.dataset.save;
+    const touch = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
+    if (touch && navigator.canShare) {
+      try {
+        const blob = await (await fetch(url, {credentials: 'same-origin'})).blob();
+        const file = new File([blob], btn.dataset.name || 'foto.jpg', {type: blob.type || 'image/jpeg'});
+        if (navigator.canShare({files: [file]})) { await navigator.share({files: [file]}); return; }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    location.href = url;
+  }));
+  </script>
+{% elif st == 'passphrase' %}
+  <section class="sl-gate">
+    <h1>{{ t('share.passphrase') }}</h1>
+    <p>{{ t('share.passphrase_text') }}</p>
+    <form method="post"><input type="password" name="pw" class="form-control" placeholder="Passphrase" aria-label="Passphrase" autofocus required><button class="btn btn--primary">{{ t('share.view') }}</button></form>
+    {% if blocked %}<p class="sl-err">{{ t('share.too_many') }}</p>{% elif wrong %}<p class="sl-err">{{ t('share.passphrase_wrong') }}</p>{% endif %}
+  </section>
+{% else %}
+  <section class="sl-gate">
+    {% if st == 'expired' %}<h1>{{ t('share.expired') }}</h1><p>{{ t('share.expired_text') }}</p>
+    {% elif st == 'revoked' %}<h1>{{ t('share.revoked') }}</h1><p>{{ t('share.revoked_text') }}</p>
+    {% else %}<h1>{{ t('share.not_found') }}</h1><p>{{ t('share.not_found_text') }}</p>{% endif %}
+  </section>
+{% endif %}
+</main>
+{% endblock %}

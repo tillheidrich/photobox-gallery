@@ -1,0 +1,92 @@
+{
+ "id": "filmstreifen-quer-1",
+ "name": "Filmstreifen · quer · 1 Foto",
+ "paper": "10x15-quer",
+ "canvas": [
+  1800,
+  1200
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 1608,
+   "h": 800,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  }
+ ],
+ "texts": [
+  {
+   "x": 900,
+   "y": 936,
+   "size": 70,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#f1eee8",
+   "id": "t1",
+   "font": "CourierPrime-Regular.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1012,
+   "size": 32,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#b3aea6",
+   "id": "t2",
+   "font": "CourierPrime-Regular.ttf"
+  }
+ ],
+ "shots": 1,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1800,
+   "h": 1200,
+   "fill": "#141414",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  }
+ ],
+ "images": [
+  {
+   "file": "kol-film-perforation-1800.png",
+   "x": 0,
+   "y": 22,
+   "w": 1800,
+   "h": 44,
+   "opacity": 100,
+   "id": "bild-1"
+  },
+  {
+   "file": "kol-film-perforation-1800.png",
+   "x": 0,
+   "y": 1134,
+   "w": 1800,
+   "h": 44,
+   "opacity": 100,
+   "id": "bild-2"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "bild-1",
+  "bild-2",
+  "foto-1",
+  "t1",
+  "t2"
+ ]
+}

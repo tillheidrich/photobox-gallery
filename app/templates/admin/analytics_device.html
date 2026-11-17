@@ -1,0 +1,76 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'analytics' %}
+{% block title %}Zahlen · {{ device.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">{{ device.name }}</h1>
+  <p class="page-subtitle">Was diese Box gemacht hat — Durchgänge und Drucke je Tag, und auf welchen Events.</p>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-body" style="display:flex;gap:28px;flex-wrap:wrap">
+    <div><div style="font-size:1.6rem;font-weight:700">{{ daten.sessions_total }}</div>
+      <div style="color:var(--color-text-muted);font-size:.85rem">Durchgänge</div></div>
+    <div><div style="font-size:1.6rem;font-weight:700">{{ daten.prints_total }}</div>
+      <div style="color:var(--color-text-muted);font-size:.85rem">Drucke</div></div>
+    <div><div style="font-size:1.6rem;font-weight:700">{{ daten.media_total }}</div>
+      <div style="color:var(--color-text-muted);font-size:.85rem">Medien in der Galerie</div></div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <a class="btn btn-secondary btn-sm" href="/admin/analytics/export/box/{{ device.id }}.csv">CSV</a>
+      <a class="btn btn-secondary btn-sm" href="/admin/analytics/export/box/{{ device.id }}.json">JSON</a>
+      <form method="post" action="/admin/analytics/reset/box/{{ device.id }}" style="display:inline"
+            onsubmit="return confirm('Den Verlauf dieser Box löschen? Fotos und Events bleiben.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-secondary btn-sm">zurücksetzen</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Tag für Tag</h2></div>
+  <div class="card-body">
+    {% if daten.days %}
+    {% set hoch = daten.days | map(attribute='sessions') | max %}
+    <div style="display:flex;align-items:flex-end;gap:6px;height:140px;overflow-x:auto;padding-bottom:6px">
+      {% for tag in daten.days %}
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:34px">
+        <div title="{{ tag.sessions }} Durchgänge, {{ tag.prints }} Drucke"
+             style="width:22px;background:var(--pb-accent,#e7ad59);border-radius:3px;
+                    height:{{ (100 * tag.sessions / (hoch or 1)) | round }}px"></div>
+        <span style="font-size:.66rem;color:var(--color-text-muted);white-space:nowrap">{{ tag.day[5:] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <table class="sl-table" style="margin-top:14px">
+      <tr><th>Tag</th><th>Durchgänge</th><th>Drucke</th></tr>
+      {% for tag in daten.days | reverse %}
+      <tr><td>{{ tag.day }}</td><td>{{ tag.sessions }}</td><td>{{ tag.prints }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p style="margin:0;color:var(--color-text-muted)">Noch nichts gezählt. Die Zahlen entstehen aus den Meldungen der Box —
+      sobald sie das erste Mal synchronisiert, steht hier etwas.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Auf diesen Events</h2></div>
+  <div class="card-body">
+    {% if daten.events %}
+    <table class="sl-table table--stack">
+      <thead><tr><th>Event</th><th>Medien</th><th>von</th><th>bis</th></tr></thead>
+      {% for ev in daten.events %}
+      <tr>
+        <td class="td-main"><a class="adm-row-link" href="/admin/analytics/{{ ev.id }}">{{ ev.name }}</a></td>
+        <td data-label="Medien">{{ ev.medien }}</td><td data-label="von">{{ (ev.von or '')[:16] }}</td><td data-label="bis">{{ (ev.bis or '')[:16] }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p style="margin:0;color:var(--color-text-muted)">Noch keine Medien von dieser Box.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

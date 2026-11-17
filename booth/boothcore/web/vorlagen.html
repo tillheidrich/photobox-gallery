@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photobox · Vorlagen</title>
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  html,body{overflow:auto;height:auto;min-height:100%;user-select:auto;-webkit-user-select:auto;touch-action:pan-x pan-y}
+  /* One scroll container, the page itself, so the bar can stick. */
+  body{overflow:visible}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 32px 200px}
+  /* The way back is always in view: a bar at the top that sticks, never under
+     the on-screen keyboard (that docks at the bottom), with targets a finger hits. */
+  .bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;margin:0 -32px 24px;
+    padding:18px 32px;background:var(--bg);box-shadow:0 1px 0 var(--line)}
+  .bar h1{font-size:32px;letter-spacing:-.03em;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar .btn,.bar button{flex:none}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:64px;padding:0 26px;
+    border-radius:999px;background:#26262b;color:var(--text);font-size:19px;font-weight:600;border:0;cursor:pointer;
+    text-decoration:none;white-space:nowrap}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.45;cursor:default;transform:none}
+  .btn-primary{background:var(--accent);color:var(--on-accent)}
+  .btn-danger,.btn[data-armed="1"]{background:var(--gefahr-flaeche);color:var(--gefahr-schrift)}
+  .btn-back{min-width:220px}
+  #barNote{font-size:17px;color:var(--muted);max-width:42ch;line-height:1.35}
+  #barNote[data-tone="ok"]{color:#8fd19e} #barNote[data-tone="bad"]{color:#f5a524}
+  .card{background:var(--panel);border-radius:var(--radius);padding:26px;box-shadow:inset 0 0 0 1px var(--line);margin-bottom:22px}
+  .card h2{font-size:24px;margin-bottom:8px}
+  .hint{color:#b4b4bd;font-size:17px;line-height:1.5;margin:0 0 14px;max-width:80ch}
+  .quelle{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;padding:16px 18px;border-radius:16px;
+    background:#1d1d22;box-shadow:inset 0 0 0 1px var(--line);margin:6px 0 18px}
+  .quelle p{margin:0;flex:1 1 420px;font-size:17px;line-height:1.5}
+  .quelle[data-source="event"]{box-shadow:inset 0 0 0 2px #f5c26b}
+  .werkzeug{display:flex;flex-wrap:wrap;gap:12px 26px;align-items:center;margin-bottom:14px}
+  .gruppe{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .gruppe>span{color:var(--muted);font-size:15px;margin-right:4px}
+  .chip{min-height:56px;padding:0 20px;border-radius:999px;background:#202026;color:var(--muted);font-size:17px;font-weight:600;border:0}
+  .chip[aria-pressed="true"]{background:var(--text);color:var(--bg)}
+  #zaehler{font-size:17px;color:var(--muted);margin:0 0 16px;font-variant-numeric:tabular-nums}
+  .kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+  .kachel,.rkachel{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:18px;background:#1d1d22;
+    box-shadow:inset 0 0 0 1px var(--line)}
+  :is(.kachel,.rkachel)[data-geaendert="1"]{box-shadow:inset 0 0 0 2px var(--text)}
+  .bild{height:230px;display:grid;place-items:center;border-radius:10px;background:#111114;overflow:hidden}
+  /* The sheet's exact size from its template (vorlagen-page.js blatt()): the
+     placeholder and the picture take the same box, nothing moves. */
+  .blatt{position:relative;max-width:100%;border-radius:4px;overflow:hidden;box-shadow:0 6px 18px -10px #000}
+  .platzhalter{position:absolute;inset:0;background:#1f1d19}
+  .platzhalter i{position:absolute;background:rgba(231,173,89,.22);border-radius:2px}
+  .blatt:not([data-fertig="1"]) .platzhalter{background:linear-gradient(100deg,#1f1d19 30%,#2b2822 50%,#1f1d19 70%) 0 0/300% 100%;
+    animation:glanz 1.4s linear infinite}
+  @keyframes glanz{to{background-position:-150% 0}}
+  @media (prefers-reduced-motion:reduce){.blatt .platzhalter{animation:none}}
+  .blatt img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .2s}
+  .blatt[data-fertig="1"] img{opacity:1}
+  :is(.kachel,.rkachel)[data-sichtbar="0"] .bild{opacity:.38}
+  .gesperrt{font-size:14px;color:#b4b4bd;display:flex;align-items:center;gap:6px}
+  .gesperrt::before{content:"";width:12px;height:12px;flex:none;
+    background:currentColor;-webkit-mask:var(--schloss) center/contain no-repeat;mask:var(--schloss) center/contain no-repeat}
+  :root{--schloss:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 11V8a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zm2 0h6V8a3 3 0 0 0-6 0z'/%3E%3C/svg%3E")}
+  :is(.kachel,.rkachel) b{font-size:18px;line-height:1.25;overflow-wrap:anywhere}
+  :is(.kachel,.rkachel) small{display:block;color:var(--muted);font-size:15px;font-variant-numeric:tabular-nums}
+  .herkunft{font-size:14px;color:#b4b4bd}
+  .schalter{min-height:68px;border-radius:14px;font-size:19px;font-weight:700;border:0;
+    background:#2b2b31;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:10px;
+    white-space:nowrap;min-width:0}
+  .schalter span{overflow:hidden;text-overflow:ellipsis}
+  .schalter[aria-pressed="true"]{background:#e9e9ec;color:#111114}
+  .schalter:disabled{opacity:.55}
+  .schalter i{width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 3px currentColor;display:grid;place-items:center;font-style:normal;font-size:16px}
+  .mehr{display:flex;gap:8px;flex-wrap:wrap}
+  .mehr .btn{min-height:56px;font-size:16px;padding:0 18px;flex:1 1 auto}
+  .mehr p{margin:0;font-size:14px;color:#b4b4bd;line-height:1.4}
+  .leer{color:var(--muted);font-size:17px;padding:20px 0}
+  .reihe{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .form-control{font:inherit;font-size:18px;color:var(--text);background:#0f0f12;border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:56px}
+  hr{border:0;border-top:1px solid var(--line);margin:22px 0}
+  /* The save bar for the switches: centred, well above the bottom edge, above the keyboard when it is open. */
+  .savebar{position:fixed;left:50%;transform:translateX(-50%);bottom:max(72px,10vh);z-index:30;display:flex;align-items:center;gap:16px;
+    width:min(860px,calc(100% - 64px));padding:14px 16px 14px 26px;border-radius:999px;background:var(--panel);
+    box-shadow:0 10px 40px rgba(0,0,0,.6),inset 0 0 0 1px var(--line)}
+  .savebar span{flex:1 1 auto;font-size:18px;line-height:1.3}
+  .savebar span[data-tone="bad"]{color:#f5a524}
+  .savebar .btn{min-height:68px}
+  body.osk-open .savebar{bottom:calc(var(--osk-height,0px) + 16px)}
+  .pin{position:fixed;inset:0;display:grid;place-content:center;gap:24px;justify-items:center;background:var(--bg)}
+  .pin output{font-size:52px;letter-spacing:.4em;min-height:64px}
+  .pad{display:grid;grid-template-columns:repeat(3,104px);gap:14px}
+  .pad button{height:104px;border-radius:22px;background:var(--panel);font-size:38px;font-weight:600;border:0;color:var(--text)}
+  a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+  #editorSeite .card{padding:22px}
+</style>
+</head>
+<body>
+
+<div class="pin" id="pin">
+  <h1 style="font-size:30px">PIN</h1>
+  <output id="pinOut"></output>
+  <div class="pad" id="pad"></div>
+  <a class="btn" href="/admin">Zurück zur Verwaltung</a>
+</div>
+
+<div class="wrap" id="main" hidden>
+  <header class="bar">
+    <button class="btn btn-back" id="zurueck" type="button">← Verwaltung</button>
+    <h1 id="titel">Vorlagen</h1>
+    <span id="barNote" role="status" aria-live="polite"></span>
+    <button class="btn" id="neu" type="button">Neue Vorlage</button>
+    <button class="btn btn-primary" id="fertig" type="button" hidden>Speichern und zur Liste</button>
+  </header>
+
+  <section id="liste">
+    <div class="card">
+      <h2>Was die Gäste sehen</h2>
+      <p class="hint">Ein Tipp auf den Schalter blendet ein Layout ein oder aus. Gespeichert wird mit dem Knopf unten.</p>
+      <div class="quelle" id="quelle"></div>
+      <div class="werkzeug">
+        <div class="gruppe" id="sammel">
+          <button class="btn" type="button" data-sammel="alle">Alle sichtbar</button>
+          <button class="btn" type="button" data-sammel="keine">Alle ausblenden</button>
+          <button class="btn" type="button" data-sammel="eigene">Nur eigene</button>
+        </div>
+      </div>
+      <div class="werkzeug" id="filter">
+        <div class="gruppe" data-filter="art"><span>Zeigen</span>
+          <button class="chip" type="button" data-wert="" aria-pressed="true">Alle</button>
+          <button class="chip" type="button" data-wert="own" aria-pressed="false">Eigene</button>
+          <button class="chip" type="button" data-wert="builtin" aria-pressed="false">Mitgeliefert</button>
+        </div>
+        <div class="gruppe" data-filter="bilder"><span>Bilder</span>
+          <button class="chip" type="button" data-wert="" aria-pressed="true">Alle</button>
+          <button class="chip" type="button" data-wert="1" aria-pressed="false">1</button>
+          <button class="chip" type="button" data-wert="2" aria-pressed="false">2</button>
+          <button class="chip" type="button" data-wert="3" aria-pressed="false">3</button>
+          <button class="chip" type="button" data-wert="4" aria-pressed="false">4+</button>
+        </div>
+        <div class="gruppe" data-filter="lage"><span>Format</span>
+          <button class="chip" type="button" data-wert="" aria-pressed="true">Alle</button>
+          <button class="chip" type="button" data-wert="portrait" aria-pressed="false">Hoch</button>
+          <button class="chip" type="button" data-wert="landscape" aria-pressed="false">Quer</button>
+        </div>
+      </div>
+      <p id="zaehler"></p>
+      <div class="kacheln" id="kacheln"></div>
+    </div>
+
+    <!-- Frames for boomerang and video (media/motion_frames.py): their own
+         group, one row per mode, each switch saves at once. -->
+    <div class="card" id="rahmenKarte" hidden>
+      <h2>Rahmen für Boomerang &amp; Video</h2>
+      <p class="hint" id="rahmenQuelle"></p>
+      <div id="rahmenModi"></div>
+    </div>
+
+    <div class="card">
+      <h2>Eigene Vorlage anlegen</h2>
+      <div class="reihe">
+        <button class="btn btn-primary" id="neu2" type="button">Neue Vorlage</button>
+        <select class="form-control" id="kopieren" aria-label="Mitgelieferte Vorlage"></select>
+        <button class="btn" id="kopierenLos" type="button">Als eigene Vorlage kopieren</button>
+      </div>
+      <hr>
+      <h2>Mitnehmen und mitbringen</h2>
+      <p class="hint">Eine <code>.abzug</code>-Datei enthält die Vorlagen samt der Hintergrundbilder, auf die sie zeigen.
+        Damit wandert eine Vorlage von dieser Box auf eine andere oder in die Galerie, auch ohne Netz: Stick rein, Datei drauf, drüben einlesen.</p>
+      <div class="reihe">
+        <button class="btn" id="ausgeben" type="button">Alle ausgeben</button>
+        <input type="file" id="paketDatei" accept=".abzug,.zip" style="max-width:300px;font-size:17px">
+        <button class="btn" id="einlesen" type="button">Einlesen</button>
+      </div>
+      <p class="hint" id="paketHinweis" style="margin:12px 0 0"></p>
+    </div>
+  </section>
+
+  <section id="editorSeite" hidden>
+    <div class="card"><div id="editor"></div></div>
+  </section>
+</div>
+
+<div class="savebar" id="savebar" hidden>
+  <span id="saveInfo" role="status" aria-live="polite"></span>
+  <button class="btn" id="verwerfen" type="button">Zurücksetzen</button>
+  <button class="btn btn-primary" id="sichtbarSpeichern" type="button">Sichtbarkeit speichern</button>
+</div>
+
+<script src="/static/vorlagen-editor.js"></script>
+<script src="/static/vorlagen-page.js"></script>
+<script src="/static/osk.js"></script>
+<script src="/static/pan.js"></script>
+</body>
+</html>

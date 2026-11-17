@@ -1,0 +1,100 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}E-Mail – Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+{% block content %}
+{% set active_tab = 'mail' %}
+{% set settings_subtitle = 'E-Mail-Versand der Galerie' %}
+{% include 'admin/settings/_tabs.html' %}
+
+<div class="settings-section">
+  <h2 class="settings-section-title">Postausgang (SMTP)</h2>
+  <p class="settings-section-desc">
+    Damit verschickt die Galerie selbst: Bestätigungsmails für Foto-Benachrichtigungen (Double-Opt-in),
+    die Meldung über neue Fotos und den Link zum Zurücksetzen des Admin-Passworts.
+    Die Box hat einen eigenen Postausgang für Gästefotos — den stellst du je Box unter
+    <b>Box-Einstellungen → E-Mail</b> ein.
+  </p>
+
+  <div class="card" style="margin-bottom:var(--sp-6)">
+    <form method="post" action="/admin/settings/mail">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="card-body">
+        {% if configured %}
+        <p class="form-hint" style="color:#15803d">Postausgang eingerichtet: {{ cfg.from_email }} über {{ cfg.host }}:{{ cfg.port }}</p>
+        {% else %}
+        <p class="form-hint">Noch nichts eingerichtet — bis dahin verschickt die Galerie keine E-Mails.</p>
+        {% endif %}
+
+        <div class="form-group">
+          <label class="form-label" for="host">Server</label>
+          <input class="form-control" id="host" name="host" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ cfg.host }}" placeholder="smtp.example.org">
+          <p class="form-hint">Der Name steht beim Mail-Anbieter in den Einstellungen des Postfachs — meist „Postausgangsserver“ oder „SMTP-Server“.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="security">Verschlüsselung</label>
+          <select class="form-control" id="security" name="security">
+            <option value="ssl" {% if cfg.use_ssl %}selected{% endif %}>SSL/TLS — Port 465 (empfohlen)</option>
+            <option value="starttls" {% if cfg.use_tls and not cfg.use_ssl %}selected{% endif %}>STARTTLS — Port 587</option>
+            <option value="none" {% if not cfg.use_tls and not cfg.use_ssl %}selected{% endif %}>ohne — nur im eigenen Netz</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="port">Port</label>
+          <input class="form-control" id="port" name="port" value="{{ cfg.port }}" inputmode="numeric" style="max-width:160px">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="username">Benutzername</label>
+          <input class="form-control" id="username" name="username" value="{{ cfg.username }}"
+                 autocomplete="off" placeholder="postfach@example.org">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Passwort des Postfachs</label>
+          <input class="form-control" id="password" name="password" type="password"
+                 autocomplete="new-password" placeholder="{% if has_password %}gespeichert — leer lassen{% else %}Passwort des Postfachs{% endif %}">
+          <p class="form-hint">Wird verschlüsselt nur hier gespeichert und nie wieder angezeigt.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="from_email">Absenderadresse</label>
+          <input class="form-control" id="from_email" name="from_email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" value="{{ cfg.from_email }}"
+                 placeholder="mail@photobox-gallery.com">
+          <p class="form-hint">Sollte zur Domain des Postfachs passen, sonst landen die Mails im Spam.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="admin_email">Deine Adresse (Admin)</label>
+          <input class="form-control" id="admin_email" name="admin_email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" value="{{ admin_email }}"
+                 placeholder="info@example.org">
+          <p class="form-hint">Hierhin geht die Testmail — und der Link, wenn du das Admin-Passwort vergisst.</p>
+        </div>
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn--primary">Speichern</button>
+      </div>
+    </form>
+  </div>
+
+  <h2 class="settings-section-title">Prüfen</h2>
+  <p class="settings-section-desc">Eine Testmail ist die einzige ehrliche Prüfung — ob ein Postfach funktioniert,
+    zeigt sich erst beim Zustellen.</p>
+  <div class="card">
+    <form method="post" action="/admin/settings/mail/test">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="to">Empfänger</label>
+          <input class="form-control" id="to" name="to" value="{{ admin_email }}" placeholder="info@example.org">
+        </div>
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn--secondary">Testmail senden</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

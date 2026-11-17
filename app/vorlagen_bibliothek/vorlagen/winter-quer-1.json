@@ -1,0 +1,118 @@
+{
+ "id": "winter-quer-1",
+ "name": "Winterabend · quer · 1 Foto",
+ "paper": "10x15-quer",
+ "canvas": [
+  1800,
+  1200
+ ],
+ "background": "@hintergrund",
+ "slots": [
+  {
+   "x": 96,
+   "y": 96,
+   "w": 1608,
+   "h": 800,
+   "shot": 0,
+   "radius": 0,
+   "id": "foto-1"
+  }
+ ],
+ "texts": [
+  {
+   "x": 900,
+   "y": 948,
+   "size": 66,
+   "bold": false,
+   "align": "center",
+   "value": "Frohe Weihnachten",
+   "color": "#f6f1e6",
+   "id": "t1",
+   "font": "PinyonScript-Regular.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1009,
+   "size": 30,
+   "bold": false,
+   "align": "center",
+   "value": "{event_name}",
+   "color": "#f6f1e6",
+   "id": "t2",
+   "font": "CormorantSC-Medium.ttf"
+  },
+  {
+   "x": 900,
+   "y": 1043,
+   "size": 30,
+   "bold": false,
+   "align": "center",
+   "value": "{date}",
+   "color": "#cfd7e4",
+   "id": "t3",
+   "font": "CormorantSC-SemiBold.ttf"
+  }
+ ],
+ "shots": 1,
+ "updated_at": 0,
+ "safe_area": 4.0,
+ "shapes": [
+  {
+   "kind": "rect",
+   "x": 0,
+   "y": 0,
+   "w": 1800,
+   "h": 1200,
+   "fill": "#1f2d47",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "grund"
+  },
+  {
+   "kind": "rect",
+   "x": 84,
+   "y": 84,
+   "w": 1632,
+   "h": 824,
+   "fill": "#f6f1e6",
+   "stroke": "",
+   "stroke_width": 0,
+   "opacity": 100,
+   "radius": 0,
+   "id": "form-1"
+  }
+ ],
+ "images": [
+  {
+   "file": "kol-winter-flocken-260x184.png",
+   "x": 96,
+   "y": 920,
+   "w": 260,
+   "h": 184,
+   "opacity": 80,
+   "id": "bild-2"
+  },
+  {
+   "file": "kol-winter-flocken-260x184-b.png",
+   "x": 1444,
+   "y": 920,
+   "w": 260,
+   "h": 184,
+   "opacity": 80,
+   "id": "bild-3"
+  }
+ ],
+ "order": [
+  "grund",
+  "overlay",
+  "form-1",
+  "foto-1",
+  "bild-2",
+  "bild-3",
+  "t1",
+  "t2",
+  "t3"
+ ]
+}

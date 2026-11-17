@@ -1,0 +1,118 @@
+{% extends "layout_admin.html" %}
+{% block title %}Aussortieren – {{ event.name }}{% endblock %}
+{% block page_title %}Aussortieren{% endblock %}
+{% block content %}
+<style>
+  .so-seg{display:inline-flex;border:1px solid var(--color-border);border-radius:10px;overflow:hidden}
+  .so-seg a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-right:1px solid var(--color-border);font-size:.875rem;color:inherit;text-decoration:none}
+  .so-seg a[aria-current="true"]{background:var(--color-text);color:var(--color-surface)}
+  .so-group{border:1px solid var(--color-border);border-radius:12px;padding:10px;margin:0 0 12px}
+  .so-group h3{font-size:.875rem;font-weight:600;margin:0 0 8px;color:var(--color-text-2)}
+  .so-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(104px,100%),1fr));gap:8px;list-style:none;margin:0;padding:0}
+  .so-tile{position:relative;min-width:0;border-radius:10px;overflow:hidden;background:var(--color-surface-3)}
+  .so-tile .so-pick{display:block!important;position:relative;cursor:pointer;margin:0}
+  .so-tile img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+  .so-tile input{position:absolute;top:6px;left:6px;width:24px;height:24px;margin:0;accent-color:var(--color-danger,#dc2626)}
+  .so-tile:has(input:checked) img{opacity:.55}
+  .so-tile:has(input:checked){outline:3px solid var(--color-danger,#dc2626);outline-offset:-3px}
+  .so-cap{box-sizing:border-box;width:100%;display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 6px;font-size:.75rem;min-width:0;padding:4px 6px;background:var(--color-surface)}
+  .so-keep{position:absolute;top:6px;right:6px;background:var(--color-success,#16a34a);color:#fff;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px}
+  .so-bar{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;margin:16px -12px 0;
+    background:var(--color-surface);border-top:1px solid var(--color-border)}
+  .so-bar .btn{min-height:44px}
+  .so-bar span{font-size:.875rem;margin-right:auto}
+  .so-empty{color:var(--color-text-2);margin:0;padding:12px 0}
+</style>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Aussortieren</h1>
+    <p class="page-subtitle">{{ event.name }} · Vorschläge aus Bildstatistik (Ähnlichkeit und Kantenschärfe), ohne KI.
+      Es passiert nichts, bevor du einen Knopf drückst.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn--secondary" href="{{ url_for('admin.edit_event', event_id=event.id) }}">Zurück zum Event</a></div>
+</div>
+
+<form method="post" id="soForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="streng" value="{{ strict }}">
+
+  <div class="card" style="margin-bottom:var(--sp-6)">
+    <div class="card-header"><h2 style="font-size:.9375rem;font-weight:600;margin:0">Doppelte ({{ r.groups|length }} Gruppen)</h2></div>
+    <div class="card-body">
+      {% if r.groups %}
+      <p class="form-hint" style="margin-top:0">Je Gruppe ist das schärfste Bild als „Behalten“ markiert; die anderen sind vorgewählt. Ändern durch Antippen.</p>
+      {% for g in r.groups %}
+      <section class="so-group" aria-label="Gruppe {{ loop.index }}">
+        <h3>Gruppe {{ loop.index }} · {{ g['items']|length }} ähnliche Bilder</h3>
+        <ul class="so-row">
+          {% for m in g['items'] %}
+          <li class="so-tile">
+            <label class="so-pick">
+              <input type="checkbox" name="media_ids" value="{{ m.id }}" {% if m.id != g.keep %}checked{% endif %} aria-label="Bild {{ m.id }} auswählen">
+              <img src="/data/{{ m.path_thumb or m.path_webp }}" alt="" loading="lazy">
+              {% if m.id == g.keep %}<span class="so-keep">Behalten</span>{% endif %}
+            </label>
+            <div class="so-cap"><span>Schärfe {{ m.sharpness|round|int }}</span><span>{{ (m.taken_at or m.created_at or '')[11:16] }}</span></div>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% endfor %}
+      {% else %}
+      <p class="so-empty">Keine doppelten Bilder gefunden.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center">
+      <h2 style="font-size:.9375rem;font-weight:600;margin:0">Unscharf ({{ r.blurry|length }})</h2>
+      <nav class="so-seg" aria-label="Wie streng">
+        {% for v, l in [('strict','streng'),('normal','normal'),('loose','großzügig')] %}
+        <a href="?streng={{ v }}" {% if strict == v %}aria-current="true"{% endif %}>{{ l }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+    <div class="card-body">
+      {% if r.blurry %}
+      <p class="form-hint" style="margin-top:0">Unter {{ r.threshold|round|int }} Schärfepunkten (der Durchschnitt dieses Events liegt bei {{ r.median|round|int }}). Nichts vorgewählt.</p>
+      <ul class="so-row">
+        {% for m in r.blurry %}
+        <li class="so-tile">
+          <label class="so-pick">
+            <input type="checkbox" name="media_ids" value="{{ m.id }}" aria-label="Bild {{ m.id }} auswählen">
+            <img src="/data/{{ m.path_thumb or m.path_webp }}" alt="" loading="lazy">
+          </label>
+          <div class="so-cap"><span>Schärfe {{ m.sharpness|round|int }}</span><span>{{ (m.taken_at or m.created_at or '')[11:16] }}</span></div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="so-empty">Keine auffällig unscharfen Bilder.</p>
+      {% endif %}
+      {% if r.unmeasured %}<p class="form-hint">{{ r.unmeasured }} Bilder sind noch nicht vermessen; das holt die nächste Wartung nach.</p>{% endif %}
+    </div>
+  </div>
+
+  {% if r.groups or r.blurry %}
+  <div class="so-bar">
+    <span id="soCount" aria-live="polite"></span>
+    <button class="btn btn--secondary" type="submit" name="action" value="hide">Ausgewählte ausblenden</button>
+    <button class="btn btn--danger" type="submit" name="action" value="delete"
+            onclick="return confirm({{ ('Ausgewählte Bilder in den Papierkorb legen?' if trash_days else 'Ausgewählte Bilder endgültig löschen?')|tojson|forceescape }})">
+      {{ 'In den Papierkorb' if trash_days else 'Ausgewählte löschen' }}</button>
+  </div>
+  {% endif %}
+</form>
+<script>
+(function () {
+  var form = document.getElementById('soForm'), out = document.getElementById('soCount');
+  if (!form || !out) return;
+  function count() {
+    var n = form.querySelectorAll('input[name="media_ids"]:checked').length;
+    out.textContent = n + (n === 1 ? ' Bild ausgewählt' : ' Bilder ausgewählt');
+  }
+  form.addEventListener('change', count); count();
+})();
+</script>
+{% endblock %}

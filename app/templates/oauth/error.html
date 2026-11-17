@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="{{ g.lang or 'de' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>{{ t('oauth.error.title') }} – Photobox Gallery</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+</head>
+<body style="background:var(--c-slate-50)">
+<div class="login-page">
+  <div class="login-card" style="max-width:480px">
+    <h1>{{ t('oauth.error.title') }}</h1>
+    <p class="subtitle">{{ t(message_key) }}</p>
+  </div>
+</div>
+</body>
+</html>

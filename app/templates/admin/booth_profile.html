@@ -1,0 +1,1795 @@
+{% extends "layout_admin.html" %}
+{% block title %}{{ device.name }} · Box-Einstellungen{% endblock %}
+{% block content %}
+<style>
+  .bp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:18px;align-items:start}
+  .bp-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e5e5e5);border-radius:14px;padding:20px 22px}
+  .bp-card h2{font-size:1rem;margin:0 0 4px}
+  .bp-job-table{max-width:100%} .bp-job-table td{overflow-wrap:anywhere;word-break:break-word;min-width:0}
+  .bp-card>p{margin:0 0 14px;color:var(--color-text-secondary,#666);font-size:.875rem;line-height:1.45}
+  .bp-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .bp-checks{display:flex;flex-wrap:wrap;gap:8px 16px;margin:6px 0 12px}
+  .bp-checks label{display:flex;gap:6px;align-items:center;font-size:.9rem}
+  .bp-card .form-group{margin-bottom:12px}
+  .bp-assets{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+  .bp-asset{position:relative;display:block;border-radius:10px;overflow:hidden;border:2px solid transparent;background:#f2f2f2;aspect-ratio:1;cursor:pointer}
+  .bp-asset input{position:absolute;top:6px;left:6px}
+  .bp-asset img,.bp-asset video{width:100%;height:100%;object-fit:cover}
+  .bp-asset span{position:absolute;bottom:0;left:0;right:0;font-size:.7rem;padding:3px 5px;background:rgba(0,0,0,.55);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bp-asset:has(input:checked){border-color:var(--color-primary,#e5484d)}
+  .bp-start-preview{position:relative;aspect-ratio:16/10;max-width:480px;border-radius:12px;overflow:hidden;background:#111;margin:4px 0 14px}
+  .bp-start-preview img,.bp-start-preview video{width:100%;height:100%;object-fit:cover;display:block}
+  .bp-start-preview[data-fit="contain"] img,.bp-start-preview[data-fit="contain"] video{object-fit:contain}
+  .bp-start-preview i{position:absolute;inset:0;background:#000;pointer-events:none}
+  .bp-start-preview b{position:absolute;left:10px;bottom:8px;color:#fff;font-size:.8rem;font-weight:600;text-shadow:0 1px 3px #000}
+  .bp-start-empty{position:absolute;inset:0;display:grid;place-content:center;padding:20px;text-align:center;color:#ddd;font-size:.9rem;z-index:1}
+  .bp-status{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.875rem}
+  .bp-status dt{color:var(--color-text-secondary,#666)} .bp-status dd{margin:0}
+  .bp-jobs{display:flex;flex-wrap:wrap;gap:8px}
+  .bp-save{position:sticky;bottom:0;padding:14px 0;background:linear-gradient(transparent,var(--color-surface-2) 40%);display:flex;gap:10px;justify-content:flex-end}
+  .bp-texts{display:grid;grid-template-columns:180px repeat({{ languages|length }},1fr);gap:6px 10px;align-items:center;font-size:.85rem}
+  .bp-texts input{min-height:34px;padding:4px 8px}
+  /* Aussehen: Formular links, echte Vorschau rechts */
+  .bp-theme{display:grid;grid-template-columns:1fr minmax(300px,420px);gap:24px;align-items:start}
+  .bp-presets{display:flex;flex-wrap:wrap;gap:8px}
+  .bp-colors{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  .bp-colors label{display:flex;align-items:center;gap:8px;font-size:.85rem}
+  .bp-colors input{width:44px;height:32px;padding:2px;border:1px solid var(--color-border);border-radius:6px;background:none;cursor:pointer}
+  .bp-preview{position:relative;border-radius:14px;padding:22px;overflow:hidden;
+    background:var(--pv-bg);color:var(--pv-text);font-family:var(--pv-font);border:1px solid rgba(128,128,128,.25)}
+  .bp-preview-tag{position:absolute;right:10px;top:8px;font-size:.7rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--pv-muted);font-family:system-ui,sans-serif}
+  .bp-preview-modes{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;margin-bottom:16px}
+  .bp-preview-mode{padding:14px 16px;border-radius:min(var(--pv-radius),22px);background:var(--pv-panel)}
+  .bp-preview-mode.is-first{background:var(--pv-accent);color:var(--pv-on-accent)}
+  .bp-preview-mode strong{display:block;font-size:1.05rem;font-weight:var(--pv-weight);text-transform:var(--pv-transform)}
+  .bp-preview-mode span{display:block;font-size:.8rem;opacity:.75;margin-top:2px}
+  .bp-preview-btns{display:flex;gap:10px;flex-wrap:wrap}
+  .bp-preview-btn{display:inline-flex;align-items:center;justify-content:center;padding:0 var(--pv-pad);
+    min-height:var(--pv-height);border-radius:var(--pv-radius);font-size:var(--pv-font-size);
+    font-weight:var(--pv-weight);text-transform:var(--pv-transform)}
+  .bp-preview-btn.primary{background:var(--pv-accent);color:var(--pv-on-accent)}
+  .bp-preview-btn.secondary{background:var(--pv-panel-2)}
+  .bp-preview[data-secondary="outline"] .bp-preview-btn.secondary{background:none;box-shadow:inset 0 0 0 2px var(--pv-accent);color:var(--pv-accent)}
+  @media(max-width:900px){.bp-theme{grid-template-columns:1fr}}
+  details summary{cursor:pointer;font-weight:600;margin:8px 0}
+  .bp-layout{margin-top:14px}
+  .bp-layout[hidden]{display:none}
+  .bp-layout-head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:10px}
+  .bp-layout-hint{font-size:.8rem;color:var(--color-text-muted);flex:1}
+  .bp-stage{position:relative;aspect-ratio:16/10;max-width:960px;margin:0 auto;border-radius:12px;overflow:hidden;background:#17171a center/cover;touch-action:none;user-select:none}
+  .bp-stage::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.55));pointer-events:none}
+  .bp-stage-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:5% 8%;z-index:1;pointer-events:none}
+  .bp-el{position:absolute;z-index:2;border-radius:10px;background:rgba(255,255,255,.92);color:#111;padding:8px 10px;font-size:clamp(9px,1.1vw,14px);font-weight:600;cursor:grab;box-shadow:0 4px 18px rgba(0,0,0,.3);outline:none;min-height:24px}
+  .bp-el:focus-visible{box-shadow:0 0 0 3px var(--pb-accent)}
+  .bp-el{height:16%}  /* Buttons an der Box: ca. 190 px bei 1200 px Höhe */
+  .bp-el.is-gallery{height:6%;padding:4px 10px}
+  .bp-el.is-title{height:26%;background:transparent;color:#fff;box-shadow:none;border:1px dashed rgba(255,255,255,.6);font-size:clamp(11px,1.6vw,20px)}
+  .bp-el.is-drag{cursor:grabbing;opacity:.9}
+  .bp-el small{display:block;font-weight:400;opacity:.6}
+  .bp-resize{position:absolute;right:-6px;bottom:-6px;width:16px;height:16px;border-radius:50%;background:var(--pb-accent);border:2px solid #fff;cursor:nwse-resize}
+  @media(max-width:700px){.bp-row{grid-template-columns:1fr}.bp-texts{grid-template-columns:1fr}}
+  @media(max-width:768px){
+    .bp-card{padding:16px}
+    .bp-card>h2{margin-bottom:8px}
+    .bp-texts{gap:8px 10px}
+    #text-filter{max-width:none!important}
+    #text-expand{margin:8px 0 0!important;width:100%}
+    .bp-jobs form{flex:1 1 100%}
+    .bp-jobs .btn{white-space:normal;width:100%;height:auto;min-height:44px;padding-block:10px;line-height:1.3;justify-content:flex-start;text-align:left}
+    .bp-checks{gap:8px 16px}
+    .bp-preview-tag{font-size:.75rem}
+    .bp-texts input{min-height:44px}
+    .bp-status{grid-template-columns:1fr;gap:2px}
+    .bp-status dd{margin-bottom:8px}
+    .bp-status .btn{margin:6px 0 0!important;min-height:44px;padding:0 14px!important}
+    .bp-colors input{width:56px;height:44px}
+    .bp-asset input{width:24px;height:24px}
+    .bp-asset span{font-size:.8125rem}
+  }
+</style>
+
+<div class="page-header">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <a href="{{ url_for('admin.booths') }}" class="btn btn-secondary btn-sm">← Boxen</a>
+      <h1 class="page-title" style="margin-top:8px">{{ device.name }} · Box-Einstellungen</h1>
+      <p class="page-subtitle">Profil-Version {{ device.profile_version or 1 }}. Änderungen holt die Box beim nächsten Kontakt ab — auch wenn sie erst Stunden später online ist.</p>
+    </div>
+    <a href="{{ url_for('admin_booth.assets') }}" class="btn btn-secondary">Medien &amp; Vorlagen</a>
+  </div>
+</div>
+
+{% with ss_scope='#bpForm', ss_card='.bp-card', ss_field='.form-group, .bp-checks > label, .bp-row > div, .bp-colors > label' %}
+{% include "admin/_settings_search.html" %}
+{% endwith %}
+
+{# Thirty cards on one page: on a phone "Startbildschirm" was twenty
+   screens down. The jump list is built from the cards' own headings, so a
+   new card appears in it without anyone remembering to add it. #}
+<nav class="bp-jump" id="bpJump" aria-label="{{ t('booth.jump') }}" hidden></nav>
+<style>
+  .bp-jump{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
+  .bp-jump a{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:999px;font-size:.8125rem;
+    border:1px solid var(--color-border,#e5e5e5);color:var(--color-text-secondary,#555);text-decoration:none;background:var(--color-surface,#fff)}
+  .bp-jump a:hover{color:var(--color-text);border-color:var(--color-text-muted)}
+  .bp-card>h2{scroll-margin-top:72px}
+  @media(max-width:700px){.bp-jump{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-12px;padding-inline:12px}
+    .bp-jump a{flex:none;min-height:44px}}
+  /* Once the phone sections are built, their own chip row replaces this one. */
+  [data-sections-ready] ~ .bp-jump, body:has([data-sections-ready="1"]) .bp-jump{display:none!important}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const nav = document.getElementById("bpJump");
+  const heads = [...document.querySelectorAll(".bp-card > h2")];
+  heads.forEach((h, i) => {
+    if (!h.id) h.id = "bp-" + i;
+    const a = document.createElement("a");
+    a.href = "#" + h.id; a.textContent = h.textContent.trim();
+    nav.appendChild(a);
+  });
+  nav.hidden = heads.length < 4;
+});
+</script>
+
+{#- On a phone the profile becomes a list of folded sections with a search
+    over every setting (admin-phone.js); field names and what is sent stay
+    exactly as they are. -#}
+<form method="post" data-dirty-watch data-phone-sections="booth-profile" id="bpForm" data-section-card=".bp-card"
+      data-section-head="h2" data-section-search data-section-field=".form-group, .bp-checks > label, .bp-row > div, .bp-colors > label">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="bp-grid">
+{% macro asset_picker(field, kinds, selected) %}
+    <div class="bp-assets">
+    {% for a in assets if a.kind in kinds %}
+      <label class="bp-asset"><input type="checkbox" name="{{ field }}" value="{{ a.file }}" {% if a.file in selected %}checked{% endif %}>
+        {% if a.file.endswith('.mp4') or a.file.endswith('.webm') %}<video src="{{ url_for('admin_booth.asset_preview', name=a.file) }}" muted></video>
+        {% elif a.file.endswith('.json') %}<span style="top:0;bottom:auto;background:none;color:#333">JSON</span>
+        {% else %}<img src="{{ url_for('admin_booth.asset_preview', name=a.file) }}" loading="lazy" alt="">{% endif %}
+        <span>{{ a.name }}</span></label>
+    {% else %}<p style="grid-column:1/-1;margin:0;font-size:.85rem;color:var(--color-text-muted)">Noch nichts hochgeladen — unter „Medien &amp; Vorlagen“.</p>{% endfor %}
+    </div>
+  {% endmacro %}
+
+
+  <section class="bp-card">
+    <h2>Event</h2>
+    <p>Wohin die Aufnahmen gehen. Der QR-Code auf Bildschirm und Druck zeigt auf dieses Event.</p>
+    <div class="form-group">
+      <select name="event_id" class="form-control">
+        <option value="">— kein Event —</option>
+        {% for ev in events %}<option value="{{ ev.id }}" {% if device.event_id == ev.id %}selected{% endif %}>{{ ev.name }} ({{ ev.slug }})</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">QR-Code stattdessen auf eine fremde Adresse (ohne eigenen Server, z. B. Picdrop)</label>
+      <input class="form-control" name="qr_url_template" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ p.qr_url_template }}" placeholder="leer lassen = eigene Galerie (empfohlen)">
+      <small style="color:var(--color-text-muted)"><code>{uid}</code> wird durch die Nummer der Aufnahme ersetzt.</small></div>
+    <p style="margin:0">Tipp: Besser das QR-Ziel im Event umstellen (Galerie, Weiterleitung, Statusseite). Dann bleiben gedruckte Codes gültig.</p>
+  </section>
+
+  {% if heute %}
+  {% from "admin/_booth_counters.html" import zaehler_karte with context %}
+  {{ zaehler_karte(heute, t('counters.today'), 'booth-heute', t('counters.today_sub', day=heute.day, event=heute.event_slug or '–')) }}
+  {% endif %}
+
+  <section class="bp-card">
+    <h2>Zustand</h2>
+    <dl class="bp-status">
+      {% set s = status or {} %}
+      <dt>Letzter Kontakt</dt><dd>{{ device.last_heartbeat_at or 'noch nie' }}</dd>
+      {#- The box reports key words ("mock", "ready"); the operator reads German. A value
+          that is not listed (a newer box) is shown as it came, never dropped. -#}
+      {% set cam_names = {'auto': 'automatisch', 'edsdk': 'Canon (USB)', 'ccapi': 'Canon (WLAN)',
+                          'digicamcontrol': 'digiCamControl', 'gphoto2': 'gPhoto2', 'folder': 'Ordner',
+                          'webcam': 'Webcam', 'mock': 'Testkamera'} %}
+      {% set cam_states = {'starting': 'startet', 'ready': 'bereit', 'reconnecting': 'verbindet neu',
+                           'error': 'Fehler', 'off': 'aus'} %}
+      {% set printer_states = {'ready': 'bereit', 'printing': 'druckt', 'offline': 'nicht erreichbar',
+                               'error': 'Fehler', 'unknown': 'unbekannt', 'none': 'kein Drucker',
+                               'idle': 'bereit', 'stopped': 'angehalten', 'paused': 'pausiert'} %}
+      <dt>Kamera</dt><dd>{{ cam_names.get(s.camera_backend, s.camera_backend) or '–' }} · {{ cam_states.get(s.camera_state, s.camera_state) or '–' }}</dd>
+      {% if s.camera_battery %}<dt>Kamera-Akku</dt><dd>{{ 'Netzteil' if s.camera_battery == 'ac' else s.camera_battery ~ ' %' }}</dd>{% endif %}
+      {% set no_printer = s.printer_status in (none, '', 'none') and s.printer_name in (none, '', 'none') %}
+      <dt>Drucker</dt><dd>{% if no_printer %}kein Drucker{% else %}{{ (s.printer_name if s.printer_name != 'none' else '') or '–' }} · {{ printer_states.get(s.printer_status, s.printer_status) or '–' }}
+        {%- if s.printers_total and s.printers_total > 1 %} · {{ s.printers_ready or 0 }}/{{ s.printers_total }} bereit{% endif %}
+        · {{ s.prints_today or 0 }} gedruckt{% endif %}</dd>
+      <dt>Druckaufträge</dt><dd>{{ s.prints_pending or 0 }} offen
+        {%- if s.prints_held %} · <b style="color:#b91c1c">{{ s.prints_held }} Druck(e) warten</b>{% endif %}
+        {%- if s.printer_hint %} · {{ s.printer_hint }}{% endif %}
+        {%- if s.prints_held %}
+        {#- Not a <form> of its own: this sits inside the profile form, and browsers drop a nested form.
+            The button belongs to the empty form #bp-job-form further down. -#}
+        <button form="bp-job-form" name="type" value="release_prints" class="btn btn--secondary" style="margin-left:8px;padding:2px 10px;font-size:.8rem">Wartende Drucke erneut</button>
+        {% endif %}</dd>
+      {% if s.sheets %}
+      <dt>Papier</dt>
+      <dd>
+        {% for blatt in s.sheets %}
+          <div style="margin-bottom:4px">
+            Drucker {{ blatt.slot }}{% if blatt.label %} ({{ blatt.label }}){% endif %}:
+            {% if blatt.quelle == 'gemeldet' %}{{ blatt.prozent }} % Vorrat <span style="color:var(--color-text-muted)">(vom Drucker gemeldet)</span>
+            {% elif blatt.quelle == 'gezählt' and blatt.fach and blatt.farbband %}Papierfach {{ blatt.fach.rest }} von {{ blatt.fach.gesamt }} · Farbband {{ blatt.farbband.rest }} von {{ blatt.farbband.gesamt }} (gezählt) <span style="color:var(--color-text-muted)">(seit dem letzten Wechsel)</span>
+            {% elif blatt.quelle == 'gezählt' %}noch etwa {{ blatt.rest }} von {{ blatt.gesamt }} Blatt <span style="color:var(--color-text-muted)">(mitgezählt seit dem letzten Wechsel)</span>
+            {% else %}<span style="color:var(--color-text-muted)">unbekannt — dieser Drucker meldet nichts, und es ist keine Kassettengröße eingetragen</span>{% endif %}
+            {%- if blatt.leer %} · <b style="color:#b91c1c">leer</b>{% endif %}
+            <button form="bp-job-form" name="type" value="paper_changed" class="btn btn--secondary" style="margin-left:6px;padding:2px 10px;font-size:.78rem">Papier nachgelegt</button>
+            {%- if blatt.farbband %}
+            <button form="bp-job-form" name="type" value="ribbon_changed" class="btn btn--secondary" style="margin-left:6px;padding:2px 10px;font-size:.78rem">Farbband gewechselt</button>
+            {%- endif %}
+          </div>
+        {% endfor %}
+      </dd>
+      {% elif s.sheets_left %}<dt>Kassette</dt><dd>noch etwa {{ s.sheets_left }} Blätter</dd>{% endif %}
+      <dt>Warteschlange</dt><dd>{{ s.queue_pending or 0 }} offen · {{ s.queue_failed or 0 }} fehlgeschlagen</dd>
+      <dt>Speicher</dt><dd>{{ s.disk_free_gb or '–' }} GB frei</dd>
+      <dt>Profil an Box</dt><dd>v{{ s.profile_version or '–' }}</dd>
+    </dl>
+  </section>
+
+  <section class="bp-card">
+    <h2>Modi &amp; Formate</h2>
+    <p>Was Gäste am Startbildschirm wählen können. Ein einziger Modus und ein Format = ein Tipp und los.</p>
+    <div class="bp-checks">{% for m, label in modes %}<label><input type="checkbox" name="mode_{{ m }}" {% if m in p.modes %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+    <label class="form-label">Formate für Einzelfotos</label>
+    <div class="bp-checks">{% for f, label in formats %}<label><input type="checkbox" name="format_{{ f }}" {% if f in p.formats %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Vorauswahl</label>
+        <select name="default_format" class="form-control">{% for f, label in formats %}<option value="{{ f }}" {% if p.default_format == f %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Sprachen (erste = Standard)</label><input class="form-control" name="languages" value="{{ p.languages|join(',') }}"></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="retake" {% if p.retake %}checked{% endif %}> „Nochmal“ erlauben</label>
+      <label><input type="checkbox" name="allow_delete" {% if p.allow_delete %}checked{% endif %}> Gäste dürfen ihre Aufnahme löschen</label>
+      <label><input type="checkbox" name="gallery_on_booth" {% if p.gallery_on_booth %}checked{% endif %}> Galerie an der Box</label>
+      <label><input type="checkbox" name="disclaimer_enabled" {% if p.disclaimer.enabled %}checked{% endif %}> Einverständnis-Hinweis</label>
+    </div>
+    <label class="form-label" style="margin-top:16px;display:block">Wohin mit dem Foto? (Wahl je Durchgang)</label>
+    <p style="margin:0 0 8px;font-size:.85rem;color:var(--color-text-muted)">Vor der Aufnahme wählen die Gäste „In die Galerie“ oder „Nur drucken“. „Nur drucken“ bleibt auf der Box. <code>{tage}</code> im Text wird durch die Aufbewahrungsfrist des Events ersetzt (ohne Event gilt die Zahl hier).</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="consent_enabled" {% if p.consent.enabled %}checked{% endif %}> Gäste wählen vor der Aufnahme</label>
+      <label><input type="checkbox" name="consent_print_only" {% if p.consent.print_only %}checked{% endif %}> „Nur drucken“ anbieten</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Galerie gelöscht nach (Tage, ohne Event)</label>
+        <input type="number" class="form-control" name="consent_days" value="{{ p.consent.days }}" min="1" max="3650"></div>
+      <div class="form-group"><label class="form-label">Hinweis unter den Knöpfen (de)</label>
+        <input class="form-control" name="consent_note_de" value="{{ p.consent.note.de }}" maxlength="400"></div>
+      <div class="form-group"><label class="form-label">Hinweis unter den Knöpfen (en)</label>
+        <input class="form-control" name="consent_note_en" value="{{ p.consent.note.en }}" maxlength="400"></div>
+    </div>
+    <label class="form-label" style="margin-top:16px;display:block">Gruß vom Gast auf dem Abzug</label>
+    <p style="margin:0 0 8px;font-size:.85rem;color:var(--color-text-muted)">Die Box fragt vor der Aufnahme nach einem kurzen Text, zum Beispiel „Anna &amp; Ben, 12.7.“, und setzt ihn dorthin, wo sonst die Unterzeile des Anlasses steht. Gefragt wird vorher, weil danach alle aufs Bild warten.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="gt_enabled" {% if p.guest_text.enabled %}checked{% endif %}> Nach einem Gruß fragen</label>
+      <label><input type="checkbox" name="gt_required" {% if p.guest_text.required %}checked{% endif %}> Pflicht (ohne geht es nicht weiter)</label>
+      <label><input type="checkbox" name="gt_mode_photo" {% if 'photo' in p.guest_text.modes %}checked{% endif %}> bei Foto</label>
+      <label><input type="checkbox" name="gt_mode_collage" {% if 'collage' in p.guest_text.modes %}checked{% endif %}> bei Collage</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Höchstens … Zeichen</label>
+        <input type="number" class="form-control" name="gt_max_len" min="10" max="120" value="{{ p.guest_text.max_len }}">
+        <small style="color:var(--color-text-muted)">Mehr ist auf einem Abzug nicht lesbar. Der Wortlaut der Frage steht unter
+          <a href="#texte">Texte</a>.</small></div>
+    </div>
+
+    <label class="form-label" style="margin-top:16px;display:block">Zeichnen aufs Bild</label>
+    <p style="margin:0 0 8px;font-size:.85rem;color:var(--color-text-muted)">Am Ergebnis erscheint „Zeichnen“: Gäste malen oder unterschreiben mit dem Finger auf ihrem Bild. Druck, Bildschirm und Galerie bekommen die bemalte Fassung, die Aufnahme selbst bleibt unverändert; nicht bei GIF und Video.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="draw_enabled" {% if p.draw.enabled %}checked{% endif %}> Zeichnen anbieten</label>
+      <label><input type="checkbox" name="draw_mode_photo" {% if 'photo' in p.draw.modes %}checked{% endif %}> bei Foto</label>
+      <label><input type="checkbox" name="draw_mode_collage" {% if 'collage' in p.draw.modes %}checked{% endif %}> bei Collage</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Farben zur Wahl</label>
+        <input class="form-control" name="draw_colors" maxlength="120" value="{{ p.draw.colors | join(', ') }}">
+        <small style="color:var(--color-text-muted)">Als #rrggbb, mit Komma getrennt, höchstens acht. Weiß und Schwarz
+          sollten dabei sein: Eins von beiden steht auf jedem Foto.</small></div>
+    </div>
+
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Durchsehen: Sekunden bis es weitergeht</label>
+        <input class="form-control" type="number" name="review_seconds" min="3" max="60" value="{{ p.review_seconds }}">
+        <small style="color:var(--color-text-muted)">Nach einer Serie zeigt die Box alle Aufnahmen. Ein Tippen wiederholt genau eine.
+          Ohne Zutun geht es nach dieser Zeit weiter. Braucht „Nochmal“.</small></div>
+    </div>
+      <label class="form-label" style="margin-top:16px;display:block">Was der Gast selbst wählen darf</label>
+    <p style="margin:0 0 8px;font-size:.85rem;color:var(--color-text-muted)">Aus heißt: die Box nimmt die Voreinstellung und überspringt den Schritt.
+      Steht ohnehin nur eine Möglichkeit bereit, fragt die Box nie.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="choice_format" {% if p.guest_choice.format %}checked{% endif %}> Format (Hoch, Story, Quer …)</label>
+      <label><input type="checkbox" name="choice_look" {% if p.guest_choice.look %}checked{% endif %}> Filter nach der Aufnahme</label>
+      <label><input type="checkbox" name="choice_template" {% if p.guest_choice.collage_template %}checked{% endif %}> Collage-Vorlage</label>
+      <label><input type="checkbox" name="choice_background" {% if p.guest_choice.background %}checked{% endif %}> Collage-Hintergrund</label>
+    </div>
+</section>
+
+  <section class="bp-card">
+    <h2>Countdown &amp; Ablauf</h2>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Erstes Foto (s)</label><input type="number" class="form-control" name="cd_first" value="{{ p.countdown.first }}" min="1" max="20"></div>
+      <div class="form-group"><label class="form-label">Weitere Fotos (s)</label><input type="number" class="form-control" name="cd_next" value="{{ p.countdown.next }}" min="1" max="20"></div>
+      <div class="form-group"><label class="form-label">Darstellung</label>
+        <select name="cd_style" class="form-control"><option value="overlay" {% if p.countdown.style != 'fullscreen' %}selected{% endif %}>über dem Live-Bild</option><option value="fullscreen" {% if p.countdown.style == 'fullscreen' %}selected{% endif %}>eigener Bildschirm</option></select></div>
+      <div class="form-group"><label class="form-label">Zahl</label>
+        <select name="cd_display" class="form-control"><option value="number" {% if p.countdown.display != 'ring' %}selected{% endif %}>nur die Zahl</option><option value="ring" {% if p.countdown.display == 'ring' %}selected{% endif %}>Zahl mit ablaufendem Ring</option></select></div>
+      <div class="form-group"><label class="form-label">Größe</label>
+        <select name="cd_size" class="form-control">{% for v, l in [('m','mittel'),('l','groß'),('xl','sehr groß')] %}<option value="{{ v }}" {% if (p.countdown.size or 'l') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Farbe von Zahl und Ring</label>
+        <input class="form-control" name="cd_color" value="{{ p.countdown.color or '' }}" placeholder="leer = Hauptfarbe" pattern="#[0-9a-fA-F]{6}">
+        <small style="color:var(--color-text-muted)">Leer: Standardfarbe der Zahl, beim Ring die Hauptfarbe aus „Aussehen“.</small></div>
+      <div class="form-group"><label class="form-label">Live-Bild</label>
+        <select name="cd_live_view" class="form-control"><option value="fullscreen" {% if p.countdown.live_view not in ('frame', 'off') %}selected{% endif %}>Vollbild</option><option value="frame" {% if p.countdown.live_view == 'frame' %}selected{% endif %}>im Format-Rahmen</option><option value="off" {% if p.countdown.live_view == 'off' %}selected{% endif %}>aus – beim Countdown kein Live-Bild</option></select></div>
+      <div class="form-group"><label class="form-label">Vorschau je Foto (s)</label><input type="number" step="0.5" class="form-control" name="cd_review" value="{{ p.countdown.review_seconds }}"></div>
+      <div class="form-group"><label class="form-label">„Bitte lächeln"-Bild</label>
+        <select name="cd_smile_media" class="form-control">
+          <option value="">kein Bild</option>
+          {% for a in assets if a.kind in ('media', 'background', 'frame') %}
+          <option value="{{ a.file }}" {% if p.countdown.smile_media == a.file %}selected{% endif %}>{{ a.file }}</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">Erscheint genau vor dem Auslösen. Ohne es schauen Gäste beim letzten
+          Zählschritt nach unten aufs Display statt in die Kamera.</small></div>
+      <div class="form-group"><label class="form-label">… oder Text / Smiley</label>
+        <input type="text" class="form-control" name="cd_smile_text" maxlength="40" value="{{ p.countdown.smile_text or '' }}" placeholder="Bitte lächeln!">
+        <small style="color:var(--color-text-muted)">Ohne Bild erscheint dieser Text groß vor dem Auslösen. Leuchtet der Bildschirm
+          beim Auslösen, bleibt er in dunkler Schrift auf der weißen Fläche stehen.</small></div>
+      <div class="form-group"><label><input type="checkbox" name="cd_poses" {% if p.countdown.poses %}checked{% endif %}> Posen-Ansage zwischen den Aufnahmen</label>
+        <small style="color:var(--color-text-muted)">Bei Collage und GIF steht ab der zweiten Aufnahme eine Zeile wie „Jetzt alle winken!“ auf dem Bildschirm.
+          Die fünf Zeilen lassen sich unter „Texte“ ändern (Posen-Ansage 1 bis 5). Kein Ton nötig.</small></div>
+      <div class="form-group"><label class="form-label">… wie lange (ms)</label>
+        <input type="number" step="50" class="form-control" name="cd_smile_ms" min="200" max="3000" value="{{ p.countdown.smile_ms or 700 }}"></div>
+      <div class="form-group"><label class="form-label">Ergebnis sichtbar (s)</label><input type="number" class="form-control" name="result_seconds" value="{{ p.result_seconds }}"></div>
+      <div class="form-group"><label class="form-label">Zurück zum Start nach (s)</label><input type="number" class="form-control" name="idle_seconds" value="{{ p.idle_seconds }}"></div>
+    </div>
+    <div class="bp-checks"><label><input type="checkbox" name="cd_sound" {% if p.countdown.sound %}checked{% endif %}> Töne</label>
+      <label><input type="checkbox" name="cd_crop_guide" {% if p.countdown.crop_guide != false %}checked{% endif %}> Bildausschnitt im Vollbild markieren</label>
+      <label><input type="checkbox" name="cd_cancel" {% if p.countdown.cancel %}checked{% endif %}> Abbrechen während Countdown und Aufnahme (Knopf oben links)</label></div>
+    <small style="color:var(--color-text-muted)">Wer den falschen Modus getippt hat, kommt so heraus, statt die ganze Serie durchzustehen.
+      Der Durchgang wird verworfen, seine Dateien gelöscht — auch im datensparsamen Betrieb.</small>
+  </section>
+
+  <section class="bp-card">
+    <h2>Boomerang &amp; Video</h2>
+    <p><b>Unscharfer Rahmen</b>: das ganze Querbild mittig im Hochformat, dahinter unscharf — niemand wird abgeschnitten (für Gruppen). <b>Ausschnitt</b>: füllt das Bild, nah und groß (1–3 Personen); beim Boomerang voreingestellt.</p>
+    {% for clip in ['boomerang', 'video'] %}{% set c = p[clip] %}
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">{{ clip|capitalize }}: Format</label>
+        <select name="{{ clip }}_format" class="form-control">{% for f in ['9:16','4:5','1:1','16:9'] %}<option {% if c.format == f %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Layout</label>
+        {% set clip_layout = c.layout if c.layout in ('blur', 'crop') else ('crop' if clip == 'boomerang' else 'blur') %}<select name="{{ clip }}_layout" class="form-control"><option value="blur" {% if clip_layout == 'blur' %}selected{% endif %}>Unscharfer Rahmen</option><option value="crop" {% if clip_layout == 'crop' %}selected{% endif %}>Ausschnitt</option></select></div>
+      <div class="form-group"><label class="form-label">Aufnahmedauer (s)</label><input type="number" step="0.5" min="1" max="{{ 10 if clip == 'boomerang' else 60 }}" class="form-control" name="{{ clip }}_seconds" value="{{ c.seconds }}"></div>
+      <div class="form-group"><label class="form-label">Bilder/s</label><input type="number" class="form-control" name="{{ clip }}_fps" value="{{ c.fps }}"></div>
+      <div class="form-group"><label class="form-label">Auflösung</label>
+        <select name="{{ clip }}_scale" class="form-control">{% for v, l in scales %}<option value="{{ v }}" {% if (c.scale or 'native') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Quelle</label>
+        <select name="{{ clip }}_source" class="form-control"><option value="live" {% if (c.source or 'live') != 'camera' %}selected{% endif %}>Live-Bild (Standard)</option><option value="camera" {% if c.source == 'camera' %}selected{% endif %}>Film der Kamera (höhere Auflösung)</option></select></div>
+    </div>{% endfor %}
+    <small style="color:var(--color-text-muted)"><b>Film der Kamera</b>: Die Kamera filmt auf ihre SD-Karte, die Box macht daraus Boomerang oder Video in 1080×1920, ohne Ton. Braucht eine Kamera, die über USB filmen kann, und eine SD-Karte. Klappt es nicht, entsteht der Film aus dem Live-Bild.</small>
+    <div class="form-group"><label class="form-label">Boomerang-Wiederholungen</label><input type="number" class="form-control" name="boomerang_loops" value="{{ p.boomerang.loops }}" min="1" max="10"></div>
+    <div class="bp-checks"><label><input type="checkbox" name="boomerang_guest_choice" {% if p.boomerang.guest_choice %}checked{% endif %}> Gast wählt das Boomerang-Format auch, wenn die Formatwahl für Fotos aus ist</label></div>
+    <small style="color:var(--color-text-muted)">Der Gast wählt das Boomerang-Format wie beim Foto (Schalter „Format“ unter „Gast darf wählen“); vorausgewählt ist das Format oben. Ohne Wahl gilt immer das Format oben.</small>
+    <div class="bp-checks"><label><input type="checkbox" name="boomerang_print" {% if p.boomerang.print %}checked{% endif %}> Boomerang drucken: Bogen mit den Collage-Layouts</label></div>
+    <small style="color:var(--color-text-muted)">Gleichmäßig verteilte Bilder aus der Aufnahme füllen die Bildfelder eines Collage-Layouts (bei einem Feld das mittlere). Bei mehreren Layouts wählt der Gast vorher. Kontingent, QR-Code und Warteschlange wie bei der Collage.</small>
+  </section>
+
+  <section class="bp-card" id="rahmen">
+    <h2>Rahmen für Boomerang &amp; Video</h2>
+    <p>Der Film läuft im Fenster eines Rahmens: Hintergrund, Titel und Datum des Events drumherum. Das Format des Rahmens ist das Format des Films.
+      Eigene Rahmen unter <a href="{{ url_for('admin_booth.frames_list') }}">Medien &amp; Vorlagen → Rahmen</a>. Aus = der Film ohne Rahmen.</p>
+    {% for clip in ['boomerang', 'video'] %}{% set c = p[clip] %}
+    <fieldset class="bp-frames" style="border:1px solid var(--color-border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.8rem">
+      <legend style="padding:0 .3rem"><b>{{ 'Boomerang' if clip == 'boomerang' else 'Video' }}</b></legend>
+      <div class="bp-checks"><label><input type="checkbox" name="{{ clip }}_frames" {% if c.frames %}checked{% endif %}> Rahmen anbieten</label>
+        <label><input type="checkbox" name="{{ clip }}_frame_none" {% if c.frame_none is not sameas false %}checked{% endif %}> Auch „Ohne Rahmen“</label>
+        <label><input type="checkbox" name="{{ clip }}_frame_guest_choice" {% if c.frame_guest_choice is not sameas false %}checked{% endif %}> Gast wählt (aus: immer die Vorauswahl)</label></div>
+      <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.4rem 0">
+        {#- Carries the list of own frames even when there are none yet (the parser drops ""). -#}
+        <input type="hidden" name="{{ clip }}_frame_templates" value="">
+        {% for e in motion_offer.eigene + motion_offer.mitgeliefert %}{% if clip in e.modes %}
+        {% set own = e.kind == 'own' %}
+        <label style="display:flex;flex-direction:column;align-items:center;gap:.2rem;width:7.5rem;font-size:.85rem;text-align:center">
+          <img src="{{ url_for('admin_booth.frame_picture', ident=e.id) }}" alt="" loading="lazy" style="max-width:7rem;max-height:9rem;border-radius:4px;background:#222">
+          <span><input type="checkbox" name="{{ clip }}_frame_{{ 'templates' if own else 'builtins' }}" value="{{ e.id }}"
+            {% if (own and e.id in (c.frame_templates or [])) or (not own and (e.id in (c.frame_builtins or []) or (not c.frame_builtins and not c.frame_templates))) %}checked{% endif %}>
+            {{ e.name }}</span><small style="color:var(--color-text-muted)">{{ e.format }}{% if own %} · eigener{% endif %}</small>
+        </label>{% endif %}{% endfor %}
+      </div>
+      <div class="form-group"><label class="form-label">Vorausgewählt</label>
+        <select name="{{ clip }}_frame_default" class="form-control" style="max-width:20rem">
+          <option value="" {% if not c.frame_default %}selected{% endif %}>Der erste angebotene Rahmen</option>
+          <option value="none" {% if c.frame_default == 'none' %}selected{% endif %}>Ohne Rahmen</option>
+          {% for e in motion_offer.eigene + motion_offer.mitgeliefert %}{% if clip in e.modes %}<option value="{{ e.id }}" {% if c.frame_default == e.id %}selected{% endif %}>{{ e.name }} ({{ e.format }})</option>{% endif %}{% endfor %}
+        </select></div>
+    </fieldset>{% endfor %}
+    <small style="color:var(--color-text-muted)">Gibt es nur eine Möglichkeit, wird sie ohne Frage genommen. Legt das Event Rahmen fest (Event → Rahmen für Boomerang &amp; Video), gelten die des Events.</small>
+  </section>
+
+  {#- These were settable only at the booth, and the next sync put the
+      gallery's value back. The gallery is the one place for them now. -#}
+  <section class="bp-card">
+    <h2>Betrieb an der Box</h2>
+    <p>Aufräumen der Festplatte, Betriebsmeldungen und wie Fotos in die Bildfelder einer Collage kommen.</p>
+    <div class="form-group"><label class="form-label">Foto im Bildfeld einer Collage</label>
+      <select name="collage_fit" class="form-control">
+        <option value="auto" {% if (p.collage_fit or 'auto') == 'auto' %}selected{% endif %}>automatisch (passt die Lage: beschneiden, sonst ganz zeigen)</option>
+        <option value="beschneiden" {% if p.collage_fit == 'beschneiden' %}selected{% endif %}>immer beschneiden (füllt das Feld)</option>
+        <option value="einpassen" {% if p.collage_fit == 'einpassen' %}selected{% endif %}>immer ganz zeigen (Rand in Blattfarbe)</option>
+      </select></div>
+    <div class="bp-checks"><label><input type="checkbox" name="aufraeumen_enabled" {% if p.aufraeumen.enabled %}checked{% endif %}> Alte Aufnahmen an der Box löschen</label>
+      <label><input type="checkbox" name="aufraeumen_nur_bestaetigte" {% if p.aufraeumen.nur_bestaetigte %}checked{% endif %}> Nur, was die Galerie schon hat</label></div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Löschen nach … Tagen</label>
+        <input type="number" class="form-control" name="aufraeumen_nach_tagen" value="{{ p.aufraeumen.nach_tagen }}" min="1" max="365"></div>
+      <div class="form-group"><label class="form-label">Die letzten … Aufnahmen immer behalten</label>
+        <input type="number" class="form-control" name="aufraeumen_behalten_mindestens" value="{{ p.aufraeumen.behalten_mindestens }}" min="0" max="1000"></div>
+    </div>
+    {% set stufen = [('info', 'Hinweis'), ('warnung', 'Warnung'), ('kritisch', 'kritisch')] %}
+    <div class="bp-checks"><label><input type="checkbox" name="meldungen_box_enabled" {% if p.meldungen.box.enabled %}checked{% endif %}> Meldungen am Bildschirm der Box zeigen</label>
+      <label><input type="checkbox" name="meldungen_mail_enabled" {% if p.meldungen.mail.enabled %}checked{% endif %}> Meldungen per E-Mail schicken</label></div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Am Bildschirm ab Stufe</label>
+        <select name="meldungen_box_ab_stufe" class="form-control">{% for v, l in stufen %}<option value="{{ v }}" {% if p.meldungen.box.ab_stufe == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">E-Mail ab Stufe</label>
+        <select name="meldungen_mail_ab_stufe" class="form-control">{% for v, l in stufen %}<option value="{{ v }}" {% if p.meldungen.mail.ab_stufe == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">E-Mail an</label>
+        <input type="email" class="form-control" name="meldungen_mail_to" value="{{ p.meldungen.mail.to }}"></div>
+      <div class="form-group"><label class="form-label">Dieselbe Meldung erst nach … Minuten wieder</label>
+        <input type="number" class="form-control" name="meldungen_wiederholen_minuten" value="{{ p.meldungen.wiederholen_minuten }}" min="0" max="1440"></div>
+    </div>
+  </section>
+
+  <section class="bp-card">
+    <h2>Drucken</h2>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="print_enabled" {% if p.print.enabled %}checked{% endif %}> Drucken erlaubt</label>
+      <label><input type="checkbox" name="reprint_from_gallery" {% if p.print.reprint_from_gallery %}checked{% endif %}> Nachdrucken aus der Galerie an der Box erlauben</label>
+      <label><input type="checkbox" name="print_auto" {% if p.print.auto %}checked{% endif %}> automatisch 1× drucken</label>
+      <label><input type="checkbox" name="print_number_keys" {% if p.print.number_keys %}checked{% endif %}> Nachdruck per Zifferntaste 1–9</label>
+      <label><input type="checkbox" name="qr_on_print" {% if p.print.qr_on_print %}checked{% endif %}> QR-Code auf den Druck</label>
+      <label><input type="checkbox" name="qr_on_screen" {% if p.qr_on_screen %}checked{% endif %}> QR-Code am Bildschirm</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Max. Kopien je Druck</label><input type="number" class="form-control" name="copies_max" value="{{ p.print.copies_max }}" min="1" max="10"></div>
+      <div class="form-group"><label class="form-label">Max. Drucke je Aufnahme (0 = frei)</label><input type="number" class="form-control" name="limit_session" value="{{ p.print.limit_session }}"></div>
+      <div class="form-group"><label class="form-label">Max. Drucke je Event (0 = frei)</label><input type="number" class="form-control" name="limit_event" value="{{ p.print.limit_event }}"></div>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Sekunden je Druck</label>
+        <input type="number" class="form-control" name="seconds_per_print" value="{{ p.print.seconds_per_print }}" min="0" max="600">
+        <small style="color:var(--color-text-muted)">SELPHY CP1300: rund 47 s je Postkarte. Steht jemand in der Schlange, sagt die Box
+          dem Gast, wie lange es dauert.</small></div>
+      <div class="form-group"><label class="form-label">Blatt je Kassette (0 = keine Warnung)</label>
+        <input type="number" class="form-control" name="sheets_per_cassette" value="{{ p.print.sheets_per_cassette }}" min="0" max="2000">
+        <small style="color:var(--color-text-muted)">Der Drucker meldet keinen Vorrat. Die Box zählt mit, was sie gedruckt hat, und warnt
+          vor den letzten Blättern. Nach dem Wechsel den Zähler zurücksetzen.</small></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="print_queue_while_empty" {% if p.print.queue_while_empty %}checked{% endif %}> Drucke vormerken, wenn Papier oder Farbband fehlt</label>
+      <label><input type="checkbox" name="print_fit_to_paper" {% if p.print.fit_to_paper %}checked{% endif %}> Vorlage an das Papier des Druckers anpassen</label>
+    </div>
+    <small style="color:var(--color-text-muted)">Rechnet eine Vorlage derselben Form (etwa 15×23 auf Postkarte 10×15) auf das Papier des
+      ersten Druckers um. Braucht Druckermodell und Papiersorte in der Hardware-Karte.</small>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Höchstens so viele vorgemerkte Drucke</label>
+        <input type="number" class="form-control" name="print_queue_max" value="{{ p.print.queue_max }}" min="1" max="50"></div>
+      <div class="form-group"><label class="form-label">Vorgemerkte Drucke verfallen nach … Stunden</label>
+        <input type="number" class="form-control" name="print_queue_max_hours" value="{{ p.print.queue_max_hours }}" min="1" max="24">
+        <small style="color:var(--color-text-muted)">Aus: Fehlt Papier, lehnt die Box den Druck ab. An: Der Gast sieht
+          „Euer Druck ist vorgemerkt“, der Druck kommt, sobald nachgelegt ist. Darüber hinaus lehnt die Box ab und sagt warum.</small></div>
+    </div>
+    <label class="form-label">QR-Code auf der Druckkarte</label>
+    <p style="font-size:.85rem;color:var(--color-text-muted);margin:2px 0 8px">Größe und Ecke frei wählbar — der Code darf nicht auf Gesichtern liegen, und zu klein scannt kein Handy.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Größe (Pixel)</label><input type="number" class="form-control" name="print_qr_size" value="{{ p.print_qr.size }}" min="60" max="600"></div>
+      <div class="form-group"><label class="form-label">Ecke</label>
+        <select name="print_qr_position" class="form-control">{% for v, l in qr_corners %}<option value="{{ v }}" {% if p.print_qr.position == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Abstand zum Rand (Pixel)</label><input type="number" class="form-control" name="print_qr_margin" value="{{ p.print_qr.margin }}" min="0" max="400"></div>
+    </div>
+  </section>
+
+  <section class="bp-card">
+    <h2>GIF</h2>
+    <p>Mehrere Einzelfotos hintereinander, als Animation. Die Einzelbilder bleiben erhalten und können mitgeladen werden.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Anzahl Bilder</label><input type="number" class="form-control" name="gif_shots" value="{{ (p.gif or {}).shots or 6 }}" min="2" max="10"></div>
+      <div class="form-group"><label class="form-label">Abstand zwischen den Aufnahmen (s)</label><input type="number" step="0.5" class="form-control" name="gif_interval" value="{{ (p.gif or {}).interval or 1 }}"></div>
+      <div class="form-group"><label class="form-label">Anzeigedauer je Bild (ms) – kleiner ist schneller</label><input type="number" step="20" class="form-control" name="gif_frame_ms" value="{{ (p.gif or {}).frame_ms or 200 }}"></div>
+      <div class="form-group"><label class="form-label">Länge des Videos zum GIF (s, mindestens; 0 = drei Durchläufe)</label><input type="number" class="form-control" name="gif_video_seconds" value="{{ (p.gif or {}).video_seconds if (p.gif or {}).video_seconds is not none else 15 }}" min="0" max="60"></div>
+      <div class="form-group"><label class="form-label">Format</label>
+        <select name="gif_format" class="form-control">{% for fmtv, label in formats %}<option value="{{ fmtv }}" {% if (p.gif or {}).format == fmtv %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Auflösung</label>
+        <select name="gif_scale" class="form-control">{% for v, l in scales %}<option value="{{ v }}" {% if ((p.gif or {}).scale or 'native') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="gif_pingpong" {% if (p.gif or {}).pingpong %}checked{% endif %}> Hin und zurück abspielen</label>
+      <label><input type="checkbox" name="gif_mp4" {% if (p.gif or {}).also_mp4 %}checked{% endif %}> zusätzlich als MP4 speichern</label>
+      <label><input type="checkbox" name="gif_from_collage" {% if (p.gif or {}).from_collage %}checked{% endif %}> aus Collagen zusätzlich ein GIF erzeugen</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">GIF aus Collage ab … Bildern</label>
+        <input type="number" class="form-control" name="gif_from_collage_min" min="2" max="8"
+               value="{{ (p.gif or {}).from_collage_min or 4 }}">
+        <small style="color:var(--color-text-muted)">Aus denselben Aufnahmen — der Gast posiert einmal, bekommt den Streifen
+          zum Drucken und ein Filmchen fürs Telefon. In der Galerie an der Box trägt die Kachel dann das
+          Abspielzeichen, und ein Umschalter führt zurück zum gedruckten Bild.</small></div>
+      <div class="form-group"><label class="form-label">Druckvorlage für GIF-Durchgänge</label>
+        <select class="form-control" name="gif_print_template">
+          <option value="">eingebaut (passend zur Bildzahl)</option>
+          {% for a in assets if a.kind == 'template' %}
+          <option value="{{ a.file }}" {% if (p.gif or {}).print_template == a.file %}selected{% endif %}>{{ a.name }}</option>
+          {% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">Zum Beispiel eine Sechser-Vorlage aus der Vorlagen-Bibliothek.
+          Hat die Vorlage weniger Bildfelder als der GIF Bilder, werden sie gleichmäßig vom ersten bis zum
+          letzten ausgewählt.</small></div>
+    </div>
+
+    <h3 style="margin:22px 0 4px;font-size:1rem">Boomerang fürs Handy</h3>
+    <p style="margin:0 0 10px">Dasselbe GIF zusätzlich als Video mit eigenen Maßen, meist hochkant fürs Handy. „Ganzes Bild“ stellt die Aufnahme mittig in den Rahmen und legt sie vergrößert und unscharf dahinter, damit am Rand niemand wegfällt.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="gifboom_enabled" {% if ((p.gif or {}).boomerang or {}).enabled %}checked{% endif %}> Boomerang-Fassung erzeugen</label>
+      <label><input type="checkbox" name="gifboom_choice" {% if ((p.gif or {}).boomerang or {}).guest_choice %}checked{% endif %}> Gast darf am Bildschirm umschalten</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Maße</label>
+        <select name="gifboom_format" class="form-control">
+          {% for fmtv, label in formats %}<option value="{{ fmtv }}" {% if ((p.gif or {}).boomerang or {}).format == fmtv %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          <option value="16:9" {% if ((p.gif or {}).boomerang or {}).format == '16:9' %}selected{% endif %}>Quer 16:9</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Beim Formatwechsel</label>
+        <select name="gifboom_layout" class="form-control">
+          <option value="blur" {% if ((p.gif or {}).boomerang or {}).layout != 'crop' %}selected{% endif %}>ganzes Bild, unscharf dahinter</option>
+          <option value="crop" {% if ((p.gif or {}).boomerang or {}).layout == 'crop' %}selected{% endif %}>zuschneiden (näher dran, schneidet Ränder ab)</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Bilder je Sekunde</label>
+        <input type="number" class="form-control" name="gifboom_fps" min="5" max="60"
+               value="{{ ((p.gif or {}).boomerang or {}).fps or 15 }}"></div>
+      <div class="form-group"><label class="form-label">Durchläufe</label>
+        <input type="number" class="form-control" name="gifboom_loops" min="1" max="10"
+               value="{{ ((p.gif or {}).boomerang or {}).loops or 3 }}">
+        <small style="color:var(--color-text-muted)">Standzeit je Bild kommt vom GIF oben. Vier Aufnahmen, 0,4 s, drei
+          Durchläufe ergeben rund sieben Sekunden.</small></div>
+    </div>
+  </section>
+
+  <section class="bp-card">
+    <h2>Kamera-Belichtung</h2>
+    <p>Wird beim nächsten Kontakt an der Kamera gesetzt. Leer = was an der Kamera eingestellt ist. Modusrad auf M, damit alles greift.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">ISO</label>
+        <select name="cam_iso" class="form-control"><option value="">unverändert</option>{% for v in ['auto','100','200','400','800','1600','3200','6400'] %}<option {% if p.camera and p.camera.iso == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Blende (f/)</label>
+        <select name="cam_aperture" class="form-control"><option value="">unverändert</option>{% for v in ['1.8','2','2.8','3.5','4','5','5.6','6.3','7.1','8','11'] %}<option {% if p.camera and p.camera.aperture == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Zeit</label>
+        <select name="cam_shutter" class="form-control"><option value="">unverändert</option>{% for v in ['1/30','1/60','1/100','1/125','1/160','1/200','1/250'] %}<option {% if p.camera and p.camera.shutter == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Weißabgleich</label>
+        <select name="cam_wb" class="form-control"><option value="">unverändert</option>{% for v, l in [('auto','Automatisch'),('daylight','Tageslicht'),('cloudy','Bewölkt'),('shade','Schatten'),('tungsten','Kunstlicht'),('fluorescent','Leuchtstoff'),('flash','Blitz')] %}<option value="{{ v }}" {% if p.camera and p.camera.wb == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    </div>
+    <h3 style="font-size:1rem;margin:1rem 0 .25rem">Live-Bild mit Blitz</h3>
+    <p style="font-size:.85rem;color:var(--color-text-muted)">Nur mit Aufsteckblitz: Das Live-Bild bekommt eigene, hellere Werte, die Box stellt sie vor dem Auslösen wieder zurück. „auto“ hebt erst die ISO, dann die Zeit, bis das Live-Bild hell genug ist; leer = wie bei der Aufnahme.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">ISO im Live-Bild</label>
+        <select name="cam_preview_iso" class="form-control">{% for v in preview_iso %}<option {% if (p.camera.preview_iso or 'auto') == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Blende im Live-Bild (f/)</label>
+        <select name="cam_preview_aperture" class="form-control"><option value="">wie Aufnahme</option>{% for v in preview_aperture %}<option {% if p.camera.preview_aperture == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Zeit im Live-Bild</label>
+        <select name="cam_preview_shutter" class="form-control"><option value="">wie Aufnahme</option>{% for v in preview_shutter %}<option {% if p.camera.preview_shutter == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+    </div>
+    <p style="font-size:.85rem;color:var(--color-text-muted)">Wie weit „auto“ geht: erst die ISO bis zur Obergrenze, dann (wenn „Zeit im Live-Bild“ leer ist) die Zeit bis zur längsten. Reicht beides nicht, hellt die Box das Live-Bild zusätzlich auf. Aufnahmen bleiben unberührt.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Höchste ISO im Live-Bild</label>
+        <select name="cam_preview_iso_max" class="form-control">{% for v in preview_iso_max %}<option {% if (p.camera.preview_iso_max or '12800') == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Längste Zeit im Live-Bild</label>
+        <select name="cam_preview_shutter_min" class="form-control">{% for v in preview_shutter_min %}<option {% if (p.camera.preview_shutter_min or '1/30') == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+    </div>
+    {% if status and status.camera_backend %}<p style="font-size:.85rem;color:var(--color-text-muted);margin:0">Anschluss an der Box: {{ status.camera_backend }}</p>{% endif %}
+  </section>
+
+  <section class="bp-card">
+    <h2>Looks</h2>
+    <p>Gäste wählen nach der Aufnahme. Ohne KI, gerechnet auf der Box.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Wer wählt</label>
+        <select name="looks_mode" class="form-control">
+          {% for v, l in [('ask','der Gast wählt'),('auto','die Box nimmt immer denselben'),('off','kein Filter')] %}
+          <option value="{{ v }}" {% if (p.looks_mode or 'ask') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">„Kein Filter" heißt: Das Bild bleibt, wie es aus der Kamera kam — und der Gast
+          bekommt den Auswahlstreifen gar nicht erst zu sehen.</small></div>
+      <div class="form-group"><label class="form-label">Höchstens … Filter zeigen</label>
+        <input type="number" class="form-control" name="looks_max" min="0" max="24" value="{{ p.looks_max or 0 }}">
+        <small style="color:var(--color-text-muted)">0 = alle. Auf einer Feier mit Schlange sind drei besser als zwölf.</small></div>
+      <div class="form-group"><label class="form-label">Fester Filter (bei „immer derselbe")</label>
+        <select name="looks_auto" class="form-control">
+          {% for l, label in looks %}<option value="{{ l }}" {% if (p.looks_auto or 'original') == l %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="bp-checks">{% for l, label in looks %}<label><input type="checkbox" name="look_{{ l }}" {% if l in p.looks %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+    <div class="bp-checks"><label><input type="checkbox" name="upload_originals" {% if p.upload_originals %}checked{% endif %}> Bilder zusätzlich ohne Rahmen hochladen</label></div>
+    <small style="color:var(--color-text-muted)">Jedes Bild kommt dann auch so in die Galerie, wie die Kamera es aufgenommen hat. Gäste sehen unter dem Bild „Mit Rahmen“ und „Ohne Rahmen“.</small>
+  </section>
+
+  <section class="bp-card">
+    <h2>LUT-Filter</h2>
+    <p>Echte 3D-LUTs (<code>.cube</code>) — dieselbe Technik wie in der Farbkorrektur im Schnittprogramm.
+       Mitgelieferte stehen schon da, eigene lädst du unter „Dateien für die Box" als Art „LUT-Filter" hoch.</p>
+    <div class="bp-checks"><label><input type="checkbox" name="luts_enabled" {% if p.luts.enabled %}checked{% endif %}> LUT-Filter den Gästen anbieten</label></div>
+    <div class="form-group"><label class="form-label">Angebotene LUTs (nichts angehakt = alle, die die Box hat)</label>
+      <div class="bp-checks">{% for l in lut_choices %}<label><input type="checkbox" name="lut_show" value="{{ l }}" {% if l in p.luts.show %}checked{% endif %}> {{ l.replace('-', ' ')|title }}</label>{% endfor %}</div></div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Stärke der Filter</label>
+        <input type="number" step="0.05" min="0" max="1" class="form-control" name="lut_strength" value="{{ p.luts.strength }}"></div>
+      <div class="form-group"><label class="form-label">Fest auf jedem Bild (Hauslook)</label>
+        <select name="lut_baked" class="form-control"><option value="">— keine —</option>
+          {% for l in lut_choices %}<option value="{{ l }}" {% if p.luts.baked == l %}selected{% endif %}>{{ l.replace('-', ' ')|title }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Stärke des Hauslooks</label>
+        <input type="number" step="0.05" min="0" max="1" class="form-control" name="lut_baked_strength" value="{{ p.luts.baked_strength }}"></div>
+    </div>
+  </section>
+
+  <section class="bp-card">
+    <h2>Greenscreen</h2>
+    <p>Freistellen über die Farbigkeit, ohne KI und ohne Cloud. Hintergründe sind Dateien der Art „Greenscreen-Hintergrund" oder Farben wie <code>#101014</code>.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="chroma_enabled" {% if p.chroma.enabled %}checked{% endif %}> Greenscreen aktiv</label>
+      <label><input type="checkbox" name="chroma_guest_choice" {% if p.chroma.guest_choice %}checked{% endif %}> Gast darf den Hintergrund wählen</label>
+    </div>
+    <div class="form-group"><label class="form-label">Hintergründe (Dateien)</label>
+      <select name="chroma_backgrounds" class="form-control" multiple size="4">
+        {% for a in assets if a.kind in ('scene', 'background') %}<option value="{{ a.file }}" {% if a.file in p.chroma.backgrounds %}selected{% endif %}>{{ a.name }}</option>{% endfor %}
+      </select></div>
+    <div class="form-group"><label class="form-label">Zusätzliche Farben, eine pro Zeile</label>
+      {% set colours = [] %}{% for b in p.chroma.backgrounds %}{% if b is string and b.startswith('#') %}{% set _ = colours.append(b) %}{% endif %}{% endfor %}<textarea class="form-control" name="chroma_colors" rows="2" placeholder="#101014">{{ colours | join('\n') }}</textarea></div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Keyfarbe</label>
+        <select name="chroma_color" class="form-control">{% for v, l in [('auto','automatisch erkennen'),('green','grün'),('blue','blau')] %}<option value="{{ v }}" {% if p.chroma.color == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Toleranz</label><input type="number" step="0.05" min="0.05" max="1" class="form-control" name="chroma_tolerance" value="{{ p.chroma.tolerance }}"></div>
+      <div class="form-group"><label class="form-label">Kantenweichheit</label><input type="number" step="0.01" min="0" max="0.5" class="form-control" name="chroma_softness" value="{{ p.chroma.softness }}"></div>
+      <div class="form-group"><label class="form-label">Farbsaum entfernen</label><input type="number" step="0.05" min="0" max="1" class="form-control" name="chroma_spill" value="{{ p.chroma.spill }}"></div>
+    </div>
+  </section>
+
+  <section class="bp-card">
+    <h2>E-Mail an der Box</h2>
+    <p>Gäste tippen ihre Adresse auf dem Touchscreen ein. Ist die Box offline, wartet die Mail in der Warteschlange und geht später raus.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="mail_enabled" {% if p.mail.enabled %}checked{% endif %}> E-Mail-Versand anbieten</label>
+      <label><input type="checkbox" name="mail_dry_run" {% if p.mail.dry_run %}checked{% endif %}> Testbetrieb (nichts wird wirklich versendet)</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">Wer verschickt</label>
+        <select name="mail_transport" class="form-control">
+          <option value="gallery" {% if p.mail.transport != 'smtp' %}selected{% endif %}>über die Galerie (empfohlen — kein Postfach auf der Box nötig)</option>
+          <option value="smtp" {% if p.mail.transport == 'smtp' %}selected{% endif %}>eigener SMTP-Server der Box (für Betrieb ohne Galerie)</option>
+        </select>
+        <small style="color:var(--color-text-muted)">Über die Galerie: Die Box schickt Adresse und Durchgang, die Galerie verschickt die Mail von ihrer Adresse. Das braucht am Veranstaltungsort keinen offenen SMTP-Port; der Postausgang steht unter Einstellungen → E-Mail.</small></div>
+      <div class="form-group"><label class="form-label">SMTP-Server</label><input class="form-control" name="mail_host" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ p.mail.host }}" placeholder="smtp.example.de"></div>
+      <div class="form-group"><label class="form-label">Port</label><input type="number" class="form-control" name="mail_port" value="{{ p.mail.port }}"></div>
+      <div class="form-group"><label class="form-label">Verschlüsselung</label>
+        <select name="mail_security" class="form-control">{% for v, l in [('starttls','STARTTLS'),('ssl','SSL'),('none','keine')] %}<option value="{{ v }}" {% if p.mail.security == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Benutzer</label><input class="form-control" name="mail_user" autocapitalize="off" spellcheck="false" value="{{ p.mail.user }}"></div>
+      <div class="form-group"><label class="form-label">Passwort</label><input type="password" class="form-control" name="mail_password" placeholder="{% if p.mail.password %}unverändert lassen{% else %}—{% endif %}"></div>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Absenderadresse</label><input class="form-control" name="mail_from_addr" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" value="{{ p.mail.from_addr }}"></div>
+      <div class="form-group"><label class="form-label">Absendername</label><input class="form-control" name="mail_from_name" value="{{ p.mail.from_name }}"></div>
+      <div class="form-group"><label class="form-label">Anhang</label>
+        <select name="mail_attach" class="form-control">{% for v, l in [('web','Webfassung (klein)'),('original','Original'),('none','nur Link')] %}<option value="{{ v }}" {% if p.mail.attach == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Betreff (<code>{event}</code> wird ersetzt)</label><input class="form-control" name="mail_subject" value="{{ p.mail.subject }}"></div>
+    <div class="form-group"><label class="form-label">Text (<code>{link}</code>, <code>{event}</code>)</label><textarea class="form-control" name="mail_body" rows="3">{{ p.mail.body }}</textarea></div>
+  </section>
+
+  <section class="bp-card">
+    <h2>Datensparsamer Betrieb</h2>
+    <p>Für Kita, Schule, Verein: Bild machen, drucken, löschen. Die Box <em>kann</em> in diesem Modus nichts übertragen, weder Upload noch Galerie, QR-Code oder E-Mail. Was nie das Gerät verlässt, muss später niemand löschen.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Betrieb</label>
+        <select name="privacy_mode" class="form-control">
+          <option value="normal" {% if p.privacy.mode != 'print_only' %}selected{% endif %}>normal (Galerie, QR, Sync)</option>
+          <option value="print_only" {% if p.privacy.mode == 'print_only' %}selected{% endif %}>nur drucken, dann löschen</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Löschen</label>
+        <select name="privacy_delete_after" class="form-control">
+          {% for v, l in [('print','direkt nach dem Druck'),('done','wenn der Gast fertig ist'),('seconds','nur nach Ablauf der Zeit')] %}
+          <option value="{{ v }}" {% if p.privacy.delete_after == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select></div>
+      <div class="form-group"><label class="form-label">Spätestens nach (Sekunden)</label>
+        <input type="number" min="10" max="3600" class="form-control" name="privacy_delete_seconds" value="{{ p.privacy.delete_seconds }}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Hinweis auf dem Startbildschirm</label>
+      <input class="form-control" name="privacy_notice" value="{{ p.privacy.notice }}"
+             placeholder="Leer = Standardtext („bleiben auf diesem Gerät, werden nach dem Drucken gelöscht“)"></div>
+    <p style="margin:0">Die Box überträgt in diesem Modus nichts ins Netz und speichert nichts über den Druck hinaus. Die Selbstdiagnose („Box prüfen“) meldet, wenn trotzdem eine Galerie oder ein Stick eingetragen ist.</p>
+  </section>
+
+  <section class="bp-card">
+    <h2>Mirror-Booth</h2>
+    <p>Steht die Box hinter einem halbdurchlässigen Spiegel, läuft die Oberfläche seitenverkehrt. Beschriftungen, Zahlen und der QR-Code werden automatisch zurückgedreht, damit alles lesbar und scannbar bleibt.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="mirror_horizontal" {% if p.mirror.horizontal %}checked{% endif %}> waagerecht spiegeln</label>
+      <label><input type="checkbox" name="mirror_vertical" {% if p.mirror.vertical %}checked{% endif %}> senkrecht spiegeln (Deckenmontage)</label>
+    </div>
+  </section>
+
+  <section class="bp-card">
+    <h2>QR-Code</h2>
+    <p>Auch ohne Galerie sinnvoll: Der QR kann auf eine beliebige Seite zeigen — die eigene Website, ein Gewinnspiel, den Picdrop-Ordner.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Ziel</label>
+        <select name="qr_mode" class="form-control">{% for v, l in [('auto','Galerie, sonst eigene Adresse'),('gallery','nur die eigene Galerie'),('custom','immer die eigene Adresse'),('off','keinen QR zeigen')] %}<option value="{{ v }}" {% if p.qr.mode == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Eigene Adresse</label>
+        <input class="form-control" name="qr_url" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ p.qr.url }}" placeholder="https://example.de/fotos">
+        <small style="color:var(--color-text-muted)"><code>{uid}</code> wird durch die Nummer der Aufnahme ersetzt, <code>{code}</code> durch den Code des Durchgangs und <code>{event}</code> durch die Kurzbezeichnung des Events.</small></div>
+    </div>
+    <div class="form-group"><label class="form-label">UTM-Parameter, die mitgehen</label>
+      <input class="form-control" name="qr_utm" value="{{ p.qr.utm }}" placeholder="utm_source=fotobox&amp;utm_medium=qr&amp;utm_campaign={event}"></div>
+  </section>
+
+  {% set w = p.wifi_share or {} %}
+  <section class="bp-card">
+    <h2>Download ohne Internet</h2>
+    <p>Ohne Internet am Veranstaltungsort stellst du einen WLAN-Router neben die Box. Der Ergebnisbildschirm zeigt dann zwei Codes: „1. WLAN beitreten“ und „2. Foto laden“.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="wifi_enabled" {% if w.enabled %}checked{% endif %}> Einschalten</label>
+      <label><input type="checkbox" name="wifi_hidden" {% if w.hidden %}checked{% endif %}> Verstecktes WLAN</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Wann</label>
+        <select name="wifi_mode" class="form-control">{% for v, l in [('auto','nur ohne Galerie-Verbindung'),('always','immer'),('off','nie')] %}<option value="{{ v }}" {% if (w.mode or 'auto') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">WLAN-Name (SSID)</label>
+        <input class="form-control" name="wifi_ssid" value="{{ w.ssid or '' }}" maxlength="32"></div>
+      <div class="form-group"><label class="form-label">Passwort (leer = offenes WLAN)</label>
+        <input class="form-control" name="wifi_password" value="{{ w.password or '' }}" maxlength="63" autocomplete="off"></div>
+      <div class="form-group"><label class="form-label">Verschlüsselung</label>
+        <select name="wifi_security" class="form-control">{% for v, l in [('WPA','WPA2/WPA3'),('WEP','WEP (alt)'),('nopass','offen')] %}<option value="{{ v }}" {% if (w.security or 'WPA') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Link gilt (Stunden)</label>
+        <input type="number" class="form-control" name="wifi_link_hours" min="1" max="168" value="{{ w.link_hours or 24 }}"></div>
+    </div>
+  </section>
+
+  <section class="bp-card">
+    <h2>Töne</h2>
+    <p>Auf einer lauten Feier hört niemand den Countdown auf dem Bildschirm. Leer = eingebauter Piepser; eigene Töne lädst du unter „Medien &amp; Vorlagen“ als Art „Ton“ hoch (MP3, WAV, OGG).</p>
+    <div class="bp-checks"><label><input type="checkbox" name="sounds_enabled" {% if p.sounds.enabled %}checked{% endif %}> Töne abspielen</label></div>
+    <div class="form-group"><label class="form-label">Lautstärke (0 bis 1)</label>
+      <input type="number" step="0.05" min="0" max="1" class="form-control" name="sounds_volume" value="{{ p.sounds.volume }}"></div>
+    <div class="bp-row">
+      {% for key, label in sound_keys %}
+      <div class="form-group"><label class="form-label">{{ label }}</label>
+        <select name="sound_{{ key }}" class="form-control"><option value="">— eingebauter Ton —</option>
+          {% for a in assets if a.kind == 'sound' %}<option value="{{ a.file }}" {% if p.sounds[key] == a.file %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1">
+    <h2>Bildschirmschoner</h2>
+    <p>Was die Box zeigt, wenn eine Weile niemand da war. Ganz abschaltbar — dann bleibt der Startbildschirm stehen.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="attract_enabled" {% if p.attract.enabled %}checked{% endif %}> Bildschirmschoner benutzen</label>
+      <label><input type="checkbox" name="attract_show_hint" {% if p.attract.show_hint %}checked{% endif %}> Hinweis zum Antippen einblenden</label>
+      <label><input type="checkbox" name="attract_mute" {% if p.attract.mute %}checked{% endif %}> Videos stumm abspielen</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Startet nach (s)</label>
+        <input type="number" class="form-control" name="attract_after" value="{{ p.attract.after_seconds }}" min="10" max="3600"></div>
+      <div class="form-group"><label class="form-label">Was läuft</label>
+        <select name="attract_source" class="form-control" id="attractSource">
+          {% for v, l in attract_sources %}<option value="{{ v }}" {% if p.attract.source == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Je Bild (s)</label>
+        <input type="number" class="form-control" name="attract_seconds" value="{{ p.attract.seconds_per_item }}" min="2" max="120"></div>
+      <div class="form-group"><label class="form-label">Hinweis</label>
+        <select name="attract_hint_style" class="form-control">
+          {% for v, l in attract_hints %}<option value="{{ v }}" {% if p.attract.hint_style == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Bildausschnitt</label>
+        <select name="attract_fit" class="form-control">
+          {% for v, l in attract_fits %}<option value="{{ v }}" {% if p.attract.fit == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Größe des Hinweises (%)</label>
+        <input type="number" class="form-control" name="attract_hint_size" value="{{ p.attract.hint_size or 100 }}" min="100" max="250" step="10">
+        <small style="color:var(--color-text-muted)">100 = Standardgröße. Den Text ändert ihr unter „Texte“ (attract.hint).</small></div>
+      <div class="form-group"><label class="form-label">Abdunkeln (%)</label>
+        <input type="number" class="form-control" name="attract_dim" value="{{ p.attract.dim }}" min="0" max="80">
+        <small style="color:var(--color-text-muted)">Damit der Hinweis auf hellen Bildern lesbar bleibt.</small></div>
+      <div class="form-group"><label class="form-label">Fläche</label>
+        <input type="color" class="form-control" name="attract_color" value="{{ p.attract.color }}" style="height:42px">
+        <small style="color:var(--color-text-muted)">Bei „nur Text“ und „einfarbige Fläche“.</small></div>
+      <div class="form-group"><label class="form-label">Schriftfarbe</label>
+        <input type="color" class="form-control" name="attract_text_color" value="{{ p.attract.text_color }}" style="height:42px"></div>
+    </div>
+    <div id="attractOwn" {% if p.attract.source not in ('own', 'text') %}hidden{% endif %}>
+      <label class="form-label" style="margin-top:14px;display:block">Eigene Auswahl für den Schoner (Bild, GIF oder Video)</label>
+      <p style="margin:0 0 8px;font-size:.85rem;color:var(--color-text-muted)">Bei „nur Text auf Fläche“ ist das der Hintergrund, über dem der Text liegt.
+        Nichts ausgewählt heißt: einfarbige Fläche.</p>
+      {{ asset_picker('attract_media', ['start', 'background', 'lock'], p.attract.media) }}
+    </div>
+    <p style="margin-top:12px;font-size:.85rem;color:var(--color-text-muted)">Die beiden Zeilen („Tipp mich an“, „Bildschirm berühren“) stehen im Abschnitt
+      <a href="#texte">Texte</a> unter „Hinweise und Fehler“ und lassen sich je Sprache ändern.</p>
+  </section>
+
+  <section class="bp-card">
+    <h2>Webhooks</h2>
+    <p>Die Box meldet Ereignisse an eine eigene Adresse — für einen Zähler auf der Eventseite oder einen Ablauf in n8n. Die Box ruft nur heraus, deshalb geht das auch hinter jedem Hotel-WLAN.</p>
+    <div class="bp-checks"><label><input type="checkbox" name="webhooks_enabled" {% if p.webhooks.enabled %}checked{% endif %}> Webhooks senden</label></div>
+    <div class="form-group"><label class="form-label">Adresse</label>
+      <input class="form-control" name="webhook_url" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ p.webhooks.url }}" placeholder="https://hooks.example.de/fotobox"></div>
+    <div class="form-group"><label class="form-label">Geheimnis (optional)</label>
+      <input type="password" class="form-control" name="webhook_secret" placeholder="{% if p.webhooks.secret %}unverändert lassen{% else %}—{% endif %}">
+      <p style="font-size:.85rem;color:var(--color-text-muted);margin:6px 0 0">Ist ein Geheimnis gesetzt, unterschreibt die Box jeden Aufruf per HMAC-SHA256 im Header <code>X-Photobox-Signature</code>. Das Geheimnis wird hier nie wieder angezeigt.</p></div>
+    <label class="form-label">Ereignisse</label>
+    <div class="bp-checks">{% for e, label in webhook_events %}<label><input type="checkbox" name="webhook_event_{{ e }}" {% if e in p.webhooks.events %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+  </section>
+
+  <section class="bp-card">
+    <h2>Auslösen von außen</h2>
+    <p>Ein Buzzer im WLAN oder ein Knopf am Empfang startet den Durchgang mit <code>POST /api/trigger</code> an der Box. Das Token ist das Einzige, was den Auslöser schützt — ohne gültiges Token antwortet die Box nicht.</p>
+    <div class="bp-checks"><label><input type="checkbox" name="http_trigger_enabled" {% if p.http_trigger.enabled %}checked{% endif %}> Auslösen über HTTP erlauben</label></div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Token</label>
+        <input type="password" class="form-control" name="http_trigger_token" placeholder="{% if p.http_trigger.token %}unverändert lassen{% else %}leer + aktiv = beim Speichern erzeugt{% endif %}"></div>
+      <div class="form-group"><label class="form-label">Was ausgelöst wird</label>
+        <select name="http_trigger_mode" class="form-control">{% for m, label in modes %}<option value="{{ m }}" {% if p.http_trigger.mode == m %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    </div>
+    <p style="font-size:.85rem;color:var(--color-text-muted);margin:0">Nur ein Modus, den diese Box auch anbietet. Ist das Feld leer und der Haken gesetzt, erzeugt der Server beim Speichern ein Token und zeigt es einmal an.</p>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1">
+    <h2>Rahmen &amp; Textzeilen</h2>
+    <p>Ein PNG über jedes Bild und bis zu drei Textzeilen, damit der Eventname auf jedem Foto steht. x, y und Größe sind Prozent; <code>{event_name}</code> und <code>{date}</code> füllt die Box beim Aufnehmen ein.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="frame_enabled" {% if p.frame.enabled %}checked{% endif %}> Rahmen und Texte verwenden</label>
+      <label><input type="checkbox" name="frame_on_photo" {% if p.frame.on_photo %}checked{% endif %}> auf dem Foto</label>
+      <label><input type="checkbox" name="frame_on_print" {% if p.frame.on_print %}checked{% endif %}> auf dem Druck</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Rahmen (PNG mit durchsichtiger Mitte)</label>
+        <select name="frame_overlay" class="form-control"><option value="">— keiner —</option>
+          {% for a in assets if a.kind in ('frame', 'overlay') %}<option value="{{ a.file }}" {% if p.frame.overlay == a.file %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Eigener Rahmen für den Druck (leer = derselbe)</label>
+        <select name="frame_print_overlay" class="form-control"><option value="">— keiner —</option>
+          {% for a in assets if a.kind in ('frame', 'overlay') %}<option value="{{ a.file }}" {% if p.frame.print_overlay == a.file %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+    </div>
+    {% set frame_texts = p.frame.texts or [] %}
+    {% for i in range(frame_lines) %}
+      {% set t = frame_texts[i] if frame_texts|length > i and frame_texts[i] is mapping else {} %}
+      <div class="form-group"><label class="form-label">Zeile {{ i + 1 }} (leer = keine Zeile)</label>
+        <input class="form-control" name="frame_text{{ i }}_value" value="{{ t.get('value', '') }}" placeholder="{{ '{event_name}' if i == 0 else '' }}"></div>
+      <div class="bp-row">
+        <div class="form-group"><label class="form-label">x (% der Breite)</label>
+          <input type="number" step="0.5" min="0" max="100" class="form-control" name="frame_text{{ i }}_x" value="{{ t.get('x', 50) }}"></div>
+        <div class="form-group"><label class="form-label">y (% der Höhe)</label>
+          <input type="number" step="0.5" min="0" max="100" class="form-control" name="frame_text{{ i }}_y" value="{{ t.get('y', 92) }}"></div>
+        <div class="form-group"><label class="form-label">Größe (% der kurzen Seite)</label>
+          <input type="number" step="0.5" min="1" max="40" class="form-control" name="frame_text{{ i }}_size" value="{{ t.get('size', 4) }}"></div>
+        <div class="form-group"><label class="form-label">Farbe</label>
+          <input type="color" class="form-control" name="frame_text{{ i }}_color" value="{{ t.get('color', '#ffffff') }}" style="height:42px"></div>
+        <div class="form-group"><label class="form-label">Ausrichtung</label>
+          <select name="frame_text{{ i }}_align" class="form-control">{% for v, l in frame_aligns %}<option value="{{ v }}" {% if t.get('align', 'center') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label class="form-label">Wo</label>
+          <select name="frame_text{{ i }}_target" class="form-control">{% for v, l in frame_targets %}<option value="{{ v }}" {% if t.get('target', 'both') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      </div>
+      <div class="bp-checks"><label><input type="checkbox" name="frame_text{{ i }}_bold" {% if t.get('bold', True) %}checked{% endif %}> fett</label></div>
+    {% endfor %}
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1" id="papier">
+    <h2>Papier und Format</h2>
+    <p>Fotodrucker können keine Streifen. Die Box druckt zwei Streifen nebeneinander auf ein 10 × 15-Blatt; geschnitten wird beim DNP per Treiber („2 inch cut“), sonst mit der Schere.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Papierformat</label>
+        <select name="paper" class="form-control" id="paperSelect">
+          {# Kennt die Box ihren Drucker, stehen oben nur die Formate, die er
+             wirklich kann. Sechs Formate bei einem SELPHY, der eines beherrscht,
+             sind keine Freiheit, sondern eine Falle. #}
+          {% if drucker_formate %}
+            <optgroup label="{{ drucker_name }} kann">
+              {% for v, l in papers if v in drucker_formate %}
+              <option value="{{ v }}" {% if p.print_layout.paper == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </optgroup>
+            <optgroup label="andere Formate">
+              {% for v, l in papers if v not in drucker_formate %}
+              <option value="{{ v }}" {% if p.print_layout.paper == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </optgroup>
+          {% else %}
+            {% for v, l in papers %}<option value="{{ v }}" {% if p.print_layout.paper == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+          {% endif %}
+        </select>
+        {% if drucker_formate and p.print_layout.paper not in drucker_formate %}
+        <small style="color:#b45309">Dieses Format steht nicht in der Liste des angeschlossenen Druckers
+          ({{ drucker_name }}). Gespeichert wird es trotzdem — am Abend kommt dann aber womöglich nichts heraus.</small>
+        {% endif %}</div>
+      <div class="form-group"><label class="form-label">Stück je Blatt</label>
+        <select name="per_sheet" class="form-control">
+          <option value="1" {% if p.print_layout.per_sheet != 2 %}selected{% endif %}>eins</option>
+          <option value="2" {% if p.print_layout.per_sheet == 2 %}selected{% endif %}>zwei nebeneinander (Streifen)</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Druckschärfen</label>
+        <select name="print_sharpen" class="form-control">
+          {% for v, l in [('off','aus'),('light','leicht'),('medium','mittel'),('strong','stark')] %}
+          <option value="{{ v }}" {% if (p.print.sharpen or 'light') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">Thermosublimation weicht Kanten auf. Ein Hauch Schärfe gleicht das aus —
+          zu viel sieht nach Handykamera aus.</small></div>
+      <div class="form-group"><label class="form-label">Rand (mm)</label>
+        <input type="number" step="0.5" class="form-control" name="print_margin" value="{{ p.print_layout.margin_mm }}" min="0" max="20"></div>
+      <div class="form-group"><label class="form-label">Auflösung (dpi)</label>
+        <input type="number" class="form-control" name="print_dpi" value="{{ p.print_layout.dpi }}" min="150" max="600" step="50"></div>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Einpassen</label>
+        <select name="print_fit" class="form-control">
+          {% for v, l in print_fits %}<option value="{{ v }}" {% if p.print_layout.fit == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Randfarbe</label>
+        <input type="color" class="form-control" name="print_bg" value="{{ p.print_layout.background }}" style="height:42px">
+        <small style="color:var(--color-text-muted)">Nur sichtbar bei „ganz sichtbar“ oder mit Rand.</small></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="rotate_to_fit" {% if p.print_layout.rotate_to_fit %}checked{% endif %}> Papier drehen, wenn das Bild hochkant ist</label>
+    </div>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1" id="blitz">
+    <h2>Aufsteckblitz</h2>
+    <p>Ein Blitz braucht nach jeder Auslösung Zeit zum Nachladen. Ohne Pause wird das zweite Bild einer Collage
+      dunkel, und das sieht man erst auf dem Druck. Die Box wartet deshalb zwischen den Aufnahmen.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="flash_enabled" {% if p.flash.enabled %}checked{% endif %}> Aufsteckblitz im Einsatz</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Ladezeit (s)</label>
+        <input type="number" step="0.5" class="form-control" name="flash_recycle" value="{{ p.flash.recycle_seconds }}" min="0" max="30">
+        <small style="color:var(--color-text-muted)">Bei voller Leistung und schwachen Akkus eher mehr. Die Ansicht des letzten Bildes zählt mit.</small></div>
+      <div class="form-group"><label class="form-label">Live-Bild aufhellen (%)</label>
+        <input type="number" class="form-control" name="flash_gain" value="{{ p.flash.preview_gain }}" min="0" max="100">
+        <small style="color:var(--color-text-muted)">Nur die Anzeige. In M zeigt die Kamera ein fast schwarzes Live-Bild, weil das Blitzlicht fehlt.</small>
+        <label style="display:block;margin-top:.35rem"><input type="checkbox" name="flash_gain_auto" {% if p.flash.preview_gain_auto %}checked{% endif %}> automatisch je Bild aufhellen (statt der Prozentzahl)</label></div>
+      <div class="form-group"><label class="form-label">Erwartete Betriebsart</label>
+        <select name="flash_mode" class="form-control">
+          {% for v, l in flash_modes %}<option value="{{ v }}" {% if p.flash.expected_mode == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <small style="color:var(--color-text-muted)">Die Selbstdiagnose meldet, wenn das Rad woanders steht. „Egal“ schaltet die Prüfung ab.</small></div>
+    </div>
+    <p style="font-size:.85rem;color:var(--color-text-muted)"><b>M</b> hält die Helligkeit den ganzen Abend gleich, der Blitz macht das Licht. <b>Av</b> lässt den Raum im Bild sichtbar, aber die Belichtungszeit wandert mit dem Umgebungslicht.</p>
+
+    <h3 style="margin:24px 0 4px">Bildschirm als Blitz</h3>
+    <p>Boxen ohne Blitzgerät haben nur das Panel: Beim Auslösen wird der ganze Bildschirm zur Leuchtfläche. Das Licht muss stehen, <i>bevor</i> die Kamera belichtet; dafür ist der Vorlauf.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="sf_enabled" {% if p.screen_flash.enabled %}checked{% endif %}> Bildschirm leuchtet beim Auslösen</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Helligkeit (%)</label>
+        <input type="number" class="form-control" name="sf_brightness" value="{{ p.screen_flash.brightness }}" min="20" max="100">
+        <small style="color:var(--color-text-muted)">Weniger heißt weniger Licht, nicht nur blasser. Unter 20 % bringt es nichts mehr.</small></div>
+      <div class="form-group"><label class="form-label">Vorlauf (ms)</label>
+        <input type="number" step="50" class="form-control" name="sf_lead" value="{{ p.screen_flash.lead_ms }}" min="0" max="2000">
+        <small style="color:var(--color-text-muted)">Zeit zwischen „Bildschirm an“ und Auslösen. Zu kurz, und das Bild ist dunkel.</small></div>
+      <div class="form-group"><label class="form-label">Nachlauf (ms)</label>
+        <input type="number" step="50" class="form-control" name="sf_hold" value="{{ p.screen_flash.hold_ms }}" min="0" max="2000">
+        <small style="color:var(--color-text-muted)">Die Kamera belichtet nicht in dem Augenblick, in dem der Knopf gedrückt wird.</small></div>
+      <div class="form-group"><label class="form-label">Farbe</label>
+        <input type="color" class="form-control" name="sf_color" value="{{ p.screen_flash.color or '#ffffff' }}">
+        <small style="color:var(--color-text-muted)">Reinweiß leuchtet am hellsten, ein warmes Weiß (z.&nbsp;B. #fff1dd) schmeichelt der Haut.</small></div>
+    </div>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1" id="aussehen">
+    <h2>Aussehen</h2>
+    <p>Farben und Form der Bedienelemente an der Box. Die Vorschau rechts zeigt sofort, was dabei herauskommt.</p>
+    <div class="bp-theme">
+      <div>
+        <label class="form-label">Vorlagen</label>
+        <div class="bp-presets">
+          {% for name, preset in theme_presets %}
+            <button type="button" class="btn btn-secondary btn-sm bp-preset" data-preset='{{ preset|tojson }}'>{{ name }}</button>
+          {% endfor %}
+        </div>
+
+        <label class="form-label" style="margin-top:16px;display:block">Farbschema</label>
+        <div class="bp-checks" id="themeModes">
+          {% for v, l in [('dunkel','Dunkel'),('hell','Hell'),('eigene','Eigene Farben')] %}
+            <label><input type="radio" name="theme_mode" value="{{ v }}" data-theme="mode"
+                          {% if (p.theme.mode or 'dunkel') == v %}checked{% endif %}> {{ l }}</label>
+          {% endfor %}
+        </div>
+        <p style="margin:6px 0 0;font-size:.85rem;color:var(--color-text-muted)">Dunkel ist die Voreinstellung: Im abgedunkelten Raum soll das Foto das Hellste im Bild sein. Bei Tageslicht oder in einer hellen Markenwelt liest sich Hell besser. Die Vorlagen oben stellen auf „Eigene Farben“.</p>
+
+        <label class="form-label" style="margin-top:16px;display:block">Farben</label>
+        <div class="bp-colors" id="themeColors">
+          {% for field, label in [('accent','Hauptfarbe'),('on_accent','Schrift darauf'),('bg','Hintergrund'),('panel','Flächen'),('text','Schrift'),('muted','Nebentext')] %}
+            <label><span>{{ label }}</span>
+              <input type="color" name="theme_{{ field }}" value="{{ p.theme[field] }}" data-theme="{{ field }}"></label>
+          {% endfor %}
+        </div>
+
+        <div class="bp-row" style="margin-top:16px">
+          <div class="form-group"><label class="form-label">Ecken</label>
+            <select class="form-control" name="theme_radius" data-theme="radius">
+              {% for v, l in theme_radii %}<option value="{{ v }}" {% if p.theme.radius == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+          <div class="form-group"><label class="form-label">Größe</label>
+            <select class="form-control" name="theme_size" data-theme="size">
+              {% for v, l in theme_sizes %}<option value="{{ v }}" {% if p.theme.size == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+          <div class="form-group"><label class="form-label">Schriftstärke</label>
+            <select class="form-control" name="theme_weight" data-theme="weight">
+              {% for v, l in theme_weights %}<option value="{{ v }}" {% if p.theme.weight == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+          <div class="form-group"><label class="form-label">Zweite Buttons</label>
+            <select class="form-control" name="theme_secondary" data-theme="secondary">
+              {% for v, l in theme_secondary %}<option value="{{ v }}" {% if p.theme.secondary == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+          <div class="form-group"><label class="form-label">Schriftart</label>
+            <select class="form-control" name="theme_font" data-theme="font">
+              {% for v, l in theme_fonts %}<option value="{{ v }}" {% if p.theme.font == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+          <div class="form-group"><label class="form-label">Eigene Schriftart</label>
+            <select class="form-control" name="theme_font_file" data-theme="font_file">
+              <option value="">— mitgelieferte von oben —</option>
+              {% for file in font_files %}<option value="{{ file }}" {% if p.theme.font_file == file %}selected{% endif %}>{{ file }}</option>{% endfor %}</select>
+            <small style="color:var(--color-text-muted)">Hochladen unter <a href="{{ url_for('admin_booth.assets') }}">Medien &amp; Vorlagen</a> als „Schriftart“ (WOFF2, TTF, OTF).</small></div>
+        </div>
+        <div class="bp-checks"><label><input type="checkbox" name="theme_uppercase" data-theme="uppercase" {% if p.theme.uppercase %}checked{% endif %}> Beschriftungen in GROSSBUCHSTABEN</label></div>
+      </div>
+
+      <div class="bp-preview" id="themePreview">
+        <span class="bp-preview-tag">Vorschau</span>
+        <div class="bp-preview-modes">
+          <div class="bp-preview-mode is-first"><strong>Foto</strong><span>Ein Bild, euer Format</span></div>
+          <div class="bp-preview-mode"><strong>Collage</strong><span>Mehrere Bilder</span></div>
+        </div>
+        <div class="bp-preview-btns">
+          <span class="bp-preview-btn primary">Los geht’s</span>
+          <span class="bp-preview-btn secondary">Zurück</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1">
+    <h2>Startbildschirm</h2>
+    <p>Bilder, animierte GIFs oder kurze Videos. Mehrere Dateien wechseln sich ab. Ohne Auswahl zeigt die Box ihr unscharfes Live-Bild.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Anordnung der Buttons</label>
+        <select name="start_layout" class="form-control">{% for v, l in [('bottom','unten'),('left','links'),('right','rechts'),('center','mittig'),('custom','frei (unten verschieben)')] %}<option value="{{ v }}" {% if p.start.layout == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Buttongröße</label>
+        <select name="button_size" class="form-control">{% for v, l in [('m','mittel'),('l','groß'),('xl','sehr groß')] %}<option value="{{ v }}" {% if p.start.button_size == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Wechsel alle (s)</label><input type="number" class="form-control" name="start_media_seconds" value="{{ p.start.media_seconds }}"></div>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Galerie-Button</label>
+        <select name="gallery_style" class="form-control">{% for v, l in [('pill','neben der Sprache, dezent'),('prominent','neben der Sprache, groß in der Akzentfarbe')] %}<option value="{{ v }}" {% if (p.start.gallery_style or 'pill') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Galerie, Sprache und Schloss: Größe</label>
+        <select name="corner_size" class="form-control">{% for v, l in kiosk_sizes %}<option value="{{ v }}" {% if (p.start.corner_size or 'l') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="bp-checks"><label><input type="checkbox" name="show_gallery_button" {% if p.start.show_gallery_button %}checked{% endif %}> Galerie-Button zeigen</label>
+      <label><input type="checkbox" name="show_mode_hints" {% if p.start.show_mode_hints %}checked{% endif %}> Erklärzeile unter den Modus-Namen zeigen</label></div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Anleitung („1. Foto antippen …")</label>
+        <select name="start_steps" class="form-control">
+          {% for v, l in [('aus','aus'),('immer','immer sichtbar'),('knopf','auf Tippen einblenden')] %}
+          <option value="{{ v }}" {% if (p.start.steps or 'aus') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">„Auf Tippen" setzt einen Knopf neben die Sprachwahl. Für Boxen, an denen
+          die Anleitung nur am Anfang gebraucht wird.</small></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="start_last" {% if p.start.show_last %}checked{% endif %}> Letzte Aufnahme als Kachel zeigen</label>
+      <label><input type="checkbox" name="start_qr" {% if p.start.show_qr %}checked{% endif %}> QR zur Galerie des Events zeigen</label>
+    </div>
+    <p style="margin:6px 0 0;font-size:.85rem;color:var(--color-text-muted)">Die Schritte der Anleitung stehen unter <a href="#texte">Texte</a> als <code>start.steps</code>, eine Zeile je Schritt. Ist die Anleitung an, rücken die Modus-Kacheln nach rechts.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Logo / Signatur</label>
+        <select name="start_logo" class="form-control">
+          <option value="">— keins —</option>
+          {% for file in logo_files %}<option value="{{ file }}" {% if p.start.logo == file %}selected{% endif %}>{{ file }}</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">Hochladen unter <a href="{{ url_for('admin_booth.assets') }}">Medien &amp; Vorlagen</a>
+          als „Overlay" oder „Startbildschirm". PNG mit Transparenz sieht am besten aus.</small></div>
+      <div class="form-group"><label class="form-label">Logo-Breite (%)</label>
+        <input type="number" class="form-control" name="start_logo_size" value="{{ p.start.logo_size }}" min="4" max="50"></div>
+    </div>
+    <div class="bp-layout" id="bpLayout" {% if p.start.layout != 'custom' %}hidden{% endif %}>
+      <div class="bp-layout-head">
+        <label class="form-label" style="margin:0">Anordnung frei festlegen</label>
+        <span class="bp-layout-hint">Ziehen zum Verschieben, Ecke rechts unten für die Breite. Pfeiltasten verschieben in 1-%-Schritten.</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="bpLayoutReset">Zurücksetzen</button>
+      </div>
+      <div class="bp-stage" id="bpStage" style="{% if p.start.media %}background-image:url('{{ url_for('admin_booth.asset_preview', name=p.start.media[0]) }}'){% endif %}">
+        <div class="bp-stage-grid"></div>
+      </div>
+      <input type="hidden" name="start_positions" id="bpPositions" value='{{ (p.start.positions or {})|tojson }}'>
+    </div>
+    {# The start picture, shown as the booth would: first medium, fit and dim of
+       the saved profile. Built-in backgrounds need no upload. #}
+    {% set first = p.start.media[0] if p.start.media else '' %}
+    {% if first.startswith('builtin:') %}{% set first_url = url_for('static', filename='booth-start/' ~ first[8:]) %}
+    {% elif first %}{% set first_url = url_for('admin_booth.asset_preview', name=first) %}{% else %}{% set first_url = '' %}{% endif %}
+    <div class="bp-start-preview" data-fit="{{ p.start.fit or 'drift' }}">
+      {% if first_url and not (first.endswith('.mp4') or first.endswith('.webm')) %}<img src="{{ first_url }}" alt="">
+      {% elif first_url %}<video src="{{ first_url }}" muted autoplay loop playsinline></video>
+      {% else %}<span class="bp-start-empty">Kein Startbild gewählt: die Box zeigt {% if p.start.bg_color %}die Farbe {{ p.start.bg_color }}{% else %}ihr unscharfes Live-Bild{% endif %}.</span>{% endif %}
+      <i style="opacity:{{ ((p.start.dim if p.start.dim is not none and p.start.dim >= 0 else 35) / 100) }}"></i>
+      <b>Vorschau (gespeichert)</b>
+    </div>
+    <label class="form-label">Mitgelieferte Hintergründe <small style="color:var(--color-text-muted);font-weight:400">— ohne Hochladen, sofort an jeder Box</small></label>
+    <div class="bp-assets">
+    {% for key, name in start_builtins.items() %}{% set v = 'builtin:' ~ key ~ '.svg' %}
+      <label class="bp-asset"><input type="checkbox" name="start_media" value="{{ v }}" {% if v in p.start.media %}checked{% endif %}>
+        <img src="{{ url_for('static', filename='booth-start/' ~ key ~ '.svg') }}" alt=""><span>{{ name }}</span></label>
+    {% endfor %}
+    </div>
+    <label class="form-label" style="margin-top:12px;display:block">Eigene Startmedien
+      <a class="btn btn--ghost" style="margin-left:8px" href="{{ url_for('admin_booth.assets') }}#upload">Eigenes Bild oder Video hochladen</a></label>
+    {{ asset_picker('start_media', ['start'], p.start.media) }}
+    <p style="margin:6px 0 0;font-size:.85rem;color:var(--color-text-muted)">Entfernen: Haken herausnehmen und speichern. Ohne Haken zeigt die Box die Farbe darunter oder ihr unscharfes Live-Bild.</p>
+    <div class="bp-row" style="margin-top:10px">
+      <div class="form-group"><label class="form-label">Farbe ohne Startmedium</label>
+        <input class="form-control" name="start_bg_color" value="{{ p.start.bg_color or '' }}" placeholder="leer = unscharfes Live-Bild" pattern="#[0-9a-fA-F]{6}">
+        <small style="color:var(--color-text-muted)">Als <code>#rrggbb</code>. Gilt nur, wenn oben kein Startmedium gewählt ist.</small></div>
+      <div class="form-group"><label class="form-label">Abdunklung über dem Startbild</label>
+        <select name="start_dim" class="form-control">
+          <option value="-1" {% if (p.start.dim if p.start.dim is not none else -1) == -1 %}selected{% endif %}>Verlauf (Standard)</option>
+          {% for v in range(0, 90, 10) %}<option value="{{ v }}" {% if p.start.dim == v %}selected{% endif %}>{{ v }} % gleichmäßig</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">0 % zeigt ein eigenes Startbild unverändert.</small></div>
+      <div class="form-group"><label class="form-label">Einpassung des Startbilds</label>
+        <select name="start_fit" class="form-control">
+          {% for v, l in [('drift','füllen, langsam bewegt (Standard)'),('cover','füllen, steht still (Ränder beschnitten)'),('contain','ganz zeigen, steht still')] %}
+          <option value="{{ v }}" {% if (p.start.fit or 'drift') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="start_show_title" {% if p.start.show_title != false %}checked{% endif %}> Titelzeile zeigen (Eventname und „Tippen &amp; lächeln“)</label>
+      <label><input type="checkbox" name="start_show_status" {% if p.start.show_status != false %}checked{% endif %}> Statusleiste zeigen (Kamera, Drucker, online)</label>
+    </div>
+    <p style="margin:6px 0 0;font-size:.85rem;color:var(--color-text-muted)">Für ein eigenes Startbild mit eingebrannter
+      Überschrift, Anleitung und QR: Titelzeile und Statusleiste aus, Abdunklung 0 %, Einpassung „steht still“.
+      Ohne Statusleiste bleibt eine Betreiber-Meldung als farbiger Punkt oben rechts sichtbar.</p>
+    <label class="form-label" style="margin-top:14px;display:block">Hintergrund je Bildschirm</label>
+    <p style="margin:0 0 8px;font-size:.85rem;color:var(--color-text-muted)">Ein Bild aus den Medien oder eine Farbe; leer = Hintergrundfarbe aus „Aussehen“. Die Abdunklung hält Text darauf lesbar, beim Countdown bleibt das Kamerabild vorn.</p>
+    {% for key, label in backdrop_screens %}{% set bd = (p.backdrops or {}).get(key) or {} %}
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">{{ label }}: Bild</label>
+        <select name="bd_{{ key }}_image" class="form-control">
+          <option value="">— keins —</option>
+          {% for file in backdrop_files %}<option value="{{ file }}" {% if bd.image == file %}selected{% endif %}>{{ file }}</option>{% endfor %}
+        </select></div>
+      <div class="form-group"><label class="form-label">… oder Farbe</label>
+        <input class="form-control" name="bd_{{ key }}_color" value="{{ bd.color or '' }}" placeholder="#rrggbb" pattern="#[0-9a-fA-F]{6}"></div>
+      <div class="form-group"><label class="form-label">Abdunklung (%)</label>
+        <input type="number" class="form-control" name="bd_{{ key }}_dim" min="0" max="80" value="{{ bd.dim or 0 }}"></div>
+    </div>{% endfor %}
+    <label class="form-label" style="margin-top:14px;display:block">Medien je Phase</label>
+    <p style="margin:0 0 8px;font-size:.85rem;color:var(--color-text-muted)">Ein Bild, GIF oder Video (stumm) für die Momente dazwischen. Nur „Nach dem Ergebnis“ verlängert den Durchgang, und nur um die eingestellten Sekunden (0 = aus). Der Text kommt aus „Texte“.</p>
+    {% for key, label in phase_screens %}{% set pm = (p.phase_media or {}).get(key) or {} %}
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">{{ label }}</label>
+        <select name="pm_{{ key }}_media" class="form-control">
+          <option value="">— keins —</option>
+          {% for file in phase_files %}<option value="{{ file }}" {% if pm.media == file %}selected{% endif %}>{{ file }}</option>{% endfor %}
+        </select></div>
+      <div class="form-group"><label class="form-label">Darstellung</label>
+        <select name="pm_{{ key }}_fit" class="form-control">
+          <option value="cover" {% if pm.fit != 'contain' %}selected{% endif %}>formatfüllend</option>
+          <option value="contain" {% if pm.fit == 'contain' %}selected{% endif %}>ganz sichtbar</option>
+        </select></div>
+      {% if key == 'after' %}<div class="form-group"><label class="form-label">Dauer (s, 0 = aus)</label>
+        <input type="number" class="form-control" name="pm_after_seconds" min="0" max="15" value="{{ pm.seconds or 0 }}"></div>{% endif %}
+      <div class="bp-checks">
+        <label><input type="checkbox" name="pm_{{ key }}_text" {% if pm.text != false %}checked{% endif %}> Text darüber</label>
+        <label><input type="checkbox" name="pm_{{ key }}_loop" {% if pm.loop != false %}checked{% endif %}> Video in Schleife</label>
+      </div>
+    </div>{% endfor %}
+    <label class="form-label" style="margin-top:14px;display:block">Collage-Hintergründe (Gäste wählen)</label>{{ asset_picker('backgrounds', ['background'], p.backgrounds) }}
+    <label class="form-label" style="margin-top:14px;display:block">Mitgelieferte Collagen</label>
+    <div class="bp-checks">
+      {% for c in builtin_collages %}
+      <label><input type="checkbox" name="collage_builtins" value="{{ c.id }}"
+             {% if (not p.collage_builtins and not p.collage_exact and not c.plain) or c.id in (p.collage_builtins or []) %}checked{% endif %}>
+        {{ c.name }} ({{ 'hoch' if c.orientation == 'portrait' else 'quer' }})</label>
+      {% endfor %}
+    </div>
+    <small style="color:var(--color-text-muted)">Alle abgewählt = alle werden angeboten. Wer nur eine lässt, nimmt dem Gast
+      die Auswahl ab — der Bildschirm „Vorlage wählen" entfällt dann.</small>
+    <label class="form-label" style="margin-top:14px;display:block">Eigene Collage-Vorlagen (JSON)</label>{{ asset_picker('collage_templates', ['template'], p.collage_templates) }}
+    <small style="color:var(--color-text-muted)">Sobald hier etwas ausgewählt ist, gelten nur noch diese — die mitgelieferten treten zurück.</small>
+    <label class="gs-check" style="margin-top:10px;display:block"><input type="checkbox" name="collage_exact" {% if p.collage_exact %}checked{% endif %}>
+      Genau die angehakten Vorlagen anbieten: eigene und mitgelieferte zusammen</label>
+    <small style="color:var(--color-text-muted)">Aus: Eigene Vorlagen ersetzen die mitgelieferten. Die schlichten Layouts erscheinen nur, wenn sie angehakt sind.</small>
+    <label class="gs-check" style="margin-top:10px;display:block"><input type="checkbox" name="collage_plain_qr" {% if p.collage_plain_qr %}checked{% endif %}>
+      QR-Code auf den schlichten Layouts drucken</label>
+    <small style="color:var(--color-text-muted)">Aus: nur Fotos, kein Code auf dem Blatt. An: kleiner Code unten rechts, wenn die Box einen Link hat.</small>
+
+    <div class="form-group" style="margin-top:14px;max-width:420px">
+      <label class="form-label">Was von einer Collage in die Galerie kommt</label>
+      <select name="collage_upload" class="form-control">
+        {% for v, l in [('collage','nur das fertige Blatt'),('photos','nur die Einzelbilder'),('both','beides')] %}
+        <option value="{{ v }}" {% if p.collage_upload == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select>
+      <small style="color:var(--color-text-muted)">Der Abzug auf Papier bleibt in jedem Fall die Collage. Einzelbilder erscheinen
+        in der Galerie als gewöhnliche Fotos — mit Filter und Rahmen, wie sie auch auf dem Blatt stehen.</small>
+    </div>
+
+    <h3 style="margin:22px 0 4px;font-size:.95rem">Aussehen der Vorlagen</h3>
+    <p style="margin:0 0 12px">Die Vorlage bestimmt die Anordnung, dieser Block das Aussehen — für alle Vorlagen zugleich.
+      Wähle einen Anlass und ändere davon, was du willst; leere Felder bleiben beim Anlass.
+      Die Vorschau unten ändert sich beim Tippen mit.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Anlass</label>
+        <select name="cs_preset" class="form-control">
+          {% for v, l in [('clean','Clean · dunkel'),('hell','Clean · hell'),('geburtstag','Geburtstag'),('hochzeit','Hochzeit'),('feier','Feier'),('firma','Firmenevent')] %}
+          <option value="{{ v }}" {% if p.collage_style.preset == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select></div>
+      <div class="form-group"><label class="form-label">Schrift</label>
+        <select name="cs_font" class="form-control">
+          {% for v, l in [('','wie der Anlass'),('system','Inter (sachlich)'),('display','Archivo (kräftig)'),('serif','Serif (klassisch)')] %}
+          <option value="{{ v }}" {% if p.collage_style.font == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="bp-row">
+      {% for feld, label in [('background','Hintergrund'),('ink','Schrift'),('muted','Zweite Zeile'),('accent','Akzent')] %}
+      <div class="form-group"><label class="form-label">{{ label }}</label>
+        <input type="text" class="form-control" name="cs_{{ feld }}" value="{{ p.collage_style[feld] }}"
+               placeholder="wie der Anlass" maxlength="7"></div>
+      {% endfor %}
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Erste Zeile</label>
+        <input class="form-control" name="cs_headline" value="{{ p.collage_style.headline }}" placeholder="{event_name}"></div>
+      <div class="form-group"><label class="form-label">Zweite Zeile</label>
+        <input class="form-control" name="cs_subline" value="{{ p.collage_style.subline }}" placeholder="{date}"></div>
+      <div class="form-group"><label class="form-label">Ecken (px)</label>
+        <input type="number" class="form-control" name="cs_radius" value="{{ p.collage_style.radius }}" min="0" max="80" placeholder="wie der Anlass"></div>
+      <div class="form-group"><label class="form-label">Rahmen (px)</label>
+        <input type="number" class="form-control" name="cs_frame" value="{{ p.collage_style.frame }}" min="0" max="80" placeholder="wie der Anlass"></div>
+    </div>
+    <small style="color:var(--color-text-muted)"><code>{event_name}</code> und <code>{date}</code> werden beim Druck ersetzt.</small>
+
+    <div id="vorlagenVorschau" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px"></div>
+    <script src="/static/js/vorlagen.js"></script>
+    <script>
+    (function () {
+      var behaelter = document.getElementById("vorlagenVorschau");
+      var form = behaelter.closest("form") || document;
+      function aktuelleAuswahl() {
+        var an = Array.prototype.slice.call(form.querySelectorAll('input[name="collage_builtins"]:checked'))
+          .map(function (i) { return i.value; });
+        var alle = form.querySelectorAll('input[name="collage_builtins"]').length;
+        return an.length && an.length < alle ? an : null;      // alle = alle zeigen
+      }
+      function neu() {
+        window.pbVorlagen.zeichne(behaelter, { form: form, praefix: "cs_", auswahl: aktuelleAuswahl(), breite: 150 });
+      }
+      form.addEventListener("input", function (e) {
+        if (e.target.name && (e.target.name.indexOf("cs_") === 0 || e.target.name === "collage_builtins")) neu();
+      });
+      form.addEventListener("change", function (e) {
+        if (e.target.name && (e.target.name.indexOf("cs_") === 0 || e.target.name === "collage_builtins")) neu();
+      });
+      neu();
+    })();
+    </script>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1" id="texte">
+    <h2>Texte</h2>
+    <p>Jeder Text der Box lässt sich hier ändern, gruppiert nach dem Bildschirm. Leer heißt: Es bleibt beim mitgelieferten Text, der grau im Feld steht. <code>{n}</code> und <code>{s}</code> sind Platzhalter und müssen stehen bleiben.</p>
+    <p><input class="form-control" id="text-filter" placeholder="Texte durchsuchen (Beschriftung oder Schlüssel)" style="max-width:420px">
+      <button type="button" class="btn btn-sm" id="text-expand" style="margin-left:6px">Alle aufklappen</button></p>
+    {% for group, entries in text_groups %}
+      {% set used = entries|selectattr('0', 'in', p.texts.get(languages[0]) or {})|list|length %}
+      <details class="text-group" {% if used %}open{% endif %}>
+        <summary>{{ group }} <span style="font-weight:400;color:var(--color-text-muted)">({{ entries|length }}{% if used %}, {{ used }} geändert{% endif %})</span></summary>
+        <div class="bp-texts">
+          <b></b>{% for lang in languages %}<b>{{ lang|upper }}</b>{% endfor %}
+          {% for key, label, _default in entries %}
+            <span class="text-row" data-search="{{ (label ~ ' ' ~ key)|lower }}" title="{{ key }}">{{ label }}</span>
+            {% for lang in languages %}
+              <input class="form-control text-row" data-search="{{ (label ~ ' ' ~ key)|lower }}"
+                     name="text_{{ lang }}_{{ key }}" value="{{ (p.texts.get(lang) or {}).get(key, '') }}"
+                     placeholder="{{ shipped(lang, key) }}">
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </details>
+    {% endfor %}
+    <details><summary>Texte weiterer Sprachen (JSON)</summary>
+      <p style="font-size:.85rem;color:var(--color-text-muted)">Nur nötig für Schlüssel, die es oben nicht gibt — etwa für eine Sprache, die die Box noch nicht mitbringt.</p>
+      <textarea class="form-control" name="texts_json" rows="6" style="font-family:monospace" placeholder='{"fr": {"start.title": "Souriez !"}}'>{{ texts_extra }}</textarea>
+    </details>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1" id="auslöser">
+    <h2>Auslösen: Buzzer, Tastatur, Touch</h2>
+    <p>Ein Buzzer ist meist eine Maus oder Tastatur mit einer Taste und kommt ohne Treiber an. Er drückt immer die <b>Hauptschaltfläche des Bildschirms</b>, auf dem der Gast steht; jede weitere Taste bekommt hier eine eigene Aufgabe.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Maus-Buzzer</label>
+        <select name="mouse_start" class="form-control">
+          {% for v, l in [('off','aus — Maus bleibt Maus'),('left','linke Maustaste'),('right','rechte Maustaste'),('middle','mittlere Maustaste'),('any','jede Maustaste')] %}
+          <option value="{{ v }}" {% if p.controls.mouse_start == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">Für den Buzzer, der als Maus am Rechner hängt.</small></div>
+      <div class="form-group"><label class="form-label">Prellschutz (ms)</label>
+        <input type="number" class="form-control" name="repeat_ms" value="{{ p.controls.repeat_ms }}" min="0" max="5000" step="100">
+        <small style="color:var(--color-text-muted)">Mechanische Buzzer schließen mehrfach. Ein zweiter Druck in dieser Zeit zählt nicht.</small></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="ctl_touch" {% if p.controls.touch %}checked{% endif %}> Tippen und Klicken auf die Schaltflächen</label>
+      <label><input type="checkbox" name="mouse_swallow" {% if p.controls.mouse_swallow %}checked{% endif %}> Buzzer-Klick nicht an die Schaltfläche darunter weitergeben</label>
+      <label><input type="checkbox" name="hide_cursor" {% if p.controls.hide_cursor %}checked{% endif %}> Mauszeiger ausblenden</label>
+      <label><input type="checkbox" name="onscreen_keyboard" {% if p.controls.onscreen_keyboard %}checked{% endif %}> Bildschirmtastatur für Eingabefelder an der Box (Windows öffnet im Kiosk-Fenster keine eigene)</label>
+      <label><input type="checkbox" name="arrow_navigation" {% if p.controls.arrow_navigation %}checked{% endif %}> Pfeiltasten bedienen die Oberfläche (Pfeile lösen dann nie aus)</label>
+    </div>
+    <small style="color:var(--color-text-muted)">Pfeile bewegen eine Markierung, in Format- und Layoutreihen wählen sie sofort. Enter/Leertaste drücken das Markierte, sonst lösen sie aus. Pfeil rechts löst dann nie aus. Aus für einen Presenter, dessen Pfeil rechts der Buzzer ist.</small>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Tasten zum Auslösen</label>
+        <input class="form-control" name="keys_start" value="{{ p.controls.keys_start|join(' ') }}">
+        <small style="color:var(--color-text-muted)">Browser-Namen, durch Leerzeichen getrennt: <code>Space Enter NumpadEnter PageDown F13</code>. Viele Buzzer senden F13.</small></div>
+      <div class="form-group"><label class="form-label">Zurück zum Start</label>
+        <input class="form-control" name="keys_back" value="{{ p.controls.keys_back|join(' ') }}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Drucken auf dem Ergebnisbildschirm</label>
+      <input class="form-control" name="keys_print" value="{{ p.controls.keys_print|join(' ') }}" style="max-width:320px"></div>
+
+    <h3 style="margin:22px 0 4px;font-size:.95rem">Was welcher Knopf tut</h3>
+    <p style="margin:0 0 12px">Der Auslöser startet auf dem Startbildschirm normalerweise den ersten Modus deiner Liste.
+      Hier legst du fest, welcher das ist — und was die anderen Tasten tun.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Auslöser startet</label>
+        <select name="start_mode" class="form-control">
+          <option value="">erster Modus der Liste</option>
+          {% for v, l in modes %}<option value="{{ v }}" {% if p.controls.start_mode == v %}selected{% endif %}
+            {% if v not in p.modes %}disabled{% endif %}>{{ l }}{% if v not in p.modes %} — abgeschaltet{% endif %}</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">Gilt für Buzzer und Auslösetasten auf dem Startbildschirm.</small></div>
+      {% for feld, label in [('mouse_right','Rechte Maustaste'), ('mouse_middle','Mittlere Maustaste')] %}
+      <div class="form-group"><label class="form-label">{{ label }}</label>
+        <select name="{{ feld }}" class="form-control">
+          <option value="off" {% if p.controls[feld] == 'off' %}selected{% endif %}>nichts</option>
+          <option value="trigger" {% if p.controls[feld] == 'trigger' %}selected{% endif %}>auslösen (wie der Hauptknopf)</option>
+          {% for v, l in modes %}<option value="mode:{{ v }}" {% if p.controls[feld] == 'mode:' ~ v %}selected{% endif %}
+            {% if v not in p.modes %}disabled{% endif %}>{{ l }} starten{% if v not in p.modes %} — abgeschaltet{% endif %}</option>{% endfor %}
+          <option value="back" {% if p.controls[feld] == 'back' %}selected{% endif %}>zurück zum Start</option>
+          <option value="print" {% if p.controls[feld] == 'print' %}selected{% endif %}>drucken (auf dem Ergebnisbildschirm)</option>
+          <option value="gallery" {% if p.controls[feld] == 'gallery' %}selected{% endif %}>Galerie an der Box öffnen</option>
+          <option value="next" {% if p.controls[feld] == 'next' %}selected{% endif %}>weiterschalten (Markierung bewegen)</option>
+          <option value="prev" {% if p.controls[feld] == 'prev' %}selected{% endif %}>zurückschalten (Markierung bewegen)</option>
+          <option value="select" {% if p.controls[feld] == 'select' %}selected{% endif %}>auswählen (Markiertes drücken)</option>
+        </select></div>
+      {% endfor %}
+    </div>
+    <div class="form-group"><label class="form-label">Eigene Tasten</label>
+      <input class="form-control" name="keys_actions"
+             value="{{ p.controls.keys_actions.items()|map('join', '=')|join(' ') }}"
+             placeholder="KeyF=mode:photo KeyG=mode:gif Escape=back">
+      <small style="color:var(--color-text-muted)">Tastenname=Aufgabe, durch Leerzeichen getrennt. Aufgaben: <code>trigger</code>, <code>back</code>, <code>print</code>, <code>gallery</code>, <code>next</code>, <code>prev</code>, <code>select</code>, <code>mode:photo</code>, <code>mode:collage</code>, <code>mode:gif</code>, <code>mode:boomerang</code>, <code>mode:video</code>. Gilt vor allen anderen Zuordnungen.</small></div>
+    <h3 style="margin:22px 0 4px;font-size:1rem">Ganz ohne Touchscreen</h3>
+    <p style="margin:0 0 10px">Hat die Box keinen Touchscreen, sondern zwei oder drei Knöpfe, braucht sie <code>next</code> (Markierung weiterbewegen) und <code>select</code> (Markiertes drücken). Die Markierung ist ein kräftiger Ring, der aus zwei Metern zu sehen ist.</p>
+    <p style="margin:0 0 10px;color:var(--color-text-muted)"><b>Zwei Knöpfe:</b> <code>next</code> und <code>select</code>. <b>Drei Knöpfe:</b> dazu <code>back</code>. <b>Ein Knopf:</b> <code>trigger</code>, und unter „Was der Gast selbst wählen darf“ die Auswahlschritte abschalten.</p>
+    <p style="margin:12px 0 0;color:var(--color-text-muted)">Während der Countdown läuft oder gerechnet wird, tut kein Knopf etwas —
+      sonst steht ein Gast mitten in der Aufnahme plötzlich woanders. Abgeschaltete Modi lassen sich auch über
+      eine Taste nicht starten.</p>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1" id="bildschirm">
+    <h2>Bildschirm: Ränder und Größe</h2>
+    <p>Bei getauschtem Panel oder an einem Fernseher liegt die Ecke schnell außerhalb des Sichtbaren, und der Entsperr-Knopf ist weg. Hier rückst du alles ein Stück ein; Angaben in Prozent der Bildschirmseite.</p>
+    <div class="bp-row" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+      {% for name, label in [('safe_top','oben'),('safe_right','rechts'),('safe_bottom','unten'),('safe_left','links')] %}
+      <div class="form-group"><label class="form-label">Rand {{ label }} (%)</label>
+        <input type="number" class="form-control" name="{{ name }}" value="{{ p.layout[name] }}" min="0" max="20"></div>
+      {% endfor %}
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Größe der Bedienelemente (%)</label>
+        <input type="number" class="form-control" name="ui_scale" value="{{ p.layout.scale }}" min="70" max="140" step="5">
+        <small style="color:var(--color-text-muted)">Wirkt zusätzlich zur Stufe unter „Aussehen“ — für kleine oder sehr große Bildschirme.</small></div>
+      <div class="form-group"><label class="form-label">Ecke für die Verwaltung</label>
+        <select name="corner" class="form-control">
+          {% for v, l in [('top-left','oben links'),('top-right','oben rechts'),('bottom-left','unten links'),('bottom-right','unten rechts')] %}
+          <option value="{{ v }}" {% if p.layout.corner == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted)">Dort halten, um an das Betreiber-Menü zu kommen.</small></div>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Kacheln der Galerie an der Box</label>
+        <select name="gallery_size" class="form-control">{% for v, l in kiosk_sizes %}<option value="{{ v }}" {% if (p.layout.gallery_size or 'm') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label">Knopf „Zurück“</label>
+        <select name="back_size" class="form-control">{% for v, l in kiosk_sizes %}<option value="{{ v }}" {% if (p.layout.back_size or 'm') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <small style="color:var(--color-text-muted)">Auf allen Bildschirmen der Box, auf denen es ihn gibt.</small></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="guides" {% if p.layout.guides %}checked{% endif %}> Hilfsrahmen an der Box einblenden (zum Einstellen)</label>
+    </div>
+  </section>
+
+  <section class="bp-card" style="grid-column:1/-1" id="fernwartung">
+    <h2>Pause und Zugang</h2>
+    <p>Die PIN schützt die Verwaltung an der Box und das Sperren vor Ort. Leer lassen heißt: die an der Box
+      eingestellte PIN gilt weiter — praktisch, wenn eine Box ohne Galerie-Kontakt unterwegs ist.</p>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">PIN (4 bis 8 Ziffern, nicht 2580)</label>
+        {# Masked and never filled: the PIN does not go into the page. Empty keeps it. #}
+        <input class="form-control" type="password" name="access_pin" value="" inputmode="numeric" maxlength="8"
+               autocomplete="new-password"
+               placeholder="{{ 'gesetzt – leer lassen = unverändert' if p.access.pin else 'leer = PIN der Box' }}">
+        <small style="color:var(--color-text-muted)">An der Box geändert („PIN ändern“)? Dann gilt sie, bis hier eine neue steht.</small>
+        {% if p.access.pin %}<label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" name="access_pin_clear">
+          PIN hier entfernen – dann gilt die PIN der Box</label>{% endif %}</div>
+      <div class="form-group"><label class="form-label">Ecke gedrückt halten (s)</label>
+        <input type="number" class="form-control" name="hotspot_seconds" value="{{ p.access.hotspot_seconds }}" min="1" max="15">
+        <small style="color:var(--color-text-muted)">Oben links, dann öffnet sich das Betreiber-Menü.</small></div>
+    </div>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="lock_on_booth" {% if p.access.lock_on_booth %}checked{% endif %}> Sperren und Entsperren an der Box erlauben</label>
+      <label><input type="checkbox" name="lock_icon" {% if p.access.lock_icon %}checked{% endif %}> Schloss in der Ecke zeigen (ein Tipp oder Klick statt gedrückt halten)</label>
+      <label><input type="checkbox" name="lock_active" {% if p.lock.active %}checked{% endif %}> Box pausieren (Pausenbildschirm)</label>
+    </div>
+    <p style="font-size:.85rem;color:var(--color-text-muted)">Eine Sperre von hier lässt sich an der Box nicht aufheben. Nur was vor Ort
+      gesperrt wurde, kann dort auch wieder entsperrt werden.</p>
+    <div class="form-group"><label class="form-label">Pausenbild</label>
+      <select name="lock_image" class="form-control"><option value="">— keins —</option>{% for a in assets if a.kind in ['lock','start'] %}<option value="{{ a.file }}" {% if p.lock.image == a.file %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+
+    <h3 style="margin:22px 0 4px;font-size:.95rem">Gebuchte Zeit</h3>
+    <p style="margin:0 0 12px">Die Box steht ab dem Nachmittag im Saal, gebucht ist sie ab abends. Außerhalb des
+      Fensters zeigt sie das Pausenbild — sonst druckt die Kinderschar des Caterers das Farbband leer.</p>
+    <div class="bp-checks">
+      <label><input type="checkbox" name="lock_schedule" {% if (p.lock.schedule or {}).enabled %}checked{% endif %}> Nur innerhalb der gebuchten Zeit laufen</label>
+    </div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">von</label>
+        <input type="time" class="form-control" name="lock_from" value="{{ (p.lock.schedule or {})['from'] }}"></div>
+      <div class="form-group"><label class="form-label">bis</label>
+        <input type="time" class="form-control" name="lock_until" value="{{ (p.lock.schedule or {}).until }}">
+        <small style="color:var(--color-text-muted)">Über Mitternacht ist der Normalfall: 19:00 bis 01:00.</small></div>
+    </div>
+    <div class="bp-checks">
+      {% for i, tag in [(0,'Mo'),(1,'Di'),(2,'Mi'),(3,'Do'),(4,'Fr'),(5,'Sa'),(6,'So')] %}
+      <label><input type="checkbox" name="lock_days" value="{{ i }}" {% if i in ((p.lock.schedule or {}).days or []) %}checked{% endif %}> {{ tag }}</label>
+      {% endfor %}
+    </div>
+    <small style="color:var(--color-text-muted)">Kein Tag angekreuzt = jeden Tag.</small>
+  </section>
+</div>
+<div class="bp-save adm-savebar"><button class="btn btn-primary" type="submit">Speichern</button></div>
+</form>
+
+<section class="bp-card" id="profil-datei">
+  <h2>Profil sichern &amp; übertragen</h2>
+  <p>Einmal eingestellt, auf der nächsten Box genauso: Die Datei enthält alle Einstellungen dieser Box — ohne SMTP-Passwort, Webhook-Geheimnis und Trigger-Token, die stehen nur auf der Box, zu der sie gehören.</p>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+    <a class="btn btn-secondary" href="{{ url_for('admin_booth.booth_profile_export', device_id=device.id) }}">Profil herunterladen (JSON)</a>
+    <form method="post" action="{{ url_for('admin_booth.booth_profile_import', device_id=device.id) }}" enctype="multipart/form-data"
+          style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group" style="margin:0"><label class="form-label">Profil aus Datei übernehmen</label>
+        <input type="file" class="form-control" name="profile" accept="application/json,.json" required></div>
+      <button class="btn btn-secondary" type="submit" onclick="return confirm('Alle Einstellungen dieser Box überschreiben?')">Übernehmen</button>
+    </form>
+  </div>
+  <p style="font-size:.85rem;color:var(--color-text-muted);margin:10px 0 0">Beim Übernehmen bleiben das zugeordnete Event, das gespeicherte SMTP-Passwort, das Webhook-Geheimnis und das Trigger-Token dieser Box erhalten. Die Box holt das neue Profil beim nächsten Kontakt ab.</p>
+</section>
+
+{# Camera, printer and storage live at the box, not in the profile: they travel as the job
+   set_local_config. Its own form, because a form inside a form is dropped by the browser. #}
+<section class="bp-card" id="hardware" style="margin-top:18px">
+  <h2>Kamera, Drucker und Ablage an der Box</h2>
+  <p>Die Galerie weiß nicht, was an der Box gerade eingestellt ist. Was du auf „so lassen“ oder leer lässt, ändert sich nicht. Ein Feld leeren kannst du nur an der Box.</p>
+  <form method="post" action="{{ url_for('admin_booth.booth_hardware', device_id=device.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% for group, fields in hardware_groups %}
+    <details {% if loop.first %}open{% endif %}>
+      <summary>{{ group }}</summary>
+      <div class="bp-row">
+      {% for fld in fields %}
+        <div class="form-group"><label class="form-label" for="hw-{{ fld.id }}">{{ fld.label }}</label>
+          {% if fld.kind in ('enum', 'bool') %}
+          <select class="form-control" id="hw-{{ fld.id }}" name="hw_{{ fld.id }}">
+            <option value="">so lassen</option>
+            {% for value, label in fld.choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+          {% elif fld.kind == 'int' %}
+          <input class="form-control" id="hw-{{ fld.id }}" name="hw_{{ fld.id }}" type="number" inputmode="numeric"
+                 min="{{ fld.lo }}" max="{{ fld.hi }}" placeholder="so lassen">
+          {% else %}
+          <input class="form-control" id="hw-{{ fld.id }}" name="hw_{{ fld.id }}" maxlength="{{ fld.maxlen }}"
+                 autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="so lassen">
+          {% endif %}
+          {% if fld.help %}<small style="color:var(--color-text-muted)">{{ fld.help }}</small>{% endif %}
+        </div>
+      {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+    <div style="margin-top:14px"><button class="btn btn-primary" type="submit" style="white-space:normal;max-width:100%">Einstellungen an die Box schicken</button></div>
+  </form>
+</section>
+
+{# Outside the big form above: a form inside a form is dropped by the browser. #}
+{# The target of the job buttons in the "Zustand" card above, which sits inside the profile form. #}
+<form id="bp-job-form" method="post" action="{{ url_for('admin_booth.booth_job', device_id=device.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+</form>
+
+<section class="bp-card" id="statusseite" style="margin-top:18px">
+  <h2>{{ t('statuspage.admin.title') }}</h2>
+  <p>{{ t('statuspage.admin.intro') }}</p>
+  <p style="margin:0 0 12px"><b>{{ t('statuspage.admin.on', since=status_page_since) if status_page_since else t('statuspage.admin.off') }}</b></p>
+  <form method="post" action="{{ url_for('admin_booth.status_page_switch', device_id=device.id) }}" style="display:flex;gap:10px;flex-wrap:wrap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if status_page_since %}
+    <button class="btn btn-secondary" name="action" value="renew" onclick="return confirm({{ t('statuspage.admin.renew_confirm') | tojson | forceescape }})">{{ t('statuspage.admin.renew') }}</button>
+    <button class="btn btn-secondary" name="action" value="off">{{ t('statuspage.admin.disable') }}</button>
+    {% else %}
+    <button class="btn btn-primary" name="action" value="on">{{ t('statuspage.admin.enable') }}</button>
+    {% endif %}
+  </form>
+</section>
+
+{% if silence %}
+<section class="bp-card" id="schweigen" style="margin-top:18px">
+  <h2>Warnung, wenn die Box schweigt</h2>
+  <p>Eine Mail, wenn diese Box sich eine Weile nicht meldet, und eine, wenn sie wieder da ist. Fährt jemand die Box bewusst herunter (Beenden an der Box, Windows herunterfahren), meldet sie das vorher — dann kommt keine Warnung.</p>
+  {% if silence.goodbye %}<p style="margin:0 0 8px"><b>{{ silence.goodbye }}</b></p>{% endif %}
+  {% if silence.line %}<p style="margin:0 0 8px">{{ silence.line }}</p>{% endif %}
+  <form method="post" action="{{ url_for('admin_booth.silence_alarm_switch', device_id=device.id) }}" style="display:grid;gap:10px;max-width:520px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label><input type="checkbox" name="enabled" value="1" {{ 'checked' if silence.enabled }}> Warnen, wenn die Box nicht mehr antwortet</label>
+    <label>Nach wie vielen Minuten ohne Meldung
+      <input type="number" name="minutes" min="{{ silence.minutes_min }}" max="{{ silence.minutes_max }}" value="{{ silence.minutes }}" style="width:6em"></label>
+    <label>Empfänger (eine Adresse; leer = {{ silence.recipient_default or 'Benachrichtigungsadresse des Kontos' }})
+      <input type="email" name="recipient" value="{{ silence.recipient }}" autocomplete="off"></label>
+    <label><input type="checkbox" name="only_event" value="1" {{ 'checked' if silence.only_event }}> Nur während eines laufenden Events (zugeordnetes Event mit heutigem Datum, bis 8 Uhr am Folgetag)</label>
+    <label>Ruhezeit (optional, HH:MM bis HH:MM)
+      <span style="display:flex;gap:6px;align-items:center"><input type="text" name="quiet_from" value="{{ silence.quiet_from }}" placeholder="01:00" style="width:6em"> bis <input type="text" name="quiet_to" value="{{ silence.quiet_to }}" placeholder="07:00" style="width:6em"></span></label>
+    <p style="font-size:.85rem;color:var(--color-text-muted);margin:0">Ob die Box steht oder nur das Internet vor Ort weg ist, kann die Galerie nicht unterscheiden. Ein Stromausfall oder Absturz wird nicht angekündigt — dann kommt die Warnung nach der eingestellten Zeit.</p>
+    <div><button class="btn btn-primary">Speichern</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="bp-card">
+  <h2>Fernwartung</h2>
+  <p>Aufträge werden beim nächsten Kontakt ausgeführt. Nur diese festen Befehle sind möglich.</p>
+  <div class="bp-jobs">
+    {# set_local_config needs settings to carry; it comes from the MCP tool set_booth_hardware #}
+    {% for jt, label in job_types.items() if jt not in ('set_local_config', 'set_second_target', 'backfill_second_target', 'accept_second_target_host_key') %}
+    <form method="post" action="{{ url_for('admin_booth.booth_job', device_id=device.id) }}" onsubmit="return {{ 'confirm(\'Wirklich?\')' if jt in ['restart_app','reset_print_counter','lock'] else 'true' }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="type" value="{{ jt }}">
+      <button class="btn btn-secondary btn-sm">{{ label }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  {% if jobs %}
+  <table class="table table--stack bp-job-table" style="margin-top:14px;font-size:.85rem;width:100%">
+    <thead><tr><th align="left">Auftrag</th><th align="left">erstellt</th><th align="left">abgeholt</th><th align="left">Ergebnis</th></tr></thead>
+    {% for j in jobs %}<tr><td class="td-main">{{ job_types.get(j.type, j.type) }}</td><td data-label="erstellt">{{ j.created_at }}</td><td data-label="abgeholt">{{ j.delivered_at or '' }}</td><td data-label="Ergebnis">{{ j.state_label }}{% if j.state == 'done' %}: {{ '✓' if j.ok else '✗' }} {{ j.result_short }}{% elif j.state == 'expired' %}: {{ j.result_text }}{% endif %}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
+</section>
+<script>
+(() => {
+  const stage = document.getElementById("bpStage");
+  if (!stage) return;
+  const input = document.getElementById("bpPositions");
+  const layoutSel = document.querySelector('select[name="start_layout"]');
+  const modeNames = {photo: "Foto", collage: "Collage", boomerang: "Boomerang", video: "Video"};
+  let pos = {};
+  try { pos = JSON.parse(input.value || "{}") || {}; } catch (e) { pos = {}; }
+  const activeModes = () => Object.keys(modeNames).filter((m) => document.querySelector(`input[name="mode_${m}"]`)?.checked);
+  const defaults = () => {
+    const ms = activeModes(), n = Math.max(1, ms.length), gap = 1.6, w = (86 - gap * (n - 1)) / n;
+    const d = {title: {x: 7, y: 18, w: 56}, gallery: {x: 70, y: 4, w: 12},
+               // Die Vorgaben entsprechen dem, was die Box ohne freies Layout
+               // zeigt — wer etwas verschiebt, fängt nicht im Leeren an.
+               steps: {x: 7, y: 58, w: 30}, last: {x: 2, y: 3, w: 10},
+               qr: {x: 82, y: 19, w: 14}, logo: {x: 78, y: 86, w: 18},
+               status: {x: 72, y: 2, w: 26}};
+    ms.forEach((m, i) => { d[m] = {x: +(7 + i * (w + gap)).toFixed(2), y: 64, w: +w.toFixed(2)}; });
+    return d;
+  };
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const save = () => { input.value = JSON.stringify(pos); };
+
+  function render() {
+    stage.querySelectorAll(".bp-el").forEach((el) => el.remove());
+    const d = defaults();
+    const keys = ["title", ...activeModes()];
+    if (document.querySelector('input[name="show_gallery_button"]')?.checked) keys.push("gallery");
+    // Nur, was auch angezeigt wird: Ein Kasten für eine abgeschaltete
+    // Anleitung wäre eine Einstellung ohne Wirkung.
+    if ((document.querySelector('select[name="start_steps"]')?.value || "aus") !== "aus") keys.push("steps");
+    if (document.querySelector('input[name="start_last"]')?.checked) keys.push("last");
+    if (document.querySelector('input[name="start_qr"]')?.checked) keys.push("qr");
+    if ((document.querySelector('select[name="start_logo"]')?.value || "")) keys.push("logo");
+    keys.push("status");
+    keys.forEach((key) => {
+      const v = Object.assign({}, d[key], pos[key] || {});
+      const el = document.createElement("div");
+      const sonder = {steps: "Anleitung", last: "Letzte Aufnahme", qr: "QR zur Galerie",
+                      logo: "Logo", status: "Statuszeile", gallery: "Galerie", title: "Überschrift"};
+      el.className = "bp-el" + (key === "title" ? " is-title" : sonder[key] ? " is-gallery" : "");
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", `${sonder[key] || modeNames[key]} verschieben`);
+      el.innerHTML = key === "title" ? "Überschrift<small>Eventname &amp; Text</small>"
+        : sonder[key] ? sonder[key] : `${modeNames[key]}<small>Button</small>`;
+      el.style.left = v.x + "%"; el.style.top = v.y + "%"; el.style.width = v.w + "%";
+      const handle = document.createElement("span");
+      handle.className = "bp-resize";
+      el.appendChild(handle);
+      stage.appendChild(el);
+      const commit = () => { pos[key] = {x: +parseFloat(el.style.left).toFixed(2), y: +parseFloat(el.style.top).toFixed(2), w: +parseFloat(el.style.width).toFixed(2)}; save(); };
+
+      el.addEventListener("pointerdown", (ev) => {
+        const r = stage.getBoundingClientRect(), resize = ev.target === handle;
+        const sx = ev.clientX, sy = ev.clientY, ox = parseFloat(el.style.left), oy = parseFloat(el.style.top), ow = parseFloat(el.style.width);
+        el.setPointerCapture(ev.pointerId); el.classList.add("is-drag"); ev.preventDefault();
+        const move = (e) => {
+          const dx = (e.clientX - sx) / r.width * 100, dy = (e.clientY - sy) / r.height * 100;
+          if (resize) el.style.width = clamp(ow + dx, 6, 100 - ox) + "%";
+          else {
+            // am 1-%-Raster einrasten, im Bild bleiben
+            el.style.left = clamp(Math.round(ox + dx), 0, 100 - ow) + "%";
+            el.style.top = clamp(Math.round(oy + dy), 0, 100 - el.offsetHeight / r.height * 100) + "%";
+          }
+        };
+        const up = () => { el.classList.remove("is-drag"); el.removeEventListener("pointermove", move); commit(); };
+        el.addEventListener("pointermove", move);
+        el.addEventListener("pointerup", up, {once: true});
+        el.addEventListener("pointercancel", up, {once: true});
+      });
+      el.addEventListener("keydown", (e) => {
+        const step = e.shiftKey ? 5 : 1, map = {ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step]};
+        if (!map[e.key]) return;
+        e.preventDefault();
+        el.style.left = clamp(parseFloat(el.style.left) + map[e.key][0], 0, 100 - parseFloat(el.style.width)) + "%";
+        el.style.top = clamp(parseFloat(el.style.top) + map[e.key][1], 0, 95) + "%";
+        commit();
+      });
+    });
+  }
+  document.getElementById("bpLayoutReset").onclick = () => { pos = {}; save(); render(); };
+  layoutSel?.addEventListener("change", () => {
+    document.getElementById("bpLayout").hidden = layoutSel.value !== "custom";
+    if (layoutSel.value === "custom") { if (!Object.keys(pos).length) { pos = defaults(); save(); } render(); }
+  });
+  document.querySelectorAll('input[name^="mode_"], input[name="show_gallery_button"], input[name="start_last"], input[name="start_qr"], select[name="start_steps"], select[name="start_logo"]')
+    .forEach((i) => i.addEventListener("change", render));
+  if (layoutSel?.value === "custom" && !Object.keys(pos).length) { pos = defaults(); save(); }
+  render();
+})();
+</script>
+<script>
+// Texte: suchen und gruppenweise auf-/zuklappen
+(function () {
+  const filter = document.getElementById("text-filter");
+  const expand = document.getElementById("text-expand");
+  if (!filter) return;
+  const groups = [...document.querySelectorAll("details.text-group")];
+  filter.addEventListener("input", () => {
+    const q = filter.value.trim().toLowerCase();
+    groups.forEach(g => {
+      let hits = 0;
+      g.querySelectorAll(".text-row").forEach(el => {
+        const hit = !q || (el.dataset.search || "").includes(q);
+        el.style.display = hit ? "" : "none";
+        if (hit && el.tagName === "SPAN") hits++;
+      });
+      g.hidden = !!q && !hits;
+      if (q && hits) g.open = true;
+    });
+  });
+  expand.addEventListener("click", () => {
+    const open = groups.some(g => !g.open);
+    groups.forEach(g => { g.open = open; });
+    expand.textContent = open ? "Alle zuklappen" : "Alle aufklappen";
+  });
+})();
+</script>
+<script>
+// Aussehen: Vorschau folgt den Feldern, Vorlagen füllen sie.
+(function () {                       // Bildschirmschoner: eigene Auswahl nur bei „eigene Auswahl“
+  const src = document.getElementById("attractSource");
+  const own = document.getElementById("attractOwn");
+  if (src && own) {
+    const sync = () => { own.hidden = !["own", "text"].includes(src.value); };
+    src.addEventListener("change", sync);
+    sync();
+  }
+})();
+(function () {
+  const box = document.getElementById("themePreview");
+  if (!box) return;
+  const RADII = { pill: "999px", round: "22px", soft: "12px", square: "3px" };
+  const SIZES = { s: ["34px", ".85rem", "16px"], m: ["42px", "1rem", "20px"], l: ["52px", "1.15rem", "26px"] };
+  const FONTS = {
+    system: '"Inter",system-ui,-apple-system,"Segoe UI",sans-serif',            // wie an der Box
+    display: '"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif',
+    serif: 'Georgia,"Times New Roman",serif',
+    rounded: 'ui-rounded,"SF Pro Rounded",system-ui,sans-serif',
+    mono: 'ui-monospace,Consolas,"Courier New",monospace',
+  };
+  const fields = [...document.querySelectorAll("[data-theme]")];
+  const val = name => {
+    const el = fields.find(f => f.dataset.theme === name);
+    if (!el) return "";
+    return el.type === "checkbox" ? el.checked : el.value;
+  };
+  // Zweite Fläche: Grundfläche Richtung Schriftfarbe geschoben — wie an der Box.
+  const mix = (a, b, amount) => {
+    const v = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16));
+    const [ar, ag, ab] = v(a), [br, bg, bb] = v(b);
+    const c = (x, y) => Math.round(x + (y - x) * amount).toString(16).padStart(2, "0");
+    return "#" + c(ar, br) + c(ag, bg) + c(ab, bb);
+  };
+  // Dieselben zwei Schemata, die die Box kennt. Ein gewähltes Schema schlägt
+  // die Farbfelder — die stehen dann nur noch als Anzeige da.
+  const SCHEMATA = {
+    dunkel: { accent: "#e7ad59", on_accent: "#0f0d09", bg: "#0a0806",
+              panel: "#23201c", text: "#f5f3f0", muted: "#b5b1ab" },
+    hell:   { accent: "#9d6000", on_accent: "#fefdfc", bg: "#fefdfc",
+              panel: "#efece9", text: "#1d1a16", muted: "#625d56" },
+  };
+  function modus() {
+    const el = document.querySelector('input[name="theme_mode"]:checked');
+    return el ? el.value : "dunkel";
+  }
+  function farbe(feld) {
+    const v = SCHEMATA[modus()];
+    return v ? v[feld] : val(feld);
+  }
+
+  function render() {
+    const vor = SCHEMATA[modus()] || null;
+    const farben = document.getElementById("themeColors");
+    if (farben) {
+      // Nur stumm schalten, nicht abschalten: Ein abgeschaltetes Feld wird nicht
+      // mitgeschickt — die eigenen Farben wären beim Speichern weg.
+      farben.style.opacity = vor ? ".45" : "1";
+      farben.style.pointerEvents = vor ? "none" : "auto";
+    }
+    const s = box.style, panel = farbe("panel"), text = farbe("text");
+    s.setProperty("--pv-accent", farbe("accent"));
+    s.setProperty("--pv-on-accent", farbe("on_accent"));
+    s.setProperty("--pv-bg", farbe("bg"));
+    s.setProperty("--pv-panel", panel);
+    s.setProperty("--pv-panel-2", mix(panel, text, 0.12));
+    s.setProperty("--pv-text", text);
+    s.setProperty("--pv-muted", farbe("muted"));
+    s.setProperty("--pv-radius", RADII[val("radius")] || RADII.pill);
+    const [h, f, pad] = SIZES[val("size")] || SIZES.m;
+    s.setProperty("--pv-height", h);
+    s.setProperty("--pv-font-size", f);
+    s.setProperty("--pv-pad", pad);
+    s.setProperty("--pv-weight", val("weight") || "600");
+    s.setProperty("--pv-transform", val("uppercase") ? "uppercase" : "none");
+    const file = val("font_file");
+    if (file) {
+      const style = document.getElementById("pvFont") || document.createElement("style");
+      style.id = "pvFont";
+      style.textContent = '@font-face{font-family:"PvCustom";src:url("/admin/booth-assets/' + encodeURIComponent(file) + '");font-display:swap}';
+      document.head.appendChild(style);
+    }
+    s.setProperty("--pv-font", (file ? '"PvCustom", ' : "") + (FONTS[val("font")] || FONTS.system));
+    box.dataset.secondary = val("secondary") || "solid";
+  }
+  fields.forEach(f => f.addEventListener("input", render));
+  document.querySelectorAll('input[name="theme_mode"]').forEach((r) => r.addEventListener("change", render));
+  for (const btn of document.querySelectorAll(".bp-preset")) {
+    btn.addEventListener("click", () => {
+      const preset = JSON.parse(btn.dataset.preset);
+      // Eine Vorlage bringt eigene Farben mit — dann darf kein Schema sie
+      // gleich wieder überschreiben.
+      const eigene = document.querySelector('input[name="theme_mode"][value="eigene"]');
+      if (eigene) eigene.checked = true;
+      for (const [key, value] of Object.entries(preset)) {
+        const el = fields.find(f => f.dataset.theme === key);
+        if (!el) continue;
+        if (el.type === "checkbox") el.checked = !!value; else el.value = value;
+      }
+      render();
+    });
+  }
+  render();
+})();
+</script>
+{% endblock %}

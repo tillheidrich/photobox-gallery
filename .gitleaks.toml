@@ -1,0 +1,12 @@
+# Secret scan configuration (CI job "secret scan", gitleaks).
+#
+# The default rules apply. The test suites are exempt, as in
+# tools/check_hygiene.py: they log in with made-up passwords such as
+# "Ein-langes-Kennwort-42", which the generic rule cannot tell from a real one.
+# A real credential does not belong in a test either; review catches that.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "made-up passwords in the test suites"
+paths = ['''(^|/)tests/''']

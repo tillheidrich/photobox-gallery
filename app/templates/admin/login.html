@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+{% set brand_name = login_name() %}
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% if brand_name %}Anmelden – {{ brand_name }}{% else %}Anmelden{% endif %}</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+</head>
+<body style="background:var(--c-slate-50)">
+<div class="login-page">
+  <div class="login-card">
+    {% set own_logo = global_logo() %}
+    {% if own_logo.has %}
+    {% from "_brand_logo.html" import brand_logo %}
+    <div class="login-own-logo" style="display:flex;justify-content:center;margin:0 0 var(--sp-5)">{{ brand_logo("max-height:72px;max-width:240px;width:auto;height:auto;object-fit:contain", brand_name or "Logo") }}</div>
+    {% else %}
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/>
+        <path d="m21 15-5-5L5 21"/>
+      </svg>
+    </div>
+    {% endif %}
+    <h1>{{ brand_name or "Anmelden" }}</h1>
+
+    {% if error %}
+    <div class="alert alert--error" style="margin-bottom:var(--sp-5); text-align:left">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    {% if second_factor %}
+    <p style="margin:0 0 14px;color:#6b7280;font-size:.9rem">Zweiter Schritt: der sechsstellige Code aus deiner
+      Authenticator-App.</p>
+    <form method="post" action="/admin/login/code">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label class="form-label" for="code">Code</label>
+        <input class="form-control" id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+               pattern="[0-9]*" maxlength="6" required autofocus>
+      </div>
+      <button type="submit" class="btn btn--primary" style="width:100%">Anmelden</button>
+    </form>
+    {% else %}
+<form method="post" autocomplete="on">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label class="form-label" for="username">Benutzername</label>
+        <input type="text" id="username" name="username" class="form-control"
+               autofocus autocomplete="username" placeholder="Benutzername">
+      </div>
+      <div class="form-group" style="margin-bottom:var(--sp-6)">
+        <label class="form-label" for="password">Passwort</label>
+        <input type="password" id="password" name="password" class="form-control"
+               autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn--primary w-full" style="height:42px; font-size:var(--text-base)">
+        Anmelden
+      </button>
+    </form>
+    {% endif %}
+    <p style="margin-top:16px;font-size:.85rem;color:#6b7280;text-align:center">
+      <a href="/admin/recover" class="login-link" style="color:inherit">Passwort vergessen?</a>
+    </p>
+
+    {% if setup_available %}
+    <p style="text-align:center; margin-top:var(--sp-6); font-size:var(--text-sm); color:var(--color-text-muted)">
+      Ersteinrichtung noch nicht abgeschlossen?
+      <a href="/setup">Setup-Wizard öffnen →</a>
+    </p>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

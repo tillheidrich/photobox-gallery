@@ -1,0 +1,14 @@
+# Nur für die Tests — nicht für den Betrieb.
+#
+# Zwei Testdateien prüfen die einzigen Zusagen, die sich nicht am HTML ablesen
+# lassen: ob ein QR-Code mit Logo in der Mitte noch dekodierbar ist und ob eine
+# Texterkennung die Adresse im Sharepic fehlerfrei zurückgibt. Ohne diese
+# Pakete übersprangen sich beide Dateien still — in CI liefen sie nie, und die
+# Lücke war unsichtbar, weil lokal beides zufällig installiert war.
+#
+# pytesseract braucht zusätzlich das Programm selbst:
+#   Debian/Ubuntu:  apt-get install tesseract-ocr
+#   macOS:          brew install tesseract
+opencv-python-headless>=4.9
+pytesseract>=0.3.10
+numpy>=1.24

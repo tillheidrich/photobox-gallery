@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="{{ g.lang or 'de' }}" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Tisch-Schild – {{ event.name }}</title>
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <style>
+    {# Paper size first: the print dialog takes it from @page. #}
+    @page { size: {{ 'A5' if size == 'a5' else 'A6' }} portrait; margin: 0; }
+    :root {
+      {# Fixed fallbacks, not theme variables: paper is always light. #}
+      --ts-accent: {{ brand.accent or '#1f2937' }};
+      --ts-on-accent: {{ brand.accent_on or '#ffffff' }};
+      --ts-font: {{ brand.font_stack or 'var(--font-sans, Inter, system-ui, sans-serif)' }};
+      --ts-w: {{ '148mm' if size == 'a5' else '105mm' }};
+      --ts-h: {{ '210mm' if size == 'a5' else '148mm' }};
+      --ts-scale: {{ '1.41' if size == 'a5' else '1' }};
+    }
+    body { margin: 0; background: var(--color-surface-3, #f1f5f9); color: #111; font-family: var(--font-sans, system-ui, sans-serif); }
+    .ts-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; padding: 16px; background: var(--color-surface, #fff);
+      border-bottom: 1px solid var(--color-border, #e2e8f0); }
+    .ts-bar a, .ts-bar button { min-height: 44px; }
+    .ts-bar label { display: block; font-size: .8125rem; font-weight: 500; margin-bottom: 4px; }
+    .ts-bar input { min-height: 44px; font-size: 16px; padding: 8px 12px; border: 1px solid var(--color-border, #cbd5e1); border-radius: 10px; width: 9em; letter-spacing: .15em; }
+    .ts-seg { display: inline-flex; border: 1px solid var(--color-border, #cbd5e1); border-radius: 10px; overflow: hidden; }
+    .ts-seg a { display: inline-flex; align-items: center; padding: 0 16px; text-decoration: none; color: inherit; font-size: .875rem; }
+    .ts-seg a[aria-current="true"] { background: #111; color: #fff; }
+    .ts-msg { width: 100%; margin: 0; font-size: .8125rem; }
+    .ts-msg.is-error { color: var(--color-danger, #dc2626); }
+    .ts-msg.is-muted { color: var(--color-text-2, #475569); }
+    .ts-stage { display: grid; place-items: center; padding: 24px 12px 48px; overflow-x: auto; }
+    .ts-sign { box-sizing: border-box; width: var(--ts-w); min-height: var(--ts-h); background: #fff; color: #111;
+      font-family: var(--ts-font); display: flex; flex-direction: column; align-items: center; text-align: center;
+      padding: calc(9mm * var(--ts-scale)) calc(8mm * var(--ts-scale)); box-shadow: 0 2px 16px rgba(0,0,0,.12); }
+    .ts-logo { max-height: calc(12mm * var(--ts-scale)); max-width: 60%; object-fit: contain; margin-bottom: calc(4mm * var(--ts-scale)); }
+    .ts-kicker { font-size: calc(9pt * var(--ts-scale)); letter-spacing: .14em; text-transform: uppercase; color: var(--ts-accent); font-weight: 700; margin: 0; }
+    .ts-title { font-size: calc(17pt * var(--ts-scale)); line-height: 1.15; margin: calc(2mm * var(--ts-scale)) 0 calc(5mm * var(--ts-scale)); font-weight: 700; overflow-wrap: anywhere; }
+    .ts-qr { width: calc(46mm * var(--ts-scale)); height: calc(46mm * var(--ts-scale)); padding: calc(2.5mm * var(--ts-scale)); border: 2px solid var(--ts-accent); border-radius: calc(4mm * var(--ts-scale)); background: #fff; }
+    .ts-qr img { width: 100%; height: 100%; display: block; }
+    .ts-steps { list-style: none; padding: 0; margin: calc(5mm * var(--ts-scale)) 0 0; display: grid; gap: calc(2mm * var(--ts-scale)); text-align: left; font-size: calc(9.5pt * var(--ts-scale)); }
+    .ts-steps li { display: grid; grid-template-columns: calc(6mm * var(--ts-scale)) 1fr; gap: calc(2.5mm * var(--ts-scale)); align-items: center; }
+    .ts-steps b { display: grid; place-items: center; width: calc(6mm * var(--ts-scale)); height: calc(6mm * var(--ts-scale)); border-radius: 50%; background: var(--ts-accent); color: var(--ts-on-accent); font-size: calc(8pt * var(--ts-scale)); }
+    .ts-pin { margin: calc(4mm * var(--ts-scale)) 0 0; font-size: calc(10pt * var(--ts-scale)); }
+    .ts-pin strong { display: inline-block; margin-left: 2mm; padding: 1mm 3mm; border-radius: 2mm; background: #111; color: #fff; letter-spacing: .2em; font-size: calc(13pt * var(--ts-scale)); }
+    .ts-url { margin-top: auto; padding-top: calc(4mm * var(--ts-scale)); font-size: calc(7.5pt * var(--ts-scale)); color: #555; overflow-wrap: anywhere; }
+    .ts-warn { background: var(--color-warning-bg, #fffbeb); color: var(--c-amber-700, #b45309); padding: 10px 16px; font-size: .875rem; margin: 0; }
+    /* On a phone the paper is wider than the screen: show it smaller,
+       print it at full size. */
+    @media screen and (max-width: 440px) { .ts-sign { zoom: .82; } }
+    @media screen and (max-width: 440px) { .ts-stage.is-a5 .ts-sign { zoom: .58; } }
+    @media print {
+      body { background: #fff; }
+      .ts-bar, .ts-warn { display: none !important; }
+      .ts-stage { padding: 0; display: block; }
+      .ts-sign { box-shadow: none; width: var(--ts-w); height: var(--ts-h); }
+    }
+  </style>
+</head>
+<body>
+  {% if client_view %}
+  <div class="ts-bar">
+    <a class="btn btn--secondary" href="/kunde">{{ t('common.back') }}</a>
+  {% else %}
+  <form class="ts-bar" method="post" action="/admin/events/{{ event.id }}/table-sign">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="size" value="{{ size }}">
+    <a class="btn btn--secondary" href="/admin/events/{{ event.id }}/edit#gast-upload">Zurück zum Event</a>
+  {% endif %}
+    <div>
+      <span class="ts-bar-label" style="display:block;font-size:.8125rem;font-weight:500;margin-bottom:4px">Format</span>
+      <div class="ts-seg" role="group" aria-label="Format">
+        <a href="?size=a6" {% if size == 'a6' %}aria-current="true"{% endif %}>A6</a>
+        <a href="?size=a5" {% if size == 'a5' %}aria-current="true"{% endif %}>A5</a>
+      </div>
+    </div>
+    {% if has_pin %}
+    <div>
+      <label for="tsPin">PIN aufs Schild</label>
+      <input id="tsPin" name="pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" value="{{ pin }}">
+    </div>
+    <button class="btn btn--secondary" type="submit">PIN übernehmen</button>
+    {% endif %}
+    <button class="btn btn--primary" type="button" onclick="window.print()">{{ t('ts.print') }}</button>
+    {% if pin_wrong %}
+    <p class="ts-msg is-error" data-pin-wrong role="alert">Diese PIN passt nicht zur gespeicherten. Das Schild bleibt ohne PIN.</p>
+    {% elif has_pin and not pin %}
+    <p class="ts-msg is-muted">Die PIN ist nur als Prüfwert gespeichert. Tippe sie ein, damit sie aufs Schild kommt.</p>
+    {% endif %}
+  {% if client_view %}</div>{% else %}</form>{% endif %}
+  {% if not upload_on %}
+  <p class="ts-warn" role="status">Der Gäste-Upload ist für dieses Event aus. Das Schild führt dann nur zur Galerie.</p>
+  {% endif %}
+
+  <div class="ts-stage{% if size == 'a5' %} is-a5{% endif %}">
+    <article class="ts-sign" aria-label="Tisch-Schild" data-check-skip>
+      {% if brand.logo_url %}<img class="ts-logo" src="{{ brand.logo_url }}" alt="">{% elif g.branding_logo %}<img class="ts-logo" src="/branding/logo" alt="">{% endif %}
+      <p class="ts-kicker">{{ t('ts.kicker_upload') if upload_on else t('ts.kicker_gallery') }}</p>
+      <h1 class="ts-title">{{ event.name }}</h1>
+      <div class="ts-qr"><img src="{{ gallery_path }}/qr.png?size=800" alt="{{ t('ts.qr_alt') }}"></div>
+      <ol class="ts-steps">
+        <li><b>1</b><span>{{ t('ts.step1') }}</span></li>
+        {% if upload_on %}
+        <li><b>2</b><span>{{ t('ts.step2_upload') }}</span></li>
+        <li><b>3</b><span>{{ t('ts.step3_upload') }}</span></li>
+        {% else %}
+        <li><b>2</b><span>{{ t('ts.step2_gallery') }}</span></li>
+        {% endif %}
+      </ol>
+      {% if pin %}<p class="ts-pin">{{ t('upl.pin_label') }} <strong>{{ pin }}</strong></p>{% endif %}
+      <p class="ts-url">{{ request.host }}{{ gallery_path }}</p>
+    </article>
+  </div>
+</body>
+</html>

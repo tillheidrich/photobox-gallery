@@ -1,0 +1,13 @@
+{% extends "layout_public.html" %}
+{# The ZIP of a gallery is off for guests (or the gallery shows a watermark):
+   say so and lead back, instead of a bare 403 (final review U4). #}
+{% block title %}{{ t('zip.off_title') }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:560px;padding:var(--sp-16) var(--sp-5)">
+    <h1 class="section-title" style="margin-bottom:var(--sp-4)">{{ t('zip.off_heading') }}</h1>
+    <p style="color:var(--color-text-2);line-height:1.6;margin-bottom:var(--sp-6)">{{ t('zip.off_text') }}</p>
+    <a class="btn btn-primary" href="/gallery/{{ event.slug }}">{{ t('zip.off_back') }}</a>
+  </div>
+</section>
+{% endblock %}

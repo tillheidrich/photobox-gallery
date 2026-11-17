@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="{{ g.lang | default('de') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  {% if noindex %}<meta name="robots" content="noindex,nofollow">{% endif %}
+  <meta name="lang" content="{{ g.lang or 'de' }}">
+  <title>{% block title %}Photobox Gallery{% endblock %}</title>
+  <meta name="description" content="{% block meta_desc %}Deine Fotobox-Galerie{% endblock %}">
+  {% block og %}{% if event is defined and event and event.slug is defined %}{% with og = link_meta(event) %}{% include "public/_og.html" %}{% endwith %}{% endif %}{% endblock %}
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-event.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+  {% block head %}{% endblock %}
+  {% if g.umami_enabled %}
+  {#- Query strings and fragments can carry keys (?k=…, ?event=…): never sent. -#}
+  <script defer src="{{ g.umami_src }}" data-website-id="{{ g.umami_website_id }}"
+          data-exclude-search="true" data-exclude-hash="true" data-do-not-track="true"></script>
+  {% endif %}
+  <script>window.pbTrack=function(n,d){try{if(window.umami)umami.track(n,d||undefined)}catch(e){}};</script>
+</head>
+<body>
+  <script>
+(function(){
+  var t = window.PB_FORCE_THEME || localStorage.getItem('pb-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+
+  {# Der erste Tabstopp jeder Seite: an der Navigation vorbei zum Inhalt.
+     Wer mit der Tastatur arbeitet, will nicht durch jede Kopfzeile. #}
+  <a class="skip-link" href="#inhalt">{{ t('a11y.skip') }}</a>
+
+  {% block nav %}
+  <nav class="public-nav" aria-label="{{ t('a11y.nav') }}">
+    <div class="container">
+      <a href="/" class="nav-logo">
+        {% if global_logo().has %}
+          {% from "_brand_logo.html" import brand_logo %}{{ brand_logo() }}
+        {% else %}
+          <svg class="pb-mark" viewBox="0 0 64 64" width="22" height="22" role="img" aria-label="Photobox Gallery"><mask id="pbknav" maskUnits="userSpaceOnUse" x="-8" y="-8" width="80" height="80"><rect x="-8" y="-8" width="80" height="80" fill="#fff"/><rect x="17" y="11" width="30" height="30" rx="1.5" fill="#000"/></mask><rect x="13" y="7" width="38" height="50" rx="3" fill="currentColor" mask="url(#pbknav)"/></svg>
+          <span class="nav-logo-text">{% if g.homepage_headline %}{{ g.homepage_headline }}{% else %}Photobox Gallery{% endif %}</span>
+        {% endif %}
+      </a>
+    </div>
+
+    {# Theme + Language controls #}
+    <div class="nav-controls">
+      {# Sprachumschalter — nur, wenn der Betreiber zwei Sprachen anbietet #}
+      {% if g.lang_switch %}
+      <form method="post" action="/lang/{{ 'de' if g.lang == 'en' else 'en' }}" style="margin:0">
+        <button type="submit" class="nav-ctl" data-umami-event="lang-switch"
+                lang="{{ 'en' if g.lang == 'de' else 'de' }}"
+                aria-label="{{ t('a11y.lang_to_en') if g.lang == 'de' else t('a11y.lang_to_de') }}">
+          {{ 'EN' if g.lang == 'de' else 'DE' }}
+        </button>
+      </form>
+      {% endif %}
+      {# Themenschalter — aber nur, wenn er etwas bewirkt.
+
+         Hat der Betreiber für dieses Event eine eigene Hintergrundfarbe
+         gewählt, steht die Palette fest: Genau das ist der Sinn einer eigenen
+         Marke. Der Schalter tat dann nichts, blieb aber sichtbar. Ein Knopf,
+         der nichts tut, ist schlimmer als keiner. #}
+      {% set _b = brand if brand is defined and brand else brand_for(event if event is defined else None) %}
+      {% if not (_b and _b.bg) %}
+      <button onclick="toggleTheme()" id="themeToggle" class="nav-ctl is-icon"
+              title="{{ t('a11y.theme_toggle') }}" aria-label="{{ t('a11y.theme_toggle') }}">
+        <svg id="iconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      {% endif %}
+    </div>
+
+    </nav>
+  {% endblock %}
+
+  <main id="inhalt" tabindex="-1">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="container" style="margin-top:1rem">
+          {% for category, message in messages %}
+            <div class="alert alert--{{ 'success' if category == 'success' else 'error' if category == 'danger' else category }}" style="margin-bottom:.5rem">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}
+  <footer class="public-footer" aria-label="{{ t('a11y.footer') }}">
+    <div class="container">
+      <nav class="footer-links" aria-label="{{ t('a11y.footer') }}">
+        {% for link in g.footer_links %}
+          <a href="{{ link.url }}"{% if link.new_tab %} target="_blank" rel="noopener"{% endif %}>{{ link.label }}</a>
+        {% endfor %}
+      </nav>
+      {% if g.footer_show_powered_by %}
+        <div class="footer-powered">
+          <a href="/ueber">Photobox Gallery</a>
+        </div>
+      {% endif %}
+    </div>
+  </footer>
+  {% endblock %}
+
+  {% block scripts %}{% endblock %}
+
+<script>
+function toggleTheme() {
+  var current = document.documentElement.getAttribute('data-theme') || 'light';
+  var next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('pb-theme', next);
+  updateThemeIcons(next);
+}
+function updateThemeIcons(theme) {
+  var moon = document.getElementById('iconMoon');
+  var sun = document.getElementById('iconSun');
+  if (moon && sun) {
+    moon.style.display = theme === 'dark' ? 'none' : 'block';
+    sun.style.display = theme === 'dark' ? 'block' : 'none';
+  }
+}
+// Init icons on load
+(function() {
+  var t = document.documentElement.getAttribute('data-theme') || 'light';
+  updateThemeIcons(t);
+})();
+</script>
+
+</body>
+</html>

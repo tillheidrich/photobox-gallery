@@ -1,0 +1,374 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'dashboard' %}
+
+{% block title %}Dashboard – Photobox Gallery{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block topbar_actions %}
+<a href="/admin/events/new" class="btn btn--primary btn--sm">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+  Neues Event
+</a>
+{% endblock %}
+
+{% block content %}
+{% if legal_status %}
+<div class="alert alert--error legal-unfinished" style="margin:0 0 var(--sp-6)">
+  <strong>{{ t('admin.legal.unfinished_title') }}</strong>
+  {{ t('admin.legal.unfinished_dashboard', pages=(legal_status.keys()|map('replace','impressum','Impressum')|map('replace','datenschutz','Datenschutzerklärung')|join(', '))) }}
+  <a href="/admin/settings/legal">{{ t('admin.legal.unfinished_link') }}</a>
+</div>
+{% endif %}
+<!-- Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+      </svg>
+    </div>
+    <div>
+      <div class="stat-label">Events gesamt</div>
+      <div class="stat-value">{{ stats.total_events }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <path d="m21 15-5-5L5 21"/>
+      </svg>
+    </div>
+    <div>
+      <div class="stat-label">Fotos gesamt</div>
+      <div class="stat-value">{{ stats.total_photos }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <ellipse cx="12" cy="12" rx="9" ry="3"/>
+        <path d="M3 12c0 1.657 4.03 3 9 3s9-1.343 9-3"/>
+        <path d="M3 6v6m18-6v6M3 18v-6m18 6v-6"/>
+      </svg>
+    </div>
+    <div>
+      <div class="stat-label">Speicher genutzt</div>
+      <div class="stat-value" style="font-size:1.5rem">{{ stats.storage }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+    </div>
+    <div>
+      <div class="stat-label">Boxen</div>
+      <div class="stat-value">{{ stats.active_devices }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Daily maintenance run: retention only happens if this runs -->
+<div class="card" id="maintenance-status" style="margin-bottom:var(--sp-6)">
+  <div class="card-header">
+    <h2>{{ t('admin.maintenance.title') }}</h2>
+    <a href="/admin/deletions" class="btn btn--ghost btn--sm">{{ t('admin.maintenance.log_link') }}</a>
+  </div>
+  <div class="card-body">
+    {% if maintenance.stale %}
+    <div class="alert alert--error maintenance-stale" style="margin:0 0 .5rem">
+      {% if maintenance.last_run %}{{ t('admin.maintenance.stale', hours=maintenance.age_hours|round|int) }}{% else %}{{ t('admin.maintenance.never') }}{% endif %}
+    </div>
+    {% endif %}
+    <p class="text-sm text-muted" style="margin:0">
+      {% if maintenance.last_run %}{{ t('admin.maintenance.last_run', when=maintenance.last_run.replace('T', ' ')) }}{% endif %}
+      {% if maintenance.errors %} · {{ t('admin.maintenance.errors', tasks=maintenance.errors|join(', ')) }}{% endif %}
+      {% if not maintenance.enabled %} · {{ t('admin.maintenance.external_only') }}{% endif %}
+    </p>
+    {% if maintenance.stale or not maintenance.enabled %}
+    <p class="text-sm maintenance-todo" style="margin:.5rem 0 0">{{ t('admin.maintenance.todo') }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Backups: written by the maintenance run, see app/backup.py and docs/UPGRADE.md -->
+<div class="card" id="backup-status" style="margin-bottom:var(--sp-6)">
+  <div class="card-header">
+    <h2>{{ t('admin.backup.title') }}</h2>
+  </div>
+  <div class="card-body">
+    {% set b = backup_status %}
+    {% if b.stale %}
+    <div class="alert alert--error backup-stale" style="margin:0 0 .5rem">
+      <div>
+        {% if b.last %}{{ t('admin.backup.stale', hours=b.last.age_hours|round|int) }}{% else %}{{ t('admin.backup.never') }}{% endif %}
+        {% if not b.enabled %} {{ t('admin.backup.off') }}{% endif %}
+        <div class="backup-todo" style="margin-top:.35rem">{{ t('admin.backup.todo') }}</div>
+      </div>
+    </div>
+    {% endif %}
+    {% if b.error %}
+    <div class="alert alert--error backup-error" style="margin:0 0 .5rem">{{ t('admin.backup.error', error=b.error) }}</div>
+    {% endif %}
+    {% if b.offsite_error %}
+    <div class="alert alert--error backup-offsite-error" style="margin:0 0 .5rem">{{ t('admin.backup.offsite_error', error=b.offsite_error) }}</div>
+    {% endif %}
+    <p class="text-sm text-muted" style="margin:0">
+      {% if b.last %}
+        {{ t('admin.backup.last', when=b.last.created_at.replace('T', ' ').rstrip('Z'), hours=b.last.age_hours, size=(b.last.size / 1000000)|round(1)) }}
+        · {{ t('admin.backup.with_media') if b.last.media_included else t('admin.backup.db_only') }}
+        {% if b.newest_with_media and not b.last.media_included %} · {{ t('admin.backup.newest_with_media', when=b.newest_with_media.created_at[:10]) }}{% endif %}
+        · {{ t('admin.backup.count', n=b.count) }}
+        {% if b.offsite == 'ok' %} · {{ t('admin.backup.offsite_ok') }}{% endif %}
+      {% endif %}
+    </p>
+    {% if backup_now and backup_now.state %}
+    <p class="text-sm backup-now-state" style="margin:.5rem 0 0">
+      {% if backup_now.state == 'running' %}{{ t('admin.backup.now_state_running', when=backup_now.at.replace('T', ' ')) }}
+      {% elif backup_now.state == 'done' %}{{ t('admin.backup.now_state_done', name=backup_now.name, when=backup_now.at.replace('T', ' ')) }}
+      {% else %}{{ t('admin.backup.now_state_failed', error=backup_now.error) }}{% endif %}
+    </p>
+    {% endif %}
+    {% if b.enabled %}
+    <form method="post" action="/admin/backup/now" style="margin-top:.75rem">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn--secondary btn--sm" id="backup-now">{{ t('admin.backup.now_button') }}</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Fehler der letzten 24 Stunden -->
+<div class="card" id="device-errors" style="margin-bottom:var(--sp-6)">
+  <div class="card-header">
+    <h2>Fehler der letzten 24 Stunden</h2>
+    <a href="/admin/booths" class="btn btn--ghost btn--sm">Box-Status →</a>
+  </div>
+  <div class="card-body">
+    {% for s in silence_lines or [] %}
+    <div class="alert {{ 'alert--error' if s.level == 'error' else 'alert--info' }} silence-line" style="margin:0 0 .5rem">
+      <a href="/admin/devices/{{ s.device_id }}/booth#schweigen">{{ s.name }}</a>: {{ s.text }}
+    </div>
+    {% endfor %}
+    {% for a in acked_devices or [] if a.device_id not in (device_errors|map(attribute='device_id')|list) %}
+    <p class="text-sm text-muted acked-line" style="margin:0 0 .5rem">
+      {{ t('admin.logs.quiet', name=a.name, when=a.seen_at[:16]) }} ·
+      <a href="/admin/devices/{{ a.device_id }}/logs?level=error&range=24h" class="text-muted">{{ t('admin.logs.earlier') }}</a>
+    </p>
+    {% endfor %}
+    {% if not device_errors %}
+    {% if not acked_devices %}
+    <p class="text-sm text-muted" style="margin:0">
+      Keine Fehlermeldungen. Boxen und Sync-Clients laufen durch.
+    </p>
+    {% endif %}
+    {% else %}
+    <div class="alert alert--error" style="margin:0 0 .75rem">
+      {{ t('admin.logs.summary', incidents=device_errors|sum(attribute='incidents'),
+           errors=device_errors|sum(attribute='errors'),
+           boxes=(t('admin.logs.boxes_one') if device_errors|length == 1 else t('admin.logs.boxes_many', n=device_errors|length))) }}
+    </div>
+    <table class="dash-table table--stack">
+      <thead><tr>
+        <th>Box</th><th>Fehler</th><th>Warnungen</th><th>Zuletzt</th><th><span class="sr-only">Aktion</span></th>
+      </tr></thead>
+      <tbody>
+      {% for d in device_errors %}
+      <tr>
+        <td class="td-main">{{ d.name }}
+          {% if d.reasons_text %}<br><span class="error-reasons text-sm" style="font-weight:400;color:var(--color-text-2)">{{ d.reasons_text }}</span>{% endif %}</td>
+        <td data-label="Fehler" style="color:var(--color-danger);font-weight:600">{{ d.errors }}</td>
+        <td data-label="Warnungen">{{ d.warnings }}</td>
+        <td data-label="Zuletzt">
+          <span><span style="color:var(--color-text-muted)">{{ d.last_at[:16] }}</span>
+          {% if d.last_message %}<br><span style="color:var(--color-text-2)">{{ d.last_message|truncate(70, True, '…') }}</span>{% endif %}</span>
+        </td>
+        <td class="td-actions" style="text-align:right">
+          <form method="post" action="/admin/devices/{{ d.device_id }}/logs/ack" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="back" value="dashboard">
+            <button class="btn btn--secondary btn--sm">{{ t('admin.logs.ack_button') }}<span class="sr-only"> – {{ d.name }}</span></button>
+          </form>
+          <a class="btn btn--ghost btn--sm" href="/admin/devices/{{ d.device_id }}/logs?level=error&range=24h">Logs<span class="sr-only"> von {{ d.name }}</span></a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Speicher -->
+<div class="card" style="margin-bottom:var(--sp-6)">
+  <div class="card-header">
+    <h2>Speicher</h2>
+    <span class="text-xs text-muted">Summen aus der Datenbank · Platte einmal pro Minute</span>
+  </div>
+  <div class="card-body">
+    {% if storage.disk.ok %}
+    <div style="height:8px;border-radius:99px;background:var(--color-surface-3);overflow:hidden;margin-bottom:.6rem">
+      <div style="height:100%;width:{{ storage.disk.percent_used }}%;background:{{ 'var(--color-danger)' if storage.warning else 'var(--color-primary)' }}"></div>
+    </div>
+    <p class="text-sm" style="margin:0">
+      {{ storage.human(storage.disk.used) }} von {{ storage.human(storage.disk.total) }} belegt
+      ({{ storage.disk.percent_used }} %) · {{ storage.human(storage.disk.free) }} frei
+    </p>
+    {% if storage.warning %}
+    <div class="alert alert--warning" style="margin:.75rem 0 0">
+      Die Platte ist zu {{ storage.disk.percent_used }} % voll (Warnschwelle {{ storage.warn_percent }} %).
+      Alte Events löschen oder Originale aufs NAS auslagern.
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-sm text-muted" style="margin:0">Plattenbelegung nicht lesbar.</p>
+    {% endif %}
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-top:1rem">
+      <div><div class="stat-label">Alle Events</div><div style="font-weight:700">{{ storage.human(storage.totals.total_bytes) }}</div></div>
+      <div><div class="stat-label">Web-Fassungen</div><div style="font-weight:700">{{ storage.human(storage.totals.web_bytes) }}</div></div>
+      <div><div class="stat-label">Originale</div><div style="font-weight:700">{{ storage.human(storage.totals.original_bytes) }}</div></div>
+      <div><div class="stat-label">Auf dem NAS</div><div style="font-weight:700">{{ storage.human(storage.totals.remote_bytes) }}</div></div>
+    </div>
+
+    {% if storage.events %}
+    <table class="dash-table table--stack" style="margin-top:1rem">
+      <thead><tr>
+        <th>Event</th><th>Dateien</th><th>Web</th><th>Originale</th><th>NAS</th><th><span class="sr-only">Aktion</span></th>
+      </tr></thead>
+      <tbody>
+      {% for ev in storage.events[:6] %}
+      <tr>
+        <td class="td-main">{{ ev.name }}</td>
+        <td data-label="Dateien">{{ ev.files }}</td>
+        <td data-label="Web">{{ storage.human(ev.web_bytes) }}</td>
+        <td data-label="Originale">{{ storage.human(ev.original_bytes) }}</td>
+        <td data-label="NAS">{{ storage.human(ev.remote_bytes) }}</td>
+        <td class="td-actions" style="text-align:right"><a class="btn btn--ghost btn--sm" href="/admin/events/{{ ev.id }}/storage">Details<span class="sr-only"> zu {{ ev.name }}</span></a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Recent Events -->
+<div class="card">
+  <div class="card-header">
+    <h2>Aktuelle Events</h2>
+    <a href="/admin/events" class="btn btn--ghost btn--sm">Alle anzeigen →</a>
+  </div>
+
+  {% if events %}
+    {% for event in events[:8] %}
+    <div class="event-list-item">
+      <div class="event-list-cover">
+        {% if event.cover_url %}
+          <img src="{{ event.cover_url }}" alt="" loading="lazy">
+        {% else %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="m21 15-5-5L5 21"/>
+          </svg>
+        {% endif %}
+      </div>
+      <div class="event-list-info">
+        <h3 class="event-list-title"><span class="event-list-name"><a href="/admin/events/{{ event.id }}/edit">{{ event.name }}</a></span></h3>
+        <div class="event-list-meta">
+          {% if event.date %}<span>{{ event.date }}</span>{% endif %}
+          <span>{{ event.photo_count }} Foto{{ 's' if event.photo_count != 1 else '' }}</span>
+          {% if event.state == 'scheduled' %}
+            <span class="badge badge--amber">Geplant</span>
+          {% elif event.state == 'expired' %}
+            <span class="badge badge--gray">Abgelaufen</span>
+          {% elif event.published %}
+            <span class="badge badge-success">Live</span>
+          {% else %}
+            <span class="badge badge-secondary">Entwurf</span>
+          {% endif %}
+          {% if event.pending %}
+            <a href="/admin/events/{{ event.id }}/review" class="badge badge--blue" style="text-decoration:none">{{ event.pending }} zu prüfen</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="event-list-actions">
+        {% if event.published %}
+        <a href="/gallery/{{ event.slug }}" target="_blank"
+           class="btn btn--ghost btn--sm" title="Galerie öffnen">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          <span class="adm-phone-label">Galerie</span>
+        </a>
+        {% endif %}
+        <a href="/admin/events/{{ event.id }}/edit" class="btn btn--secondary btn--sm event-list-edit">Bearbeiten</a>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <h3>Noch keine Events</h3>
+    <p>Erstelle dein erstes Event und beginne Fotos hochzuladen.</p>
+    <a href="/admin/events/new" class="btn btn--primary">Erstes Event erstellen</a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Quick Links -->
+<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:var(--sp-4); margin-top:var(--sp-6)">
+  <a href="/admin/devices" class="card" style="padding:var(--sp-5); text-decoration:none; display:flex; align-items:center; gap:var(--sp-4); transition:box-shadow var(--t-med); color:var(--color-text)">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-weight:600; font-size:var(--text-sm)">Boxen verwalten</div>
+      <div style="font-size:var(--text-xs); color:var(--color-text-muted)">Fotobox-PCs & API-Keys</div>
+    </div>
+  </a>
+  <a href="/admin/analytics" class="card" style="padding:var(--sp-5); text-decoration:none; display:flex; align-items:center; gap:var(--sp-4); transition:box-shadow var(--t-med); color:var(--color-text)">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="20" x2="18" y2="10"/>
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-weight:600; font-size:var(--text-sm)">Analytics</div>
+      <div style="font-size:var(--text-xs); color:var(--color-text-muted)">Aufrufe & Downloads</div>
+    </div>
+  </a>
+  <a href="/admin/settings" class="card" style="padding:var(--sp-5); text-decoration:none; display:flex; align-items:center; gap:var(--sp-4); transition:box-shadow var(--t-med); color:var(--color-text)">
+    <div class="stat-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-weight:600; font-size:var(--text-sm)">Einstellungen</div>
+      <div style="font-size:var(--text-xs); color:var(--color-text-muted)">Branding & Benachrichtigungen</div>
+    </div>
+  </a>
+</div>
+{% endblock %}

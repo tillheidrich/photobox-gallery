@@ -1,0 +1,38 @@
+{% extends "layout_public.html" %}
+{% block title %}{{ t('client.title') }}{% endblock %}
+
+{% block nav %}{% endblock %}
+
+{% block content %}
+<div class="password-page">
+  <div class="password-card">
+    {% if global_logo().has %}
+    {#- The client sees whose area this is: the installation's logo, as on the admin login. -#}
+    {% from "_brand_logo.html" import brand_logo %}
+    <div style="display:flex;justify-content:center;margin:0 0 var(--sp-5)">{{ brand_logo("max-height:72px;max-width:240px;width:auto;height:auto;object-fit:contain") }}</div>
+    {% else %}
+    <div class="password-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+        <circle cx="8" cy="15" r="4"/><path d="M10.85 12.15 19 4"/><path d="m18 5 2 2"/><path d="m15 8 2 2"/>
+      </svg>
+    </div>
+    {% endif %}
+    <h1>{{ t('client.title') }}</h1>
+    <p>{{ t('client.hint') }}</p>
+    {% if error %}
+    <div class="alert alert--error" role="alert" id="codeFehler" style="margin-bottom:var(--sp-4); text-align:left">{{ error }}</div>
+    {% endif %}
+    <form method="post" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group" style="margin-bottom:var(--sp-4)">
+        <label class="form-label" for="codeFeld">{{ t('client.code_label') }}</label>
+        <input type="text" id="codeFeld" name="code" class="form-control client-code-input" required
+               maxlength="24" autocapitalize="none" spellcheck="false" placeholder="xxxx-xxxx-xxxx"
+               {% if not error %}autofocus{% endif %}
+               {% if error %}aria-invalid="true" aria-describedby="codeFehler"{% endif %}>
+      </div>
+      <button type="submit" class="btn btn--primary w-full btn--lg">{{ t('client.submit') }}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

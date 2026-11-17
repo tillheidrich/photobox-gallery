@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="{{ g.lang or 'de' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{{ event.name }} – {{ t('slideshow.title') }}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/brand/photobox-fonts.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-brand.css">
+  <link rel="stylesheet" href="/static/css/brand/photobox-event.css">
+  <link rel="stylesheet" href="/static/css/design.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+  {% include "public/_brand_style.html" %}
+</head>
+<body class="ss-body">
+
+<div class="ss-stage" id="stage">
+  <!-- Zwei Ebenen, die sich überblenden. Je Ebene: unscharfer Backdrop + scharfes Foto. -->
+  <div class="ss-layer is-active" data-layer="0">
+    <div class="ss-backdrop"></div>
+    <img class="ss-photo" alt="">
+  </div>
+  <div class="ss-layer" data-layer="1">
+    <div class="ss-backdrop"></div>
+    <img class="ss-photo" alt="">
+  </div>
+</div>
+
+<!-- Leerzustand: noch keine Fotos -->
+<div class="ss-empty" id="ssEmpty" {% if photos %}hidden{% endif %}>
+  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>
+  </svg>
+  <h1>{{ t('slideshow.waiting') }}</h1>
+  <p>{{ t('slideshow.waiting_hint') }}</p>
+</div>
+
+<!-- Ecke: QR + Code, damit Gäste die Fotos selbst holen -->
+<div class="ss-corner" id="ssCorner">
+  <img class="ss-qr" src="{{ url_for('public.gallery_qr_image', slug=event.slug) }}" alt="{{ t('a11y.gallery_qr', event=event.name) }}" width="150" height="150">
+  <div class="ss-corner-text">
+    <div class="ss-event">{{ event.name }}</div>
+    <div class="ss-hint">{{ t('slideshow.scan_hint') }}</div>
+    {% if event.code %}<div class="ss-code">{{ event.code }}</div>{% endif %}
+  </div>
+</div>
+
+<div class="ss-badge" id="ssBadge" hidden>{{ t('slideshow.new_photo') }}</div>
+<div class="ss-paused" id="ssPaused" hidden>{{ t('slideshow.paused') }}</div>
+<div class="ss-help" id="ssHelp">{{ t('slideshow.help') }}</div>
+<div class="ss-progress"><div class="ss-progress-bar" id="ssBar"></div></div>
+
+<script>
+(function () {
+  "use strict";
+  var SLUG      = {{ event.slug|tojson }};
+  var HOLD_MS   = 6000;    // wie lange ein Foto steht
+  var FADE_MS   = 900;     // Überblenddauer (muss zur CSS-Transition passen)
+  var POLL_MS   = 15000;   // wie oft wir nach neuen Fotos fragen
+
+  var photos    = {{ photos|tojson }};        // neueste zuerst
+  var seen      = new Set(photos.map(function (p) { return p.id; }));
+  var queue     = [];                          // neu eingetroffene Fotos: kommen sofort dran
+  var SHOW_ORDER = {{ (show_order or 'chrono')|tojson }};
+  var order     = photos.slice().reverse();    // Abspielreihenfolge: älteste zuerst
+
+  // Zufällig heißt wirklich zufällig — und nach jeder Runde neu gemischt,
+  // damit zwei Bildschirme im selben Raum nicht dasselbe zeigen.
+  function shuffle(list) {
+    for (var i = list.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = list[i]; list[i] = list[j]; list[j] = t;
+    }
+    return list;
+  }
+  if (SHOW_ORDER === 'random') shuffle(order);
+  var idx       = -1;
+  var layers    = Array.prototype.slice.call(document.querySelectorAll('.ss-layer'));
+  var active    = 0;
+  var paused    = false;
+  var timer     = null;
+  var barEl     = document.getElementById('ssBar');
+  var emptyEl   = document.getElementById('ssEmpty');
+  var badgeEl   = document.getElementById('ssBadge');
+  var pausedEl  = document.getElementById('ssPaused');
+
+  function nextPhoto() {
+    if (queue.length) return queue.shift();          // frisch geschossenes Foto zuerst
+    if (!order.length) return null;
+    idx = idx + 1;
+    if (idx >= order.length) {
+      idx = 0;
+      if (SHOW_ORDER === 'random') shuffle(order);
+    }
+    return order[idx];
+  }
+
+  function show(photo, isNew) {
+    if (!photo) return;
+    var next   = layers[1 - active];
+    var img    = next.querySelector('.ss-photo');
+    var back   = next.querySelector('.ss-backdrop');
+
+    var pre = new Image();
+    pre.onload = function () {
+      img.src = pre.src;
+      back.style.backgroundImage = 'url("' + pre.src + '")';
+      // Ken-Burns bei jedem Wechsel neu starten
+      img.classList.remove('ss-kb'); void img.offsetWidth; img.classList.add('ss-kb');
+
+      layers[active].classList.remove('is-active');
+      next.classList.add('is-active');
+      active = 1 - active;
+
+      if (emptyEl && !emptyEl.hidden) emptyEl.hidden = true;
+      if (isNew) flashBadge();
+      restartBar();
+    };
+    pre.onerror = function () { schedule(); };       // kaputtes Bild überspringen
+    pre.src = photo.url;
+  }
+
+  function flashBadge() {
+    if (!badgeEl) return;
+    badgeEl.hidden = false;
+    clearTimeout(badgeEl._t);
+    badgeEl._t = setTimeout(function () { badgeEl.hidden = true; }, 3500);
+  }
+
+  function restartBar() {
+    if (!barEl) return;
+    barEl.style.transition = 'none';
+    barEl.style.width = '0%';
+    void barEl.offsetWidth;
+    if (paused) return;
+    barEl.style.transition = 'width ' + (HOLD_MS + FADE_MS) + 'ms linear';
+    barEl.style.width = '100%';
+  }
+
+  function schedule() {
+    clearTimeout(timer);
+    if (paused) return;
+    timer = setTimeout(advance, HOLD_MS + FADE_MS);
+  }
+
+  function advance(isNew) {
+    var p = nextPhoto();
+    if (p) show(p, isNew === true);
+    schedule();
+  }
+
+  function setPaused(v) {
+    paused = v;
+    if (pausedEl) pausedEl.hidden = !v;
+    if (v) { clearTimeout(timer); if (barEl) { barEl.style.transition = 'none'; } }
+    else { restartBar(); schedule(); }
+  }
+
+  // Neue Fotos holen, ohne die Seite neu zu laden
+  function poll() {
+    fetch('/gallery/' + encodeURIComponent(SLUG) + '/slideshow.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.photos) return;
+        var fresh = d.photos.filter(function (p) { return !seen.has(p.id); });
+        if (!fresh.length) return;
+        fresh.forEach(function (p) { seen.add(p.id); });
+        // neu -> sofort zeigen, danach dauerhaft in die Rotation
+        fresh.slice().reverse().forEach(function (p) { queue.push(p); order.push(p); });
+        if (!paused) { clearTimeout(timer); advance(true); }
+      })
+      .catch(function () { /* Netz weg? Beim nächsten Versuch wieder. */ });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === ' ') { e.preventDefault(); setPaused(!paused); }
+    else if (e.key === 'ArrowRight') { clearTimeout(timer); advance(); }
+    else if (e.key === 'ArrowLeft') {
+      clearTimeout(timer);
+      idx = (idx - 2 + order.length) % order.length;   // -2, weil advance wieder +1 rechnet
+      advance();
+    }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+      else { document.exitFullscreen && document.exitFullscreen(); }
+    }
+  });
+
+  // Maus bewegt sich -> Hilfe kurz einblenden, danach wieder verstecken
+  var helpEl = document.getElementById('ssHelp');
+  var hideT;
+  document.addEventListener('mousemove', function () {
+    document.body.classList.remove('ss-idle');
+    if (helpEl) helpEl.classList.add('is-visible');
+    clearTimeout(hideT);
+    hideT = setTimeout(function () {
+      document.body.classList.add('ss-idle');
+      if (helpEl) helpEl.classList.remove('is-visible');
+    }, 3000);
+  });
+  setTimeout(function () { document.body.classList.add('ss-idle'); }, 3000);
+
+  if (order.length) advance();
+  setInterval(poll, POLL_MS);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+{% extends "layout_admin.html" %}
+{% set active_nav = 'settings' %}
+{% block title %}Einstellungen{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+{% set active_tab = 'account' %}
+{% set settings_subtitle = 'Account und Erscheinungsbild' %}
+{% include 'admin/settings/_tabs.html' %}
+
+<div class="settings-section" id="logo">
+  <h2 class="settings-section-title">Logo</h2>
+  <p class="settings-section-desc">Steht oben in der Verwaltung, auf der Anmeldeseite, im Kundenbereich und in jeder
+    Galerie ohne eigenes Logo. PNG, JPEG oder WebP bis 2 MB, am besten PNG mit transparentem Hintergrund, etwa
+    600 × 200 Pixel; leere Ränder schneidet die Galerie ab.</p>
+  {% for variant, title, key, hint in [
+      ('light', 'Logo', 'branding_logo_path', 'Für helle Flächen.'),
+      ('dark', 'Logo für dunklen Hintergrund (optional)', 'branding_logo_dark_path',
+       'Für die dunkle Ansicht. Fehlt es, steht das Logo dort auf einem hellen Feld.')] %}
+  <div class="card" style="margin-bottom:var(--sp-4)">
+    <div class="card-body">
+      <h3 style="font-size:var(--text-base);margin:0 0 var(--sp-2)">{{ title }}</h3>
+      <p class="form-hint" style="margin:0 0 var(--sp-3)">{{ hint }}</p>
+      {% if settings[key] %}
+      <div style="margin-bottom:var(--sp-4);padding:12px;border-radius:var(--r-md);display:inline-block;
+                  background:{{ '#1f1f23' if variant == 'dark' else '#ffffff' }};border:1px solid var(--color-border)">
+        <img src="/branding/logo{{ '?variant=dark' if variant == 'dark' else '' }}" alt="{{ title }}"
+             style="display:block;max-height:64px;max-width:260px;width:auto;height:auto;object-fit:contain">
+      </div>
+      {% endif %}
+      <form method="post" action="/admin/settings/logo" enctype="multipart/form-data"
+            style="display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="variant" value="{{ variant }}">
+        <input type="file" name="logo" class="form-control" style="flex:1 1 220px"
+               accept="image/png,image/jpeg,image/webp" aria-label="{{ title }} wählen">
+        <button type="submit" class="btn btn--primary">Hochladen</button>
+      </form>
+      {% if settings[key] %}
+      <form method="post" action="/admin/settings/logo/delete" style="margin-top:var(--sp-3)">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="variant" value="{{ variant }}">
+        <button type="submit" class="btn btn--secondary">Entfernen</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="settings-section">
+  <h2 class="settings-section-title">Admin-Account</h2>
+  <p class="settings-section-desc">Benutzername und Passwort für den Admin-Bereich.</p>
+
+  <div class="card" style="margin-bottom:var(--sp-6)">
+    <form method="post" action="/admin/settings/account">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="admin_username">Benutzername</label>
+          <input type="text" id="admin_username" name="admin_username" class="form-control"
+                 value="{{ settings.admin_username or 'admin' }}" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="new_password">
+            Neues Passwort
+            <small>(leer lassen um beizubehalten)</small>
+          </label>
+          <input type="password" id="new_password" name="new_password" class="form-control"
+                 placeholder="••••••••" autocomplete="new-password" data-staerke>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="confirm_password">Neues Passwort bestätigen</label>
+          <input type="password" id="confirm_password" name="confirm_password" class="form-control"
+                 placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label class="form-check">
+            <input type="checkbox" name="rotate_device_keys" value="1">
+            Mit dem neuen Passwort auch alle Geräteschlüssel erneuern
+          </label>
+          <small class="form-hint">Sinnvoll, wenn das alte Passwort oder ein Schlüssel in falsche Hände geraten sein könnte.
+            Alle Boxen werden getrennt und müssen neu gekoppelt werden.</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="current_password">
+            Aktuelles Passwort
+            <small>(nötig, um Benutzername oder Passwort zu ändern; beim ersten Mal das Startpasswort)</small>
+          </label>
+          <input type="password" id="current_password" name="current_password" class="form-control"
+                 autocomplete="current-password" required>
+        </div>
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn--primary">Speichern</button>
+      </div>
+    </form>
+  </div>
+
+  <h2 class="settings-section-title" id="zwei-faktor">Zwei-Faktor-Anmeldung (optional)</h2>
+  <p class="settings-section-desc">Zusätzlich zum Passwort ein sechsstelliger Code aus Google Authenticator,
+    Microsoft Authenticator, Aegis oder 1Password. Läuft vollständig auf diesem Server — kein fremder Dienst,
+    auch selbst gehostet.</p>
+
+  <div class="card" style="margin-bottom:var(--sp-6)">
+    <div class="card-body">
+      {% if totp_enabled %}
+        <p class="form-hint" style="color:#15803d">Eingeschaltet. Nach dem Passwort fragt die Anmeldung nach dem Code.</p>
+        <form method="post" action="/admin/settings/totp/off" style="margin-top:12px">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="form-group" style="max-width:220px">
+            <label class="form-label" for="offcode">Aktueller Code zum Ausschalten</label>
+            <input class="form-control" id="offcode" name="code" inputmode="numeric" maxlength="6" required>
+          </div>
+          <button class="btn btn--secondary" type="submit">Zwei-Faktor ausschalten</button>
+        </form>
+      {% elif totp_pending %}
+        <p>1. Diesen Code in der App scannen:</p>
+        <img src="/admin/settings/totp/qr.png" alt="QR-Code für die Authenticator-App"
+             style="width:200px;height:200px;background:#fff;border-radius:10px;padding:8px;border:1px solid #e5e7eb">
+        <p class="form-hint">Geht das Scannen nicht, den Schlüssel von Hand eintippen:
+          <code style="letter-spacing:.08em">{{ totp_pending }}</code></p>
+        <form method="post" action="/admin/settings/totp/confirm" style="margin-top:12px">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="form-group" style="max-width:220px">
+            <label class="form-label" for="code">2. Den angezeigten Code eintragen</label>
+            <input class="form-control" id="code" name="code" inputmode="numeric" maxlength="6" required autofocus>
+          </div>
+          <button class="btn btn--primary" type="submit">Einschalten</button>
+        </form>
+      {% else %}
+        <p class="form-hint">Aus. Wer das Passwort kennt, kommt rein.</p>
+        <form method="post" action="/admin/settings/totp/start" style="margin-top:12px">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn btn--secondary" type="submit">Zwei-Faktor einrichten</button>
+        </form>
+      {% endif %}
+      <p class="form-hint" style="margin-top:14px">Telefon weg? Dann hilft der Wiederherstellungscode weiter unten —
+        er setzt das Passwort zurück und schaltet den zweiten Faktor ab.</p>
+    </div>
+  </div>
+
+  <h2 class="settings-section-title">Wiederherstellungscode</h2>
+  <p class="settings-section-desc">Der Weg zurück, wenn das Passwort weg ist — ohne Zugang zum Server.
+    Der Code ist ein zweites Passwort: einmal verwendbar, danach gibt es einen neuen.</p>
+
+  <div class="card" style="margin-bottom:var(--sp-6)">
+    <form method="post" action="/admin/settings/recovery">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="card-body">
+        {% if fresh_recovery %}
+        <p style="font-size:1.25rem;letter-spacing:.08em;font-weight:600;background:var(--c-slate-100,#f1f5f9);
+                  border-radius:10px;padding:14px 16px;text-align:center">{{ fresh_recovery }}</p>
+        <p class="form-hint"><b>Jetzt notieren.</b> Dieser Code wird nicht wieder angezeigt — gespeichert ist
+          nur seine Prüfsumme.</p>
+        {% elif recovery_made_at %}
+        <p class="form-hint">Ein Code ist hinterlegt (erzeugt am {{ recovery_made_at }}). Er wird nie wieder
+          angezeigt. Ein neuer Code ersetzt den alten sofort.</p>
+        {% else %}
+        <p class="form-hint">Noch kein Code hinterlegt. Ohne ihn hilft bei vergessenem Passwort nur der Server.</p>
+        {% endif %}
+        <p class="form-hint">Zurücksetzen später unter <code>/admin/recover</code>.</p>
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn--secondary">{% if recovery_made_at %}Neuen Code erzeugen{% else %}Code erzeugen{% endif %}</button>
+      </div>
+    </form>
+  </div>
+
+  <h2 class="settings-section-title" style="margin-top:var(--sp-8)">Farben, Schrift &amp; Banner</h2>
+  <p class="settings-section-desc">
+    Gilt für alle Galerien, solange ein Event nichts Eigenes gesetzt hat.
+    Leer lassen = Standard-Theme.
+  </p>
+
+  <div class="card">
+    <form method="post" action="/admin/settings/branding" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="card-body">
+        {% if contrast_warnings %}
+        <div class="alert alert--warning" style="margin-bottom:1rem">
+          {% for w in contrast_warnings %}
+          <div>Kontrast {{ w.ratio }}:1 — empfohlen sind {{ w.need }}:1
+            ({{ 'Text auf Hintergrund' if w.kind == 'text_on_bg' else 'Akzent auf Hintergrund' }}).
+            Speichern geht trotzdem.</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">
+          <div class="form-group">
+            <label class="form-label" for="branding_accent">Akzentfarbe</label>
+            <input type="text" id="branding_accent" name="branding_accent" class="form-control"
+                   value="{{ settings.branding_accent }}" placeholder="#c98a2e">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="branding_bg">Hintergrundfarbe</label>
+            <input type="text" id="branding_bg" name="branding_bg" class="form-control"
+                   value="{{ settings.branding_bg }}" placeholder="leer = Standard">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="branding_text">Textfarbe</label>
+            <input type="text" id="branding_text" name="branding_text" class="form-control"
+                   value="{{ settings.branding_text }}" placeholder="leer = berechnet">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="branding_font">Schrift</label>
+            <select id="branding_font" name="branding_font" class="form-control">
+              <option value="">Standard (Systemschrift)</option>
+              {% for fid, flabel in font_choices %}
+              <option value="{{ fid }}" {% if settings.branding_font == fid %}selected{% endif %}>{{ flabel }}</option>
+              {% endfor %}
+            </select>
+            <span class="form-hint">Geräteschriften, kein Google-Fonts-Aufruf.</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="banner">Bannerbild</label>
+          {% if settings.branding_banner_path %}
+          <div style="margin-bottom:.6rem;display:flex;gap:1rem;align-items:flex-start">
+            <img src="/data/{{ settings.branding_banner_path }}" alt="Banner"
+                 style="max-height:70px;border-radius:var(--r-sm);border:1px solid var(--color-border)">
+            <label class="toggle" style="margin:0">
+              <input type="checkbox" name="remove_banner" value="1">
+              <span class="toggle-track"></span>
+              Entfernen
+            </label>
+          </div>
+          {% endif %}
+          <input type="file" id="banner" name="banner" class="form-control" accept="image/*">
+        </div>
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn--primary">Branding speichern</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/passwortstaerke.js" defer></script>{% endblock %}

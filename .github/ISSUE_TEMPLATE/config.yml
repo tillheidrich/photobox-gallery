@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/tillheidrich/photobox-gallery/blob/main/SECURITY.md
+    about: Please report privately through GitHub's private vulnerability reporting (Security tab), not as an issue.
+  - name: How to work in this repository
+    url: https://github.com/tillheidrich/photobox-gallery/blob/main/AGENTS.md
+    about: Repository map, commands, hard rules, definition of done.
