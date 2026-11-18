@@ -83,6 +83,8 @@
   const CHOICES = {
     "countdown.live_view": ["fullscreen", "frame", "off"],
     "start.layout": ["bottom", "left", "right", "center", "custom"],
+    "start.text_tone": ["auto", "hell", "dunkel"],
+    "theme.mode": ["dunkel", "hell", "eigene"],
     "start.button_size": ["m", "l", "xl"],
     "start.fit": ["drift", "cover", "contain"],
     "print_layout.paper": ["10x15", "postcard", "13x18", "15x20", "5x15", "card"],
@@ -131,6 +133,7 @@
     "gif.video_seconds": [0, 60, 1], "gif.from_collage_min": [2, 8, 1],
     "gif.boomerang.fps": [5, 60, 1], "gif.boomerang.loops": [1, 10, 1],
     "boomerang.seconds": [1, 10, 0.5], "boomerang.fps": [5, 60, 1], "boomerang.loops": [1, 10, 1],
+    "boomerang.min_total_seconds": [5, 60, 1], "boomerang.max_total_seconds": [5, 60, 1],
     "video.seconds": [1, 60, 1], "video.fps": [5, 60, 1],
     "attract.after_seconds": [10, 3600, 10], "attract.seconds_per_item": [2, 120, 1], "attract.dim": [0, 80, 5],
     "attract.hint_size": [100, 250, 10],
@@ -140,6 +143,10 @@
     "meldungen.wiederholen_minuten": [0, 1440, 5],
     "print.queue_max": [1, 50, 1], "print.queue_max_hours": [1, 24, 1],
   };
+
+  // Lists of numbers, typed with commas and saved as numbers (NUMBER_LISTS in
+  // profile_rules.py: [min, max, most entries]).
+  const NUMBER_LISTS = { "boomerang.seconds_choices": [1, 15, 4] };
 
   // A list whose members are a fixed set: ticked, not typed. [value, name].
   const MULTI = {
@@ -179,6 +186,9 @@
     "sounds.volume": "Lautstärke",
     "consent.enabled": "Einwilligung abfragen", "consent.print_only": "„Nur drucken“ anbieten", "consent.days": "Tage bis zum Löschen",
     "theme.accent": "Hauptfarbe", "theme.bg": "Hintergrund", "theme.text": "Schrift", "theme.panel": "Flächen",
+    "theme.mode": "Farbschema (eigene = die sechs Farben)", "theme.on_accent": "Schrift auf der Hauptfarbe",
+    "theme.muted": "Nebentext",
+    "start.text_tone": "Schrift auf dem Startbild: auto = hell auf eigenem Startbild, sonst Schema · hell · dunkel",
     "lock.active": "Box pausieren",
     "modes": "Angebotene Modi (mindestens einer)",
     "countdown.poses": "Ansage zwischen den Aufnahmen einer Serie („Jetzt alle winken!“)",
@@ -211,6 +221,10 @@
     "attract.color": "Farbe der Fläche", "attract.text_color": "Farbe des Hinweises",
     "sounds.enabled": "Töne an (aus = die Box bleibt stumm)",
     "boomerang.seconds": "Dauer (Sekunden)", "boomerang.fps": "Bilder pro Sekunde", "boomerang.loops": "Wiederholungen",
+    "boomerang.seconds_guest_choice": "Gast wählt die Aufnahmedauer (Knöpfe vor der Aufnahme)",
+    "boomerang.seconds_choices": "Dauern zur Wahl (1–15 s, höchstens vier, z. B. 2, 5, 10)",
+    "boomerang.min_total_seconds": "Fertiger Film mindestens (Sekunden, bei Wahl der Dauer)",
+    "boomerang.max_total_seconds": "Fertiger Film höchstens (Sekunden, bei Wahl der Dauer)",
     "boomerang.format": "Format", "boomerang.layout": "Bild einpassen",
     "boomerang.guest_choice": "Gast wählt das Format auch, wenn die Formatwahl für Fotos aus ist",
     "boomerang.print": "Boomerang drucken: Bogen mit den Collage-Layouts (Bilder aus der Aufnahme)",
@@ -226,6 +240,12 @@
     "video.frame_templates": "Eigene Rahmen (Dateinamen)", "video.frame_builtins": "Mitgelieferte Rahmen (leer = alle)",
     "video.frame_none": "Auch „Ohne Rahmen“ anbieten", "video.frame_default": "Vorausgewählt (leer = der erste, none = ohne)",
     "video.frame_guest_choice": "Gast wählt den Rahmen (aus = immer die Vorauswahl)",
+    // The GIF is set up like the boomerang (18.11.2026) and takes its frames.
+    "gif.guest_choice": "Gast wählt das Format auch, wenn die Formatwahl für Fotos aus ist",
+    "gif.frames": "Rahmen anbieten (die Rahmen des Boomerangs, um jedes Bild des GIFs)",
+    "gif.frame_templates": "Eigene Rahmen (Dateinamen)", "gif.frame_builtins": "Mitgelieferte Rahmen (leer = alle)",
+    "gif.frame_none": "Auch „Ohne Rahmen“ anbieten", "gif.frame_default": "Vorausgewählt (leer = der erste, none = ohne)",
+    "gif.frame_guest_choice": "Gast wählt den Rahmen (aus = immer die Vorauswahl)",
     "draw.enabled": "Zeichnen am Ergebnis anbieten", "draw.modes": "Bei (photo, collage)",
     "draw.colors": "Farben zur Wahl (#rrggbb, höchstens 8)",
   };
@@ -285,6 +305,9 @@
       }
       const secret = text === SECRET ? ' placeholder="unverändert lassen"' : "";
       return `<label>${esc(label)}<input id="${id}" ${data} data-kind="text" value="${esc(text)}"${secret} autocomplete="off"></label>`;
+    }
+    if (NUMBER_LISTS[path] && Array.isArray(value)) {
+      return `<label>${esc(label)} <small>(Sekunden, mit Komma getrennt)</small><input id="${id}" ${data} data-kind="numlist" inputmode="decimal" value="${esc(value.join(", "))}"></label>`;
     }
     if (isSimpleList(value) && isSimpleList(kind || [])) {
       return `<label>${esc(label)} <small>(mit Komma getrennt)</small><input id="${id}" ${data} data-kind="list" value="${esc(value.join(", "))}"></label>`;
@@ -368,6 +391,15 @@
       case "number": return limit(el.dataset.path, el.value === "" ? 0 : Number(el.value));
       case "multi": return readMulti([...el.querySelectorAll("input:checked")].map((i) => i.value));
       case "list": return el.value.split(",").map((s) => s.trim()).filter(Boolean);
+      case "numlist": {
+        // Out of range, words and doubles drop here; the booth checks again.
+        const [low, high, most] = NUMBER_LISTS[el.dataset.path];
+        const out = [];
+        for (const n of el.value.split(/[,;\s]+/).map(Number)) {
+          if (Number.isFinite(n) && n >= low && n <= high && !out.includes(n)) out.push(n);
+        }
+        return out.slice(0, most);
+      }
       case "json": return JSON.parse(el.value || "null");
       default: return el.value;
     }

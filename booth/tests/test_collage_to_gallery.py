@@ -136,6 +136,10 @@ def test_two_shots_are_not_a_film(booth):
     assert s.anim is None
 
 
-def test_the_gif_stays_off_until_somebody_wants_it(booth):
+def test_the_gif_comes_by_default_and_stays_off_when_switched_off(booth):
+    # On by default since 18.11.2026 (owner); off is still off.
+    s = _collage(booth, "grid4")
+    assert s.anim is not None
+    booth.store.profile["gif"]["from_collage"] = False
     s = _collage(booth, "grid4")
     assert s.anim is None

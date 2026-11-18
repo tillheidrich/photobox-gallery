@@ -1,7 +1,7 @@
 # Contributor Licence Agreement
 
 Photobox Gallery is published under the AGPL-3.0-or-later, and only under it.
-There is no second edition. Keeping the licence situation clean still needs
+There is no second licence and no paid edition. Keeping the licence situation clean still needs
 one person who can speak for the whole codebase — to grant a licence exception,
 to answer a legal question, to fix a licence problem without asking every
 contributor first. That is what this document is for.
@@ -38,7 +38,7 @@ By contributing to this repository you state that:
 
 ## Why one rights holder
 
-There is no paid edition. The maintainer earns money by
+All code stays open and complete. The maintainer earns money by
 running the software for others as a managed service — hosting galleries,
 setting up and looking after booths — which anyone else may do under the same
 licence. The CLA is not there to take your code anywhere else. It is there
@@ -46,8 +46,9 @@ because a few things can only be done by someone who holds the rights to every
 line:
 
 * **The Canon SDK permission.** The booth can talk to Canon cameras through the
-  Canon EDSDK, which is proprietary and under Canon's own agreement. Nobody
-  ships it — every user gets it from Canon — but a build that loads it combines
+  Canon EDSDK, which is proprietary and under Canon's own agreement. It is
+  not part of the public download — users get it from Canon or individually
+  on request — but a build that loads it combines
   AGPL code with a proprietary library. The AGPL allows the rights holders to
   permit that explicitly (section 7); the permission is in `LICENSE-EXCEPTION`.
   Code from contributors who did not grant the right to add such permissions

@@ -230,6 +230,10 @@ def create_app() -> Flask:
     from app import security_headers
     security_headers.install(app)
 
+    # gzip for text answers; runs after every other hook (see app/compression.py).
+    from app import compression
+    compression.install(app)
+
     # Wer die Galerie unter der Domain seines Kunden betreibt, landet beim
     # Aufruf der nackten Adresse sonst auf der Startseite des Dienstleisters.
     # Gehört die Domain zu einem Event, führt „/" direkt dorthin.
@@ -258,6 +262,11 @@ def create_app() -> Flask:
     app.jinja_env.globals["brand_for"] = _branding.event_branding
     app.jinja_env.globals["brand_css_vars"] = _branding.css_vars
     app.jinja_env.globals["global_logo"] = _branding.global_logo
+    # The size a guest download takes without a choice (run page, "Meine Aufnahmen").
+    from app import media as _media
+    app.jinja_env.globals["best_download_size"] = _media.best_download_size
+    # ... and the size a share button fetches (capped at 2048 px for iOS).
+    app.jinja_env.globals["share_download_size"] = _media.share_download_size
 
     # Die Bitte um eine Bewertung: als Jinja-Global, damit jede Gastseite sie
     # selbst holen kann — ohne dass jede Route davon wissen muss.

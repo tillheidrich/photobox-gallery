@@ -67,6 +67,20 @@ def test_the_checksums_list_exactly_the_offered_files():
     assert "throw" in sums, "a missing download must stop the build, not shorten the list"
 
 
+def test_the_checksum_file_has_lf_line_ends_and_no_bom():
+    """``sha256sum -c`` on Linux/macOS reads a CRLF line's name with a "\\r"
+    and reports the file missing. WriteAllLines ends lines with the
+    platform's newline (CRLF on Windows), so the file is written as one
+    string joined with LF, through a UTF-8 encoding without BOM. Static check:
+    there is no Windows (PowerShell) in this test run."""
+    code = _code(BUILD, "#")
+    write = [l.strip() for l in code.splitlines() if "SHA256SUMS.txt" in l and "File]::" in l]
+    assert write == ['[IO.File]::WriteAllText("$Here\\dist\\SHA256SUMS.txt", ($sums -join "`n") + "`n", '
+                     '(New-Object Text.UTF8Encoding $false))'], write
+    assert "WriteAllLines" not in code and "Set-Content" not in "\n".join(
+        l for l in code.splitlines() if "SHA256SUMS" in l)
+
+
 def test_the_unversioned_booth_exe_stays_for_the_box_update():
     spec = (WIN / "photobox-booth.spec").read_text(encoding="utf-8")
     assert 'name="PhotoboxBooth"' in spec
@@ -97,15 +111,44 @@ def test_the_setup_always_packs_the_sync_program():
     assert 'foreach ($n in "PhotoboxBooth.exe", "PhotoboxSync.exe") {\n            if (-not (Test-Path' in code
 
 
-def test_no_canon_sdk_file_in_any_artefact():
+def _without_camera_sdk_block(code: str) -> str:
+    """The spec as a free build runs it: the block guarded by
+    PHOTOBOX_CAMERA_SDK_STAGE (edition with camera SDK, never CI) left out."""
+    start = code.find("_camera_sdk_stage = ")
+    if start < 0:
+        return code
+    end = code.index("\n\n", code.index("if _camera_sdk_stage:", start))
+    return code[:start] + code[end:]
+
+
+def test_no_canon_sdk_file_in_any_free_artefact():
     for spec_name in ("photobox-booth.spec", "photobox-sync.spec"):
-        code = _code((WIN / spec_name).read_text(encoding="utf-8"), "#")
+        code = _without_camera_sdk_block(_code((WIN / spec_name).read_text(encoding="utf-8"), "#"))
         for word in ("edsdk", "edsimage", "canon"):
             assert word not in code.lower(), f"{spec_name}: {word}"
-    build = _code(BUILD, "#").lower()
-    # The LIESMICH text tells the operator how to install Canon's SDK; no
-    # command of the build copies or packs it.
-    for line in build.splitlines():
+    # The sync never gets the camera SDK, not even in the second edition.
+    assert "PHOTOBOX_CAMERA_SDK_STAGE" not in (WIN / "photobox-sync.spec").read_text(encoding="utf-8")
+    booth_spec = (WIN / "photobox-booth.spec").read_text(encoding="utf-8")
+    assert 'os.environ.get("PHOTOBOX_CAMERA_SDK_STAGE", "").strip()' in booth_spec
+    # The build's free part: the LIESMICH text tells the operator how to
+    # install Canon's SDK; no command of it copies or packs it. Everything of
+    # the edition with camera SDK sits in its own `if ($WithCameraSdk)` blocks.
+    build = _code(BUILD, "#")
+    free = re.sub(r"(?ms)^(\s*)if \(\$WithCameraSdk\) \{.*?^\1\}", "", build).lower()
+    for line in free.splitlines():
         if "edsdk" in line or "edsimage" in line:
             assert "--install-edsdk" in line, line
-    assert "EDSDK" not in _section(ISS, "Files").upper()
+    assert "EDSDK" not in _section(ISS, "Files").split("#ifdef CameraSdkDir")[0].upper()
+
+
+def test_both_programs_pack_the_certifi_bundle_for_ftps_and_mail():
+    # photobox_sync.trust adds certifi's cacert.pem to the Windows store, which
+    # lacks roots the PC never fetched (18.11.2026: FTPS refused with "unable to
+    # get local issuer certificate"). The file has to be inside both .exe files.
+    for spec_name in ("photobox-booth.spec", "photobox-sync.spec"):
+        code = _code((WIN / spec_name).read_text(encoding="utf-8"), "#")
+        assert re.search(r"^datas \+= collect_data_files\(\"certifi\"\)$", code, re.M), spec_name
+        assert re.search(r"^from PyInstaller\.utils\.hooks import [^\n]*\bcollect_data_files\b", code, re.M), spec_name
+        # Added before Analysis() reads the list, not after.
+        assert code.index('collect_data_files("certifi")') < code.index("Analysis("), spec_name
+    assert "certifi==" in (ROOT / "constraints.txt").read_text(encoding="utf-8")

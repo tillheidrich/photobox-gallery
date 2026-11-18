@@ -3,10 +3,10 @@
 * ``GalleryTarget`` — die eigene Photobox Gallery (API v2). Kennt Durchgänge,
   Posterbilder, Share-Kennungen. Das ist der Standard.
 * ``SftpTarget``    — beliebiger SSH-Server, z. B. das NAS zuhause.
-* ``FtpsTarget``    — FTP über TLS, z. B. Picdrop „Live Push".
+* ``FtpsTarget``    — FTP über TLS, z. B. eine Online-Galerie per FTP.
 * ``FolderTarget``  — ein Ordner auf diesem Rechner oder auf einem USB-Stick.
   Damit liegen die Daten dreifach: Arbeitsordner der Box, zweite Ablage, Stick —
-  zusätzlich zum Sync mit Galerie/NAS/Picdrop. Fehlt der Stick, wartet die
+  zusätzlich zum Sync mit Galerie/NAS/Online-Galerie. Fehlt der Stick, wartet die
   Warteschlange, bis er wieder steckt.
 
 Jedes Ziel wirft ``TemporaryError`` (später erneut) oder ``PermanentError``
@@ -18,6 +18,7 @@ import ftplib
 import hashlib
 import io
 import json
+import logging
 import os
 import posixpath
 import re
@@ -29,6 +30,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import httpx
+
+
+log = logging.getLogger(__name__)
 
 
 class TemporaryError(Exception):
@@ -383,6 +387,21 @@ def remote_parts(cfg: Dict[str, Any], item: Dict[str, Any], default_path: str = 
 #: Written and deleted again by "Prüfen": proof that uploads can land in the folder.
 CHECK_FILE = ".photobox-pruefung.txt"
 
+#: Written by "Prüfen" when the account refuses CHECK_FILE: live-push logins
+#: that drop everything into a gallery take picture and film names only.
+LIVE_PUSH_CHECK_FILE = "photobox-test.jpg"
+#: A real 1x1 white baseline JPEG (285 bytes), so a service that decodes what
+#: it receives does not refuse the test picture as broken.
+TINY_JPEG = bytes.fromhex(
+    "ffd8ffe000104a46494600010100000100010000ffdb004300100b0c0e0c0a100e0d0e1211101318281a181616183123"
+    "251d283a333d3c3933383740485c4e404457453738506d51575f626768673e4d71797064785c656763ffdb004301111212"
+    "1815182f1a1a2f634238426363636363636363636363636363636363636363636363636363636363636363636363636363"
+    "636363636363636363636363ffc00011080001000103012200021101031101ffc4001500010100000000000000000000"
+    "000000000007ffc40014100100000000000000000000000000000000ffc40014010100000000000000000000000000000000"
+    "ffc40014110100000000000000000000000000000000ffda000c03010002110311003f00a0000fffd9")
+#: Names an ingest-only account usually takes; anything else it may refuse for good.
+MEDIA_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mov", ".webp")
+
 
 def fixed_folder(cfg: Dict[str, Any]) -> tuple:
     """(absolute, folders) of the folder field up to its first placeholder — what a check can reach."""
@@ -575,6 +594,37 @@ class HostKeys:
             if self._data.pop(self.key(host, port), None) is not None:
                 self._save()
 
+    # The same file also remembers which FTP(S) logins take uploads only under
+    # their final name (live-push accounts, see FtpsTarget.upload). Kept here
+    # because this store is already handed to every target and survives a
+    # restart; the entry sits under its own key, never under "host:port", so
+    # nothing of it shows as an SFTP host key.
+    _FTP_DIRECT = "_ftp_direct"
+
+    def _direct_known(self) -> Dict[str, Any]:
+        known = self._data.get(self._FTP_DIRECT)
+        return dict(known) if isinstance(known, dict) else {}     # a hand-edited or broken entry reads as empty
+
+    def ftp_direct(self, endpoint: str) -> bool:
+        with self._lock:
+            return bool(self._direct_known().get(str(endpoint)))
+
+    def remember_ftp_direct(self, endpoint: str) -> None:
+        """Kept in memory at once; a file that cannot be written is logged once, never an upload error."""
+        global _DIRECT_SAVE_WARNED
+        with self._lock:
+            known = self._direct_known()
+            if str(endpoint) in known:
+                return
+            known[str(endpoint)] = int(time.time())
+            self._data[self._FTP_DIRECT] = known
+            try:
+                self._save()
+            except OSError as e:
+                if not _DIRECT_SAVE_WARNED:
+                    _DIRECT_SAVE_WARNED = True
+                    log.warning("Direkter Upload für %s nicht gespeichert (gilt bis zum Neustart): %s", endpoint, e)
+
     def report(self, host: str, port: int) -> Dict[str, Any]:
         """Fingerprints only, for a status page or the heartbeat."""
         entry = self.get(host, port)
@@ -588,6 +638,9 @@ class HostKeys:
                                     "at": int(seen.get("at") or 0)}
         return out
 
+
+#: Set once the direct-upload note could not be written (logged once per process).
+_DIRECT_SAVE_WARNED = False
 
 #: Shared by every SFTP target built without a store of its own (in memory).
 _MEMORY_KEYS = HostKeys(None)
@@ -727,7 +780,7 @@ class SftpTarget:
         # wait instead of being given up while someone fixes the password.
         transport, sftp = self._open(auth_permanent=False)
         try:
-            # „Alles in einen Ordner" gilt hier genauso wie bei FTPS: Picdrop
+            # „Alles in einen Ordner" gilt hier genauso wie bei FTPS: Online-Galerien per FTP
             # ordnet die Bilder selbst einer Galerie zu und will sie im
             # Wurzelverzeichnis — ein Unterordner je Event und Tag käme dort
             # gar nicht erst an.
@@ -766,7 +819,69 @@ class SftpTarget:
             transport.close()
 
 
-class ImplicitFTP_TLS(ftplib.FTP_TLS):
+class _DataChannelSocket(ssl.SSLSocket):
+    """The TLS socket of one FTPS data connection.
+
+    ftplib ends every transfer (STOR, LIST, NLST, MLSD, RETR) with
+    ``conn.unwrap()``: it sends close_notify and waits for the server's.
+    Some servers (seen 18.11.2026 with a commercial host running a Go FTP
+    server) close the data connection without answering, and OpenSSL 3 calls
+    that "UNEXPECTED_EOF_WHILE_READING". By then every byte has been sent or
+    read; whether the transfer worked is said by the server's reply on the
+    control connection (226 or an error), which ftplib reads next, and for an
+    upload by the size check after it. So only here, at the very end, a
+    missing close_notify, a reset or a timeout is not an error. Errors in the
+    handshake or during the transfer are raised as before.
+    """
+
+    def unwrap(self):
+        try:
+            return super().unwrap()
+        except (ssl.SSLEOFError, ssl.SSLZeroReturnError, ConnectionResetError, ConnectionAbortedError,
+                BrokenPipeError, TimeoutError):
+            return None
+        except ssl.SSLError as e:
+            # SHUTDOWN_WHILE_IN_INIT: OpenSSL's word for the same bare close after
+            # a download (seen with TLS 1.3 once the data was read to its end).
+            # The handshake itself was finished before the first byte moved.
+            if getattr(e, "reason", None) in ("UNEXPECTED_EOF_WHILE_READING", "SHUTDOWN_WHILE_IN_INIT"):
+                return None
+            raise
+
+
+class ExplicitFTP_TLS(ftplib.FTP_TLS):
+    """FTPS (AUTH TLS) with data connections that some servers need.
+
+    Every data connection resumes the control connection's TLS session, as
+    servers with ``require_ssl_reuse`` (vsftpd and others) insist; for the
+    rest it is a faster handshake. And the end of a data connection tolerates
+    a server that does not answer close_notify (``_DataChannelSocket``).
+    Certificate and host name are checked on every data connection with the
+    same context as on the control connection.
+    """
+
+    def _control_session(self):
+        try:
+            return self.sock.session
+        except (AttributeError, ValueError):
+            return None
+
+    def ntransfercmd(self, cmd, rest=None):
+        conn, size = ftplib.FTP.ntransfercmd(self, cmd, rest)
+        if self._prot_p:
+            try:
+                conn = self.context.wrap_socket(conn, server_hostname=self.host,
+                                                session=self._control_session())
+            except BaseException:
+                conn.close()
+                raise
+            # Same object layout (SSLSocket has no __slots__ of its own), only
+            # unwrap() differs; wrap_socket() offers no way to pick the class.
+            conn.__class__ = _DataChannelSocket
+        return conn, size
+
+
+class ImplicitFTP_TLS(ExplicitFTP_TLS):
     """FTPS on port 990: the control connection is TLS before the server says hello.
 
     Standard library only: the socket is wrapped right after connecting,
@@ -793,10 +908,114 @@ class ImplicitFTP_TLS(ftplib.FTP_TLS):
         return ftplib.FTP.login(self, user, passwd, acct)
 
 
+def _close_ftp(ftp) -> None:
+    try:
+        ftp.quit()
+    except Exception:                      # noqa: BLE001 — a broken connection is closed anyway
+        try:
+            ftp.close()
+        except Exception:                  # noqa: BLE001
+            pass
+
+
+def _pending_reply(ftp, wait: float) -> str:
+    """After a data connection broke: what the server says on the control connection.
+
+    ``temp`` (4xx, e.g. 426 transfer aborted: the network or the server's
+    patience), ``perm`` (5xx, the server refused), ``ok`` or ``none`` (no
+    answer, the control connection is gone too).
+    """
+    try:
+        if getattr(ftp, "sock", None) is not None:
+            ftp.sock.settimeout(min(3.0, float(wait)))
+        ftp.getresp()
+        return "ok"
+    except ftplib.error_temp:
+        return "temp"
+    except ftplib.error_perm as e:
+        return "temp" if _out_of_space(e) else "perm"
+    except (ftplib.Error, OSError, EOFError, ValueError):
+        return "none"
+
+
+def _out_of_space(e: BaseException) -> bool:
+    """552/452: quota or disk full. Never a reason to try another name, never permanent."""
+    return str(e)[:3] in ("552", "452")
+
+
+def _tls_eof(e: BaseException) -> bool:
+    """The data connection's TLS ended without a goodbye ("EOF occurred in violation of protocol")."""
+    if isinstance(e, (ssl.SSLEOFError, ssl.SSLZeroReturnError)):
+        return True
+    if isinstance(e, ssl.SSLError) and getattr(e, "reason", None) == "UNEXPECTED_EOF_WHILE_READING":
+        return True
+    return "eof occurred in violation of protocol" in str(e).lower()
+
+
+def _refused_in_transfer(ftp, e: BaseException, wait: float) -> Optional[str]:
+    """True when a broken STOR looks like a refusal rather than a bad network.
+
+    Seen 18.11.2026 with a live-push account: a name it does not take ends
+    with "EOF occurred in violation of protocol" during the transfer instead
+    of a 550. A 5xx waiting on the control connection is a refusal; a
+    timeout or a 4xx there (426 transfer aborted) is the network or a full
+    server and stays a plain temporary error. Without any answer only a
+    TLS end-of-file counts as a refusal: a reset or broken pipe with a dead
+    control connection is what a cut line looks like.
+
+    Returns ``"perm"`` (a real 5xx reply), ``"eof"`` (a TLS end-of-file and no
+    reply at all) or None (not a refusal).
+    """
+    if isinstance(e, TimeoutError):
+        return None
+    reply = _pending_reply(ftp, wait)
+    if reply == "perm":
+        return "perm"
+    if reply == "temp":
+        return None
+    return "eof" if _tls_eof(e) else None
+
+
+class _CountingReader:
+    """Counts what ftplib took from the file: the proof of an upload when the server has no SIZE."""
+
+    def __init__(self, fp):
+        self.fp = fp
+        self.sent = 0
+
+    def read(self, size: int = -1) -> bytes:
+        data = self.fp.read(size)
+        self.sent += len(data)
+        return data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.fp.close()
+        return False
+
+
+#: Endpoints whose left-over in-between file was already reported (once per process).
+_LEFTOVER_REPORTED: set = set()
+#: Per endpoint: direct uploads that worked after a TLS end-of-file with no reply.
+#: Such a refusal is not certain (a flaky line looks alike), so it is written to
+#: the store only after it happened this often in this process.
+_EOF_DIRECT_OK: Dict[str, int] = {}
+EOF_DIRECT_TO_REMEMBER = 2
+
+
 class FtpsTarget:
-    def __init__(self, cfg: Dict[str, Any]):
+    def __init__(self, cfg: Dict[str, Any], host_keys: Optional[HostKeys] = None):
         self.cfg = cfg
         self.name = cfg.get("name") or "ftps"
+        # Where "this login takes final names only" is remembered (HostKeys);
+        # without a store of its own, in memory for this process.
+        self.host_keys = host_keys or _MEMORY_KEYS
+
+    def direct(self) -> bool:
+        """Upload under the final name only: set by the option or learnt from this server."""
+        return bool(self.cfg.get("direct")) or self.host_keys.ftp_direct(endpoint_key(self.cfg))
 
     def timeout(self) -> float:
         """Wie lange auf den Server gewartet wird.
@@ -812,8 +1031,14 @@ class FtpsTarget:
         port = int(self.cfg.get("port") or 21)
         # Port 990 is implicit FTPS (TLS from the first byte, an older way some
         # NAS still offer); every other port speaks explicit FTPS (AUTH TLS).
-        cls = ImplicitFTP_TLS if port == 990 else ftplib.FTP_TLS
-        ftp = cls(context=ssl.create_default_context(), timeout=self.timeout())
+        cls = ImplicitFTP_TLS if port == 990 else ExplicitFTP_TLS
+        # The same context for the control and (via ntransfercmd) every data
+        # connection: system roots plus certifi, certificate and name checked.
+        # The system store alone missed roots on Windows (see trust.py).
+        # Imported here like zielordner: the gallery's tests load this file on
+        # its own, without the package, where a top-level relative import fails.
+        from . import trust
+        ftp = cls(context=trust.verify_context(), timeout=self.timeout())
         ftp.connect(self.cfg["host"], port)
         ftp.login(self.cfg["user"], self.cfg.get("password", ""))
         ftp.prot_p()
@@ -821,43 +1046,89 @@ class FtpsTarget:
             ftp.set_pasv(True)
         return ftp
 
-    def check(self) -> str:
+    def _check_connect(self):
         try:
-            ftp = self._connect()
+            return self._connect()
         except ftplib.error_perm as e:
             raise PermanentError(f"Anmeldung abgelehnt: {e}") from e
-        except (OSError, ftplib.Error) as e:
+        except (OSError, ftplib.Error, EOFError) as e:
             raise TemporaryError(str(e)) from e
+
+    @staticmethod
+    def _check_folder(ftp, absolute: bool, folders: list) -> str:
+        """Into the folder for a check, made if missing; flat with an empty field sends nothing."""
+        if absolute:
+            ftp.cwd("/")
+        for d in folders:
+            try:
+                ftp.cwd(d)
+            except ftplib.error_perm:
+                try:
+                    ftp.mkd(d)
+                    ftp.cwd(d)
+                except ftplib.error_perm as e:
+                    raise PermanentError(f"Ordner {d} lässt sich nicht anlegen (keine Schreibrechte?): {e}") from e
+        try:
+            return ftp.pwd()
+        except ftplib.error_perm:
+            return "(Startordner)"             # an ingest-only login may not even say where it is
+
+    def check(self) -> str:
+        ftp = self._check_connect()
+        absolute, folders = fixed_folder(self.cfg)
+        persist = True                         # the option or an earlier success: nothing new to learn
         try:
             # Login, then the folder (its part before the first placeholder):
             # made if missing, then a small file written and deleted again —
             # "angemeldet" alone said nothing about whether uploads can land.
-            absolute, folders = fixed_folder(self.cfg)
-            if absolute:
-                ftp.cwd("/")
-            for d in folders:
+            here = self._check_folder(ftp, absolute, folders)
+            if not self.direct():
                 try:
-                    ftp.cwd(d)
-                except ftplib.error_perm:
-                    try:
-                        ftp.mkd(d)
-                        ftp.cwd(d)
-                    except ftplib.error_perm as e:
-                        raise PermanentError(f"Ordner {d} lässt sich nicht anlegen (keine Schreibrechte?): {e}") from e
-            here = ftp.pwd()
-            try:
-                ftp.storbinary(f"STOR {CHECK_FILE}", io.BytesIO(b"photobox"))
-                ftp.delete(CHECK_FILE)
-            except (ftplib.error_perm, ftplib.error_temp) as e:
-                raise PermanentError(f"Ordner {here} nicht beschreibbar: {e}") from e
-            return f"angemeldet, Ordner {here} beschreibbar"
+                    ftp.storbinary(f"STOR {CHECK_FILE}", io.BytesIO(b"photobox"))
+                    ftp.delete(CHECK_FILE)
+                    return f"angemeldet, Ordner {here} beschreibbar"
+                except ftplib.error_perm as e:
+                    if _out_of_space(e):
+                        raise PermanentError(f"Ordner {here} nicht beschreibbar: {e}") from e
+                    persist = True             # a real refusal: maybe a live-push login, try a picture below
+                except ftplib.error_temp as e:
+                    raise PermanentError(f"Ordner {here} nicht beschreibbar: {e}") from e
+                except (OSError, EOFError) as e:
+                    kind = _refused_in_transfer(ftp, e, self.timeout())
+                    if not kind:
+                        raise TemporaryError(str(e)) from e
+                    persist = kind == "perm"
         except ftplib.error_perm as e:
             raise PermanentError(str(e)) from e
         finally:
+            _close_ftp(ftp)
+        return self._check_direct(absolute, folders, persist)
+
+    def _check_direct(self, absolute: bool, folders: list, persist: bool = True) -> str:
+        """The check for a live-push login: a tiny real JPEG under its final name, in a fresh connection."""
+        ftp = self._check_connect()
+        try:
+            here = self._check_folder(ftp, absolute, folders)
             try:
-                ftp.quit()
-            except Exception:
-                ftp.close()
+                ftp.storbinary(f"STOR {LIVE_PUSH_CHECK_FILE}", io.BytesIO(TINY_JPEG))
+            except (ftplib.error_perm, ftplib.error_temp) as e:
+                raise PermanentError(f"Ordner {here} nicht beschreibbar, auch ein Testbild "
+                                     f"({LIVE_PUSH_CHECK_FILE}) wird abgelehnt: {e}") from e
+            except (OSError, EOFError) as e:
+                raise TemporaryError(f"Testbild nicht angekommen: {e}") from e
+            if persist:
+                self.host_keys.remember_ftp_direct(endpoint_key(self.cfg))
+            text = "angemeldet, direkter Upload möglich (Live-Push)"
+            try:
+                ftp.delete(LIVE_PUSH_CHECK_FILE)
+                return text + f", Testbild {LIVE_PUSH_CHECK_FILE} wieder gelöscht"
+            except (ftplib.Error, OSError, EOFError):
+                return (text + f". Das Testbild {LIVE_PUSH_CHECK_FILE} bleibt im Ziel (der Zugang lässt nichts "
+                        "löschen) und kann dort von Hand entfernt werden")
+        except ftplib.error_perm as e:
+            raise PermanentError(str(e)) from e
+        finally:
+            _close_ftp(ftp)
 
     def listdir(self, path: str = "") -> Dict[str, Any]:
         try:
@@ -918,38 +1189,35 @@ class FtpsTarget:
             return {"skipped": True}
         if skips_variant(self.cfg, item):
             return {"skipped": True}
+        # The folder (zielordner.py), also in flat mode since 17.11.2026
+        # (before, flat ignored it; a proofing gallery's folder field stays empty).
+        # Empty = the login's start folder; a leading "/" from the top.
+        absolute, folders, remote = remote_parts(self.cfg, item)
+        size = Path(item["path"]).stat().st_size
+        if self.direct():
+            return self._upload_direct(item, absolute, folders, remote, size)
+        ftp = self._upload_connect()
         try:
-            ftp = self._connect()
-        except ftplib.error_perm as e:
-            raise PermanentError(str(e)) from e
-        except (OSError, ftplib.Error) as e:
-            raise TemporaryError(str(e)) from e
-        try:
-            # The folder (zielordner.py), also in flat mode since 17.11.2026
-            # (before, flat ignored it; Picdrop's folder field stays empty).
-            # Empty = the login's start folder; a leading "/" from the top.
-            absolute, folders, remote = remote_parts(self.cfg, item)
-            if absolute:
-                ftp.cwd("/")
-            for d in folders:
-                try:
-                    ftp.cwd(d)
-                except ftplib.error_perm:
-                    try:
-                        ftp.mkd(d)
-                        ftp.cwd(d)
-                    except ftplib.error_perm as e:
-                        raise TemporaryError(f"Ordner {d} lässt sich nicht anlegen (keine Schreibrechte?): {e}") from e
-            size = Path(item["path"]).stat().st_size
+            self._enter_folder(ftp, absolute, folders)
             # Erst unter einem Zwischennamen, dann umbenennen — wie bei SFTP und
             # beim Ordner-Ziel. Bis zum 19.09.2026 schrieb FTP direkt unter den
             # Endnamen: Bricht die Datenverbindung ab, ohne dass der Server
             # einen Fehler meldet (Quota), stand ein halbes Bild unter dem
-            # richtigen Namen bei Picdrop — und bei Servern ohne ``SIZE`` fiel
+            # richtigen Namen bei der Online-Galerie — und bei Servern ohne ``SIZE`` fiel
             # das auch der Größenprüfung nicht auf.
             zwischen = remote + ".part"
-            with open_source(item, self.cfg) as f:
-                ftp.storbinary(f"STOR {zwischen}", f)
+            try:
+                with open_source(item, self.cfg) as f:
+                    ftp.storbinary(f"STOR {zwischen}", f)
+            except ftplib.error_perm as e:
+                if _out_of_space(e):
+                    raise TemporaryError(str(e)) from e
+                return self._fallback_direct(ftp, item, absolute, folders, remote, size, "perm")
+            except (OSError, EOFError) as e:
+                kind = _refused_in_transfer(ftp, e, self.timeout())
+                if not kind:
+                    raise TemporaryError(str(e)) from e
+                return self._fallback_direct(ftp, item, absolute, folders, remote, size, kind)
             landed = None
             try:
                 ftp.voidcmd("TYPE I")
@@ -961,15 +1229,121 @@ class FtpsTarget:
                 ftp.delete(remote)
             except (ftplib.Error, OSError):
                 pass                 # es gab noch keine
-            ftp.rename(zwischen, remote)
+            try:
+                ftp.rename(zwischen, remote)
+            except ftplib.error_perm as e:
+                if _out_of_space(e):
+                    raise TemporaryError(str(e)) from e
+                # Took the in-between name but will not rename it: a live-push
+                # login. Remove what it took if it lets us, then go direct.
+                try:
+                    ftp.delete(zwischen)
+                except (ftplib.Error, OSError, EOFError):
+                    self._report_leftover(zwischen)
+                return self._fallback_direct(ftp, item, absolute, folders, remote, size, "perm")
             return {"remote": remote, "bytes": size}
-        except (OSError, ftplib.Error) as e:
+        except (OSError, ftplib.Error, EOFError) as e:
             raise TemporaryError(str(e)) from e
         finally:
+            _close_ftp(ftp)
+
+    def _upload_connect(self):
+        try:
+            return self._connect()
+        except ftplib.error_perm as e:
+            raise PermanentError(str(e)) from e
+        except (OSError, ftplib.Error, EOFError) as e:
+            raise TemporaryError(str(e)) from e
+
+    @staticmethod
+    def _enter_folder(ftp, absolute: bool, folders: list) -> None:
+        """Into the upload's folder, made if missing. Flat with an empty field sends no CWD/MKD at all."""
+        if absolute:
+            ftp.cwd("/")
+        for d in folders:
             try:
-                ftp.quit()
-            except Exception:
-                pass
+                ftp.cwd(d)
+            except ftplib.error_perm:
+                try:
+                    ftp.mkd(d)
+                    ftp.cwd(d)
+                except ftplib.error_perm as e:
+                    raise TemporaryError(f"Ordner {d} lässt sich nicht anlegen (keine Schreibrechte?): {e}") from e
+
+    def _fallback_direct(self, old_ftp, item, absolute, folders, remote, size, kind: str) -> Dict[str, Any]:
+        """The one retry of a file under its final name, after the in-between name was refused.
+
+        A fresh connection: after a dropped data connection the old control
+        connection may still hold an unread reply. Exactly one attempt per
+        file per try, so a server that refuses everything is not hammered.
+        Only a success is remembered (HostKeys), and from then on this login
+        is sent final names straight away: at once after a real 5xx
+        (``kind`` "perm"), after a TLS end-of-file with no reply ("eof") only
+        once that happened EOF_DIRECT_TO_REMEMBER times in this process.
+        """
+        _close_ftp(old_ftp)
+        log.info("Ziel %s: Zwischenname abgelehnt, die Datei geht einmal direkt unter ihrem Namen", self.name)
+        answer = self._upload_direct(item, absolute, folders, remote, size)
+        key = endpoint_key(self.cfg)
+        if kind == "eof":
+            _EOF_DIRECT_OK[key] = _EOF_DIRECT_OK.get(key, 0) + 1
+            if _EOF_DIRECT_OK[key] < EOF_DIRECT_TO_REMEMBER:
+                return answer
+        self.host_keys.remember_ftp_direct(key)
+        log.info("Ziel %s nimmt nur direkte Uploads an; ab jetzt ohne Zwischennamen", self.name)
+        return answer
+
+    def _report_leftover(self, zwischen: str) -> None:
+        key = endpoint_key(self.cfg)
+        if key in _LEFTOVER_REPORTED:
+            return
+        _LEFTOVER_REPORTED.add(key)
+        log.warning("Ziel %s: die Zwischendatei %s ließ sich weder umbenennen noch löschen und bleibt auf dem "
+                    "Server liegen (kein Fehler; ab jetzt wird direkt hochgeladen)", self.name, zwischen)
+
+    def _refused(self, remote: str, e: BaseException) -> Exception:
+        """A refused final name: the real permission problem, said in plain words."""
+        name = posixpath.basename(remote)
+        if _out_of_space(e):
+            return TemporaryError(str(e))      # quota or disk full: wait, as before
+        if str(e)[:3] in ("550", "553") and not name.lower().endswith(MEDIA_EXTENSIONS):
+            # Never accepted, however often it is tried: give this file up, keep the rest going.
+            return PermanentError(f"Das Konto auf dem Server nimmt die Datei {name} nicht an: Zugänge, die direkt "
+                                  "in eine Galerie hochladen, nehmen meist nur Bilder und Filme "
+                                  f"(jpg, png, gif, webp, mp4, mov). ({e})")
+        return TemporaryError(f"Das Konto auf dem Server nimmt die Datei {name} nicht an. Ist der Zugang noch "
+                              "freigeschaltet und einer Galerie zugeordnet? Die Dateien bleiben in der "
+                              f"Warteschlange. ({e})")
+
+    def _upload_direct(self, item, absolute, folders, remote, size) -> Dict[str, Any]:
+        """STOR under the final name: no in-between name, no DELE, no rename.
+
+        For logins that take final names only (live push). The proof is the
+        server's SIZE where it answers, otherwise its 226 plus the bytes
+        ftplib took from the file.
+        """
+        ftp = self._upload_connect()
+        try:
+            self._enter_folder(ftp, absolute, folders)
+            try:
+                with _CountingReader(open_source(item, self.cfg)) as f:
+                    ftp.storbinary(f"STOR {remote}", f)
+            except ftplib.error_perm as e:
+                raise self._refused(remote, e) from e
+            landed = None
+            try:
+                ftp.voidcmd("TYPE I")
+                landed = ftp.size(remote)
+            except (ftplib.Error, OSError, EOFError):
+                pass                 # no SIZE (or the file was taken away at once): the 226 and the count decide
+            if landed is None and f.sent != size:
+                raise TemporaryError(f"{self.name}: {f.sent} statt {size} Bytes gesendet")
+            verify_size(size, landed, self.name)
+            return {"remote": remote, "bytes": size, "direct": True}
+        except (OSError, ftplib.Error, EOFError) as e:
+            raise TemporaryError(str(e)) from e
+        finally:
+            _close_ftp(ftp)
 
 
 class FtpTarget(FtpsTarget):
@@ -981,8 +1355,8 @@ class FtpTarget(FtpsTarget):
     die Leitung; im eigenen Netz ist das vertretbar, über das Internet nicht.
     """
 
-    def __init__(self, cfg: Dict[str, Any]):
-        super().__init__(cfg)
+    def __init__(self, cfg: Dict[str, Any], host_keys: Optional[HostKeys] = None):
+        super().__init__(cfg, host_keys)
         self.name = cfg.get("name") or "ftp"
 
     def _connect(self):
@@ -1083,10 +1457,10 @@ def build_extra_targets(cfgs, host_keys: Optional[HostKeys] = None):
             continue
         if is_sftp(t):                         # SSH-Dateiübertragung ist SFTP — ein Weg, mehrere Namen
             out.append(SftpTarget(c, host_keys))
-        elif t == "ftps":
-            out.append(FtpsTarget(c))
+        elif t == "ftps":                      # the store also remembers live-push logins (FtpsTarget.direct)
+            out.append(FtpsTarget(c, host_keys))
         elif t == "ftp":
-            out.append(FtpTarget(c))
+            out.append(FtpTarget(c, host_keys))
         elif t in ("folder", "usb", "stick"):
             out.append(FolderTarget(c))
     return out

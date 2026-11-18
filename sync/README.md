@@ -1,6 +1,6 @@
 # Photobox Sync
 
-Überträgt Fotobox-Aufnahmen zur **Photobox Gallery**, auf ein **NAS** (SFTP) oder zu **Picdrop** (FTPS „Live Push“) — offline zuerst.
+Überträgt Fotobox-Aufnahmen zur **Photobox Gallery**, auf ein **NAS** (SFTP) oder in eine **Online-Galerie per FTPS** — offline zuerst.
 
 Zwei Einsatzarten, ein Paket:
 
@@ -19,7 +19,7 @@ Aufnahme-Software ──► Ordner ──► Watcher (stabile Datei?) ──► 
                                                                  │
              ┌───────────────────────────────┬───────────────────┴─────────────┐
              ▼                               ▼                                 ▼
-   Photobox Gallery (API v2)          NAS per SFTP                    Picdrop per FTPS
+   Photobox Gallery (API v2)          NAS per SFTP                    Online-Galerie per FTPS
              ▲
              └── alle 30 s (wenn online): Status ⇄ Event-Zuordnung, Profil, Aufträge
 ```

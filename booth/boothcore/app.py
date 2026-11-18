@@ -6,7 +6,9 @@ import datetime as dt
 import io
 import json
 import logging
+import math
 import os
+import re
 import secrets
 import shutil
 import subprocess
@@ -17,14 +19,14 @@ import time as time_module
 from concurrent.futures import Future
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import Body, FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps
 
-from . import __version__, errors, plugins, redact, share, source_offer
+from . import __version__, camera_sdk_bundle, errors, plugins, profile_rules, redact, share, source_offer
 from .media import vorlagen_kern as templates
 from .abendzahlen import Abendzahlen
 from .camera import CameraService, create_backend
@@ -103,6 +105,10 @@ def _lut_label(key: str) -> str:
     """``natural-portrait`` -> ``Natural Portrait``."""
     return " ".join(w.upper() if w.isdigit() else w.capitalize() for w in key.replace("_", "-").split("-") if w)
 
+
+#: Modes whose set-up offers motion frames ("Rahmen"). The GIF follows the
+#: boomerang (18.11.2026) and takes the frames made for it.
+FRAME_MODES = ("boomerang", "video", "gif")
 
 class Booth:
     """Hält alle Dienste. Genau eine Instanz pro Prozess."""
@@ -1372,6 +1378,41 @@ class Booth:
     def template(self, tid: Optional[str]) -> Optional[dict]:
         return next((t for t in self.templates() if t.get("id") == tid), None)
 
+    def _layouts_chosen(self) -> bool:
+        """Did the operator choose layouts (exact list, own templates, ticked built-ins)?"""
+        p = self.profile
+        return bool(p.get("collage_exact") or p.get("collage_templates") or p.get("collage_builtins"))
+
+    def photo_templates(self) -> List[dict]:
+        """The layouts with exactly one photo, offered in photo mode (18.11.2026).
+
+        Only from layouts the operator chose: the shipped catalogue as a whole
+        is no choice, and a booth that never chose any keeps the plain photo.
+        """
+        if not self._layouts_chosen():
+            return []
+        # Only what was chosen: an own template, or a built-in that is ticked.
+        # When the event's own templates are not on the booth yet, templates()
+        # falls back to the catalogue; none of that may turn up here.
+        builtin = {str(t["id"]) for t in compose.BUILTIN_TEMPLATES}
+        ticked = {str(x) for x in (self.profile.get("collage_builtins") or [])}
+        return [t for t in self.templates() if compose.template_info(t)["shots"] == 1
+                and (str(t.get("id")) not in builtin or str(t.get("id")) in ticked)]
+
+    def collage_choice(self) -> List[dict]:
+        """The collage's layouts: those with two photos or more, else all (never empty)."""
+        alle = self.templates()
+        if not self.photo_templates():
+            return alle
+        mehr = [t for t in alle if compose.template_info(t)["shots"] >= 2]
+        return mehr or alle
+
+    @staticmethod
+    def _format_of(tpl: dict) -> str:
+        """The format nearest the layout's first slot: the shape the plain photo keeps."""
+        ratio = float(compose.template_info(tpl)["slot_aspect"] or 1.0)
+        return min(compose.ASPECTS, key=lambda k: abs(compose.ASPECTS[k] - ratio))
+
     # ── Frames for boomerang and video ("Rahmen") ────────
     def motion_frame_builtins(self) -> List[dict]:
         """The shipped frames (media/motion_frames.json), read once."""
@@ -1415,7 +1456,7 @@ class Booth:
         ``fmt`` keeps only the frames of that format (the guest chose one).
         """
         cfg = self.profile.get(mode) or {}
-        if mode not in motion_frames.MODES or not cfg.get("frames"):
+        if mode not in FRAME_MODES or not cfg.get("frames"):
             return {"enabled": False, "frames": [], "none": True, "default": motion_frames.NONE_ID,
                     "guest_choice": False}
         builtins = {f["id"]: f for f in self.motion_frame_builtins()}
@@ -1423,7 +1464,9 @@ class Booth:
         own = dict(self.own_motion_frames())
         frames = [(name, own[name]) for name in own_files if name in own]
         frames += [(i, builtins[i]) for i in ids]
-        frames = [(i, f) for i, f in frames if mode in (f.get("modes") or motion_frames.MODES)
+        # A GIF takes the frames made for the boomerang (it follows its set-up).
+        kind = "boomerang" if mode == "gif" else mode
+        frames = [(i, f) for i, f in frames if kind in (f.get("modes") or motion_frames.MODES)
                   and (not fmt or f.get("format") == fmt)]
         if not frames:
             none = True                 # never an empty choice: without a frame is always possible
@@ -2122,30 +2165,45 @@ class Booth:
         return bool(uid) and self.library.is_print_only(uid)
 
     # ── Einwilligung je Durchgang ─────────────────────────
-    def consent_options(self) -> List[str]:
+    def mode_prints(self, mode: str) -> bool:
+        """Does a run of this mode get a print sheet at all?
+
+        Photo, collage and GIF always do (a GIF prints its stills); a
+        boomerang only with ``boomerang.print``; a video never. Where this is
+        False, nothing may offer to print the run: no "Nur drucken" (the guest
+        would be left with neither a print nor a gallery link) and no print
+        button (finalize leaves ``print_file`` empty).
+        """
+        if mode in ("photo", "collage", "gif"):
+            return True
+        return mode == "boomerang" and self.boomerang_prints()
+
+    def consent_options(self, mode: Optional[str] = None) -> List[str]:
         """The buttons of the "Wohin mit eurem Foto?" screen, or [] for no screen.
 
-        "Nur drucken" only while printing actually works; a booth that is
-        data-minimal as a whole has nothing to choose. One option is no choice,
-        so the step is skipped then.
+        "Nur drucken" only while printing actually works, and with ``mode``
+        only for a mode that has a print sheet (18.11.2026: a video offered
+        "Nur drucken"); a booth that is data-minimal as a whole has nothing
+        to choose. One option is no choice, so the step is skipped then.
         """
         cfg = self.profile.get("consent") or {}
         if not cfg.get("enabled") or self.ephemeral:
             return []
         options = ["gallery"]
         printing = bool(self.profile["print"].get("enabled")) and self.printer.backend is not None
-        if cfg.get("print_only", True) and printing:
+        if cfg.get("print_only", True) and printing and (mode is None or self.mode_prints(mode)):
             options.append("print")
         return options if len(options) >= 2 else []
 
-    def consent_notice_only(self) -> bool:
-        """The step is on, but there is nothing to choose (no printer, "Nur drucken" off).
+    def consent_notice_only(self, mode: Optional[str] = None) -> bool:
+        """The step is on, but there is nothing to choose (no printer, "Nur drucken" off,
+        or a mode without a print sheet).
 
         The screen is skipped then; the note must not go with it. The kiosk
         shows it on the set-up screen and the run records "notice".
         """
         cfg = self.profile.get("consent") or {}
-        return bool(cfg.get("enabled")) and not self.ephemeral and not self.consent_options()
+        return bool(cfg.get("enabled")) and not self.ephemeral and not self.consent_options(mode)
 
     def consent_note(self, lang: str) -> str:
         """The note under the buttons, exactly as the guest reads it."""
@@ -2625,14 +2683,14 @@ class Booth:
     # ── Durchgang ─────────────────────────────────────────
     def start_session(self, mode: str, fmt: str, template_id: Optional[str], background: Optional[str],
                       chroma_background: str = "", consent: Optional[dict] = None,
-                      motion_frame: Optional[str] = None) -> Session:
+                      motion_frame: Optional[str] = None, seconds: Any = None) -> Session:
         if self.locked:
             raise HTTPException(423, "locked")
         allowed = self.printable_modes() if self.ephemeral else self.profile["modes"]
         if mode not in allowed:
             raise HTTPException(400, "Modus nicht aktiv")
         record: Dict[str, Any] = {}
-        options = self.consent_options()
+        options = self.consent_options(mode)
         if options:
             # With the step on, no run starts without a choice: a run without
             # one would silently land in the gallery.
@@ -2644,10 +2702,15 @@ class Booth:
             langs = self.profile.get("languages") or ["de"]
             lang = str((consent or {}).get("lang") or "")
             record = self.consent_record(option, lang if lang in langs else langs[0])
-        elif self.consent_notice_only():
+        elif self.consent_notice_only(mode):
             # One option is no choice; what is left is the note on the set-up
             # screen. The run says so, and so does the log: a consent step
             # that is on never drops without a trace.
+            if str((consent or {}).get("option") or "") == "print":
+                # "Nur drucken" for a run that cannot print (a kiosk page from
+                # before 18.11.2026 still offers it for a video): refused, never
+                # quietly turned into a gallery run the guest did not choose.
+                raise HTTPException(400, "consent.option")
             langs = self.profile.get("languages") or ["de"]
             lang = str((consent or {}).get("lang") or "")
             record = self.consent_record("notice", lang if lang in langs else langs[0])
@@ -2655,19 +2718,29 @@ class Booth:
         if self.camera.state != "ready":
             raise HTTPException(503, errors.camera_code(self.camera.error) or "camera.off")
         tpl = None
-        if mode == "collage" or (mode == "boomerang" and self.boomerang_prints()):
+        if mode == "collage":
+            tpl = self.template(template_id) or self.collage_choice()[0]
+        elif mode == "boomerang" and self.boomerang_prints():
             # A boomerang with its print sheet takes a collage layout too.
             tpl = self.template(template_id) or self.templates()[0]
-        if mode in ("boomerang", "video"):
-            # The boomerang's format is chosen like the photo's: the guest
-            # picks among "formats" when guest_choice.format is on (the
-            # default) or boomerang.guest_choice is; anything else is the
-            # operator's boomerang.format. The film's is always the operator's.
+        elif mode == "photo":
+            # A one-photo layout the operator chose: it makes the result and the
+            # sheet, and its shape wins over the format choice.
+            einzel = self.photo_templates()
+            if einzel:
+                tpl = next((t for t in einzel if t.get("id") == template_id), einzel[0])
+                fmt = self._format_of(tpl)
+        if mode in FRAME_MODES:
+            # The boomerang's (and since 18.11.2026 the GIF's) format is chosen
+            # like the photo's: the guest picks among "formats" when
+            # guest_choice.format is on (the default) or the mode's own
+            # guest_choice is; anything else is the operator's <mode>.format.
+            # The film's is always the operator's.
             clip = self.profile[mode]
-            if not (mode == "boomerang" and self.boomerang_format_choice()
+            if not (mode in ("boomerang", "gif") and self.boomerang_format_choice(mode)
                     and fmt in (self.profile.get("formats") or [])):
-                fmt = clip["format"]
-        frame_id, frame = self.pick_motion_frame(mode, motion_frame) if mode in ("boomerang", "video") else ("", None)
+                fmt = clip.get("format") or self.profile["default_format"]
+        frame_id, frame = self.pick_motion_frame(mode, motion_frame) if mode in FRAME_MODES else ("", None)
         if frame is not None:
             # The frame's canvas is the film's shape (and the key frames' of a printed boomerang).
             fmt = frame["format"]
@@ -2677,6 +2750,10 @@ class Booth:
         chroma_bg = chroma_background if chroma_background in available else ""
         s = new_session(self.sessions_dir, mode, fmt, self.profile, tpl, background, chroma_bg)
         s.motion_frame, s.motion_frame_id = frame, frame_id
+        # The guest's boomerang length, only from the offer: anything else
+        # (an old kiosk page, a typo, a remote start without one) is the
+        # pre-selected length, never a refused run.
+        s.clip_choice_seconds = self._chosen_clip_seconds(mode, seconds)
         s.consent = record
         s.print_only = record.get("option") == "print"
         if self.run_print_only(s):
@@ -2857,18 +2934,18 @@ class Booth:
 
     def format_without_choice(self, mode: str) -> str:
         """The format of a run that names none: a boomerang's or film's own, else the photo's default."""
-        if mode in ("boomerang", "video"):
+        if mode in FRAME_MODES:
             return str((self.profile.get(mode) or {}).get("format") or self.profile["default_format"])
         return self.profile["default_format"]
 
-    def boomerang_format_choice(self) -> bool:
+    def boomerang_format_choice(self, mode: str = "boomerang") -> bool:
         """May the guest choose the boomerang's format? Like the photo's, or by its own switch.
 
         Until 15.11.2026 only ``boomerang.guest_choice`` (off by default)
         opened it; the owner wants it "identisch wie bei den anderen".
         """
         general = (self.profile.get("guest_choice") or {}).get("format", True) is not False
-        return bool(general or (self.profile.get("boomerang") or {}).get("guest_choice"))
+        return bool(general or (self.profile.get(mode) or {}).get("guest_choice"))
 
     def record_clip(self, s: Session, encode_later: bool = False) -> dict:
         """Record a boomerang or film; ``encode_later``: answer as soon as the camera stops.
@@ -2895,7 +2972,7 @@ class Booth:
                     earlier.result(timeout=300)
                 except Exception:                    # noqa: BLE001 — that take is replaced anyway
                     pass
-            seconds = min(float(cfg["seconds"]), boomerang.MAX_FRAMES / max(1.0, float(cfg["fps"])))
+            seconds = min(self._clip_seconds(s), boomerang.MAX_FRAMES / max(1.0, float(cfg["fps"])))
             movie = None
             if self.clip_source(s.mode) == "camera" and not self._movie_paused():
                 movie_seconds = min(seconds, self.CAMERA_MOVIE_MAX_SECONDS)
@@ -2972,6 +3049,18 @@ class Booth:
         short = target or min(int(cfg.get("max_width") or 1080), min(canvas))
         return motion_frames.output_size(frame, short)
 
+    def _gif_in_frame(self, s: Session, frames: List[Image.Image], layers: dict) -> List[Image.Image]:
+        """A GIF's pictures in the run's motion frame; the pictures unframed if it cannot be drawn."""
+        try:
+            with Image.open(layers["bottom"]) as bottom, Image.open(layers["top"]) as top:
+                bottom, top = bottom.convert("RGB"), top.convert("RGBA")
+                return [motion_frames.compose(fr, bottom, top, layers["box"]) for fr in frames]
+        except Exception as e:                       # noqa: BLE001 — without the frame, not without the GIF
+            log.warning("Durchgang %s: GIF mit Rahmen „%s“ nicht erzeugt (%s: %s) – es entsteht ohne Rahmen",
+                        s.uid, s.motion_frame_id, e.__class__.__name__, str(e)[:200])
+            s.motion_frame, s.motion_frame_id = None, ""
+            return frames
+
     def _motion_layers(self, s: Session, cfg: dict) -> Optional[dict]:
         """The still layers of the run's frame, from the cache or rendered now; None if they cannot be."""
         try:
@@ -2989,6 +3078,78 @@ class Booth:
     CAMERA_MOVIE_MAX_SECONDS = 60.0
     #: Seconds recorded before the asked length (the camera's start delay).
     CAMERA_MOVIE_LEAD = 0.7
+
+    # ── Length the guest chooses (boomerang.seconds_choices, 18.11.2026) ──
+    #: Longest length offered when the camera films (source "camera"): its
+    #: boomerang is turned round by ffmpeg's ``reverse`` filter, which holds
+    #: every frame of the recording at 1080x1920 (about 3 MB each in yuv420p):
+    #: 10 s at 20/s is ~620 MB in the ffmpeg process, 15 s would be ~930 MB
+    #: on a small booth PC. The live view keeps JPEG bytes (~0.1 MB a frame)
+    #: and decodes one picture at a time, so it may go up to 15 s.
+    CAMERA_CHOICE_MAX_SECONDS = 10.0
+
+    def clip_seconds_offer(self, mode: str) -> dict:
+        """The lengths the set-up screen offers, and the pre-selected one.
+
+        Only the boomerang, only with ``seconds_guest_choice`` on and two or
+        more valid lengths (1-15 s, at most four, doubles once). A length
+        whose single loop (forward and back) is longer than
+        ``max_total_seconds`` is left out: its film could not keep the limit.
+        ``choices`` empty means no choice: today's ``seconds`` and ``loops``.
+        """
+        cfg = self.profile.get(mode) or {}
+        if mode != "boomerang" or not cfg.get("seconds_guest_choice"):
+            return {"choices": [], "default": None}
+        low, high, most = profile_rules.NUMBER_LISTS["boomerang.seconds_choices"]
+        if self.clip_source(mode) == "camera":
+            high = min(high, self.CAMERA_CHOICE_MAX_SECONDS)
+        top = max(self._clip_total(cfg, "max_total_seconds", 30), self._clip_total(cfg, "min_total_seconds", 15))
+        choices: List[float] = []
+        for v in cfg.get("seconds_choices") or []:
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+                continue
+            v = float(v)
+            if low <= v <= high and 2 * v <= top + 1e-9 and v not in choices:
+                choices.append(v)
+        choices = choices[:most]
+        if len(choices) < 2:
+            return {"choices": [], "default": None}
+        try:
+            own = float(cfg.get("seconds"))
+        except (TypeError, ValueError):
+            own = None
+        return {"choices": choices, "default": own if own in choices else choices[0]}
+
+    @staticmethod
+    def _clip_total(cfg: dict, key: str, fallback: float) -> float:
+        try:
+            value = float(cfg.get(key) or fallback)
+        except (TypeError, ValueError):
+            value = fallback
+        return value if math.isfinite(value) and value > 0 else fallback
+
+    def _chosen_clip_seconds(self, mode: str, wanted: Any) -> Optional[float]:
+        """The guest's length checked against the offer: unknown or broken -> the pre-selected one."""
+        offer = self.clip_seconds_offer(mode)
+        if not offer["choices"]:
+            return None
+        try:
+            value = float(wanted) if not isinstance(wanted, bool) else None
+        except (TypeError, ValueError):
+            value = None
+        return value if value in offer["choices"] else offer["default"]
+
+    def _clip_seconds(self, s: Session) -> float:
+        """How long this run records: the guest's choice, else the profile's ``seconds``."""
+        return float(s.clip_choice_seconds or self.profile[s.mode]["seconds"])
+
+    def _clip_loops(self, s: Session) -> int:
+        """Loops of this run's boomerang: by the 15-30 s rule after a choice, else ``loops`` as before."""
+        cfg = self.profile[s.mode]
+        if not s.clip_choice_seconds:
+            return int(cfg.get("loops", 1))
+        return boomerang.loops_for_total(s.clip_choice_seconds, self._clip_total(cfg, "min_total_seconds", 15),
+                                         self._clip_total(cfg, "max_total_seconds", 30))
 
     def clip_source(self, mode: str) -> str:
         """``boomerang.source`` / ``video.source``: "live" (default) or "camera"."""
@@ -3119,7 +3280,7 @@ class Booth:
             return self._encode_clip(s, frames)
         cfg = self.profile[s.mode]
         raw: Optional[Path] = None
-        want = min(float(cfg["seconds"]), self.CAMERA_MOVIE_MAX_SECONDS,
+        want = min(self._clip_seconds(s), self.CAMERA_MOVIE_MAX_SECONDS,
                    boomerang.MAX_FRAMES / max(1.0, float(cfg["fps"])))
         live_fps = s.clip_fps
         from .media import camera_movie
@@ -3145,7 +3306,7 @@ class Booth:
                 try:
                     _, poster, times = camera_movie.make_film(
                         raw, part, box=box, fill=fill, rotate=int(self.camera.rotate or 0), fps=cfg["fps"],
-                        seconds=want, boomerang=s.mode == "boomerang", loops=int(cfg.get("loops", 1)))
+                        seconds=want, boomerang=s.mode == "boomerang", loops=self._clip_loops(s))
                     s.poster = compose.save_jpeg(poster, s.folder / "poster.jpg", quality=85, taken=s.created)
                     os.replace(part, target)
                 finally:
@@ -3220,7 +3381,7 @@ class Booth:
                 error = e2
         log.warning("Durchgang %s (%s): Film der Kamera nicht verwendbar und kein Live-Bild (%s) – "
                     "neue Aufnahme aus dem Live-Bild", s.uid, s.mode, str(error)[:200])
-        seconds = min(float(cfg["seconds"]), boomerang.MAX_FRAMES / max(1.0, float(cfg["fps"])))
+        seconds = min(self._clip_seconds(s), boomerang.MAX_FRAMES / max(1.0, float(cfg["fps"])))
         frames, elapsed = self.camera.record_timed(seconds, float(cfg["fps"]))
         if len(frames) < 4:
             raise RuntimeError(f"nur {len(frames)} Live-Bilder in der neuen Aufnahme") from error
@@ -3264,7 +3425,7 @@ class Booth:
             part = self._clip_part(target)
             try:
                 _, poster = boomerang.make_clip(frames, part, fps=int(s.clip_fps or cfg["fps"]),
-                                                boomerang=s.mode == "boomerang", loops=int(cfg.get("loops", 1)),
+                                                boomerang=s.mode == "boomerang", loops=self._clip_loops(s),
                                                 rotate=rotate,
                                                 frame_layers=layers)
                 s.poster = compose.save_jpeg(poster, s.folder / "poster.jpg", quality=85, taken=s.created)
@@ -3290,7 +3451,7 @@ class Booth:
                                             fps=int(s.clip_fps or cfg["fps"]),
                                             scale=scale,
                                             layout=cfg.get("layout", "crop" if s.mode == "boomerang" else "blur"), boomerang=s.mode == "boomerang",
-                                            loops=int(cfg.get("loops", 1)),
+                                            loops=self._clip_loops(s),
                                             rotate=rotate)
             s.poster = compose.save_jpeg(poster, s.folder / "poster.jpg", quality=85, taken=s.created)
             os.replace(part, target)
@@ -3349,7 +3510,7 @@ class Booth:
         shots = list(pool.map(lambda im: self.apply_look(look, im), prepared))
         if keep is not None:
             keep.extend(shots)
-        if s.mode == "photo":
+        if s.mode == "photo" and not s.template:
             out = compose.crop_to_aspect(shots[0], s.fmt)
         else:
             tpl = dict(self._fit_to_paper(s.template or compose.BUILTIN_TEMPLATES[0]))
@@ -3405,6 +3566,10 @@ class Booth:
                 stills = list(pool.map(lambda im: self.apply_look(look, im),
                                        self.prepared_shots(s, self._gif_work_px())))   # the print: no photo frame
                 frames = list(pool.map(lambda fr: self.apply_frame(fr, s, "photo"), stills))
+                layers = self._motion_layers(s, cfg) if s.motion_frame else None
+                if layers is not None:
+                    # The motion frame around every picture, like a boomerang's film.
+                    frames = self._gif_in_frame(s, frames, layers)
                 card_job = pool.submit(self._gif_print_card, s, stills)
                 gif_path, first, _ = boomerang.make_gif(
                     frames, s.folder / "result.gif", aspect=s.fmt,
@@ -3420,7 +3585,8 @@ class Booth:
                 if len(s.shots) < s.shots_needed:
                     raise HTTPException(409, "Aufnahmen fehlen")
                 looked: List[Image.Image] = []
-                img = self.render(s, look, keep=looked if s.mode == "collage" else None)
+                laid_out = s.mode == "collage" or (s.mode == "photo" and s.template is not None)
+                img = self.render(s, look, keep=looked if laid_out else None)
                 pool = self.render_pool()
                 # The files of one result are independent of each other: side by side.
                 jobs = [pool.submit(compose.save_jpeg, img, s.folder / "result.jpg", quality=93, taken=s.created),
@@ -3432,6 +3598,9 @@ class Booth:
                 if s.mode == "collage":
                     s.anim = self._collage_gif(s, look)
                     s.singles = self._collage_singles(s, look, looked)
+                elif laid_out:
+                    # A photo on a layout: the plain photo is kept and uploaded too.
+                    s.singles = self._collage_singles(s, look, looked, always=True)
                 s.result, s.result_web, s.thumb, s.print_file = [j.result() for j in jobs]
             # Zwei verschiedene Fragen, die vorher eine waren:
             #  * ``frisch``: Das Ergebnis wurde gerade neu gerendert. Gilt auch
@@ -3475,7 +3644,7 @@ class Booth:
         return s
 
     def _collage_singles(self, s: Session, look: str,
-                         looked: Optional[List[Image.Image]] = None) -> List[tuple]:
+                         looked: Optional[List[Image.Image]] = None, always: bool = False) -> List[tuple]:
         """Die Einzelbilder einer Collage, fertig für die Galerie.
 
         Auf dem Papier bleibt die Collage die Collage. In der Galerie will
@@ -3488,7 +3657,7 @@ class Booth:
         the look) — then they are not decoded a second time. A "Nur drucken"
         run gets none: nothing of it goes to a gallery.
         """
-        if str(self.profile.get("collage_upload") or "both") not in ("photos", "both"):
+        if not always and str(self.profile.get("collage_upload") or "both") not in ("photos", "both"):
             return []
         if self.run_print_only(s):
             return []
@@ -3552,7 +3721,7 @@ class Booth:
                             anim=s.anim or s.boom, consent=s.consent or None)
 
     def _still_print_card(self, s: Session, img: Image.Image) -> Path:
-        if s.mode == "photo":
+        if s.mode == "photo" and not s.template:
             tpl = self._fit_to_paper(compose.single_print_template(
                 s.fmt, bool(self.profile["print"].get("qr_on_print") and s.share_url), self.profile.get("print_qr")))
             card = compose.render_template(tpl, [img], qr_url=s.share_url, texts=self._texts(s),
@@ -3823,10 +3992,12 @@ class Booth:
         ev = self.profile.get("event") or {}
         if str(ev.get("file_naming") or "") == "event_datetime":
             meta.update({"file_naming": "event_datetime", "event_name": str(ev.get("name") or ""),
-                         "n_singles": len(s.singles or [])})
+                         # A photo on a layout always has its one single (.f1), even
+                         # before it is rendered: the numbers of a run never shift.
+                         "n_singles": 1 if (s.mode == "photo" and s.template) else len(s.singles or [])})
         # Network targets of the local "targets" list (the second target card:
-        # Picdrop, FTP, SFTP) get every file the booth keeps of the run
-        # (17.11.2026, "everything must flow into Picdrop"): the collage sheet
+        # FTP/FTPS/SFTP) get every file the booth keeps of the run
+        # (17.11.2026, "everything must reach the second target"): the collage sheet
         # and its singles whatever the gallery shows, the camera originals
         # whatever ``upload_originals`` says for the gallery, the print sheet
         # when the target asks for it. The target's own choices
@@ -4380,6 +4551,7 @@ PROFILE_LIMITS = {
     "gif.video_seconds": (0, 60), "gif.from_collage_min": (2, 8),
     "gif.boomerang.fps": (5, 60), "gif.boomerang.loops": (1, 10),
     "boomerang.seconds": (1, 10), "boomerang.fps": (5, 60), "boomerang.loops": (1, 10),
+    "boomerang.min_total_seconds": (5, 60), "boomerang.max_total_seconds": (5, 60),
     "video.seconds": (1, 60), "video.fps": (5, 60),
     "attract.after_seconds": (10, 3600), "attract.seconds_per_item": (2, 120), "attract.dim": (0, 80),
     "attract.hint_size": (100, 250),
@@ -4424,6 +4596,8 @@ def ziel_fehler_text(roh: str) -> str:
         return roh
     if "552" in klein or "452" in klein or "quota" in klein or "no space" in klein or "disk full" in klein:
         satz = "Auf dem Server ist kein Platz mehr (Speicher oder Kontingent voll)."
+    elif "das konto auf dem server nimmt" in klein:
+        return roh                              # already a sentence (FtpsTarget._refused, live-push accounts)
     elif "nicht beschreibbar" in klein or "nicht anlegen" in klein or "553" in klein or "550" in klein \
             or "permission denied" in klein:
         satz = "Der Ordner auf dem Server ist nicht beschreibbar oder lässt sich nicht anlegen. Stimmen Ordner und Rechte?"
@@ -4432,6 +4606,24 @@ def ziel_fehler_text(roh: str) -> str:
     elif "mismatch" in klein or "doesn't match" in klein or "not valid for" in klein:
         satz = ("Das Zertifikat des Servers gehört zu einem anderen Namen. Bitte genau die Adresse eintragen, "
                 "die der Anbieter nennt.")
+    elif "certificate has expired" in klein:
+        satz = "Das Zertifikat des Servers ist abgelaufen. Erneuern muss es der Betreiber des Servers."
+    elif "certificate verify failed" in klein or "local issuer" in klein or "self-signed" in klein \
+            or "self signed" in klein:
+        # Said plainly: the kind (FTPS/SFTP/FTP) was right, the TLS talk got as far
+        # as the certificate. Until 18.11.2026 this landed in the generic branch
+        # below and sent operators off changing the kind.
+        satz = ("Das Zertifikat des Servers ließ sich nicht prüfen: Die Box kennt die Stelle nicht, "
+                "die es ausgestellt hat. An der gewählten Art liegt es nicht. Bei einem eigenen NAS "
+                "ist das oft ein selbst ausgestelltes Zertifikat, sonst bitte die Box aktualisieren "
+                "oder den Anbieter fragen. Die Dateien bleiben in der Warteschlange.")
+    elif "unexpected_eof" in klein or "eof occurred in violation of protocol" in klein:
+        # Since 18.11.2026 the FTPS target tolerates a server that ends a data
+        # connection without TLS close_notify; if this still shows, the server
+        # dropped the connection in the middle, not the kind that was chosen.
+        satz = ("Der Server hat die verschlüsselte Datenverbindung abgebrochen. Bitte noch einmal prüfen; "
+                "bleibt es dabei, die Box aktualisieren oder den Anbieter fragen. "
+                "Die Dateien bleiben in der Warteschlange.")
     elif "refused" in klein:
         satz = "Der Server lehnt die Verbindung ab. Stimmen Adresse und Port?"
     elif "timed out" in klein or "timeout" in klein:
@@ -4527,6 +4719,13 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
              "repo_url": source_offer.source_url(), "commit": source_offer.commit(),
              "license": source_offer.LICENSE, "maintainer": "Till Heidrich"}
 
+    @app.get("/static/legal/" + camera_sdk_bundle.LICENCE_FILE)
+    def camera_sdk_terms():
+        """The end-user terms of the bundled camera SDK; 404 in the free edition."""
+        if camera_sdk_bundle.find() is None:
+            raise HTTPException(404, "not in this edition")
+        return PlainTextResponse(camera_sdk_bundle.licence_text())
+
     @app.get("/api/about")
     def about():
         """Welche Fassung läuft und wo das Projekt zu Hause ist. Keine Geheimnisse."""
@@ -4582,6 +4781,8 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
             "profile": public_profile(), "profile_rev": b.profile_rev * 100000 + b.profile.get("version", 0),
             "templates": [dict(compose.template_info(t), thumb=bilder["t"].get(str(t["id"]), ""))
                           for t in b.templates()],
+            # Which of them photo mode offers (one photo each; empty = the plain photo as before).
+            "photo_templates": [str(t["id"]) for t in b.photo_templates()],
             # The print card of each photo format, and the GIF sheet: the
             # set-up screen shows them as pictures, not as words.
             "layout_thumbs": {"formats": bilder["f"], "gif": bilder["g"].get("gif", ""),
@@ -4589,7 +4790,9 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
                               "boomerang": bilder["b"]},
             # Frames for boomerang and video ("Rahmen"): per mode what the
             # set-up screen offers, with each frame's picture and window.
-            "motion_frames": {m: _frames_for_kiosk(m, bilder["m"]) for m in ("boomerang", "video")},
+            "motion_frames": {m: _frames_for_kiosk(m, bilder["m"]) for m in FRAME_MODES},
+            # Lengths the guest may choose for a boomerang (empty: no choice).
+            "clip_seconds": {"boomerang": b.clip_seconds_offer("boomerang")},
             "backgrounds": b.backgrounds(), "start_media": b.start_media(),
             "phase_media": b.phase_media(),
             "looks": [{"id": n, "label": b.look_label(n)} for n in b.look_names()],
@@ -4609,7 +4812,10 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
             "gallery_url": "" if b.ephemeral else share.event_url(b.profile),
             "last_thumb": _letztes_thumb(),
             "standalone": bool(b.store.local.get("standalone")) or not (b.store.local["server"].get("url")),
+            # print_modes: the modes with a print sheet; for the others the
+            # kiosk drops "Nur drucken" and shows the note instead (consent_options).
             "consent": {"options": b.consent_options(), "notice_only": b.consent_notice_only(),
+                        "print_modes": [m for m in (b.profile.get("modes") or []) if b.mode_prints(m)],
                         "note": {l: b.consent_note(l) for l in (b.profile.get("languages") or ["de"])}},
             "privacy": {"print_only": b.ephemeral,
                         "notice": str((b.profile.get("privacy") or {}).get("notice") or ""),
@@ -4702,7 +4908,8 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
                             body.get("template"), body.get("background"),
                             str(body.get("chroma_background") or ""),
                             consent=consent if isinstance(consent, dict) else None,
-                            motion_frame=str(body.get("motion_frame") or "") or None)
+                            motion_frame=str(body.get("motion_frame") or "") or None,
+                            seconds=body.get("seconds"))
         return s.public()
 
     @app.post("/api/session/{uid}/text")
@@ -4747,7 +4954,7 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
             # next countdown was already running).
             im.draft("RGB", (1000, 1000))
             im = im.convert("RGB")
-            if s.mode == "photo":
+            if s.mode == "photo" and not s.template:      # on a layout: like a collage's shot
                 im = compose.crop_to_aspect(im, s.fmt)
             im.thumbnail((1000, 1000))
             buf = io.BytesIO()
@@ -4901,6 +5108,24 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
         b.zahlen.zaehle(b._zahlen_event(), "qr_big")
         return {"ok": True}
 
+    # A buzzer that "sometimes does nothing" (18.11.2026) left no trace: the
+    # kiosk now reports each press it handles as the trigger, and the reason
+    # when it did nothing. Short tokens only, never typed text, and a flood
+    # (a stuck key, a page in a loop) is cut off after 20 lines in 10 s.
+    _press_times: List[float] = []
+    _token = re.compile(r"[^A-Za-z0-9_:.\-]")
+
+    @app.post("/api/input-log")
+    def input_log(body: dict = Body(default={})):
+        now = time.monotonic()
+        _press_times[:] = [t for t in _press_times if now - t < 10.0]
+        if len(_press_times) >= 20:
+            return {"ok": False}
+        _press_times.append(now)
+        f = {k: _token.sub("", str(body.get(k) or ""))[:24] or "-" for k in ("source", "input", "screen", "outcome")}
+        log.info("Auslöser: %s %s auf %s → %s", f["source"], f["input"], f["screen"], f["outcome"])
+        return {"ok": True}
+
     @app.delete("/api/session/{uid}")
     def session_delete(uid: str):
         if not b.profile.get("allow_delete", True):
@@ -4922,6 +5147,7 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
         # there at all and the kiosk has nothing to show a button for.
         if drawing.offered(b.profile, item["mode"]):
             extra["draw"] = {"colors": drawing.allowed_colors(b.profile.get("draw"))}
+        has_print = bool(item.get("print_file")) and Path(item["print_file"]).is_file()
         return {
             **extra,
             "local_share": local,
@@ -4929,7 +5155,10 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
             "qr_url": qr_path(item["share_url"] if b.profile.get("qr_on_screen") else ""),
             "result_url": f"/media/{uid}/result", "thumb_url": f"/media/{uid}/thumb",
             "is_video": item["mode"] in ("boomerang", "video"), "prints": item["prints"],
-            "print": b.print_allowance(uid) if item.get("print_file") else {"enabled": False},
+            "print": b.print_allowance(uid) if has_print else {"enabled": False},
+            # Whether there is a sheet at all, apart from the guests' switches:
+            # the admin's reprint list offers only these (a film has none).
+            "has_print": has_print,
             "print_only": b.run_print_only(uid),
         }
 
@@ -5133,7 +5362,10 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
         import platform
         import sys
         about_admin = {**ABOUT, "version": __version__, "python": sys.version.split()[0],
-                       "platform": platform.platform(terse=True), "data_dir": str(b.data)}
+                       "platform": platform.platform(terse=True), "data_dir": str(b.data),
+                       # The edition with camera SDK: Canon's libraries are a
+                       # separate, proprietary component, not under the AGPL.
+                       "camera_sdk": camera_sdk_bundle.component()}
         from .camera import models as camera_models
         from .printing import models as printer_models
         return {"local": local, "printers": _system_printers(), "printer_models": printer_models.auswahl(),
@@ -5637,7 +5869,7 @@ def create_app(booth: Optional[Booth] = None) -> FastAPI:
                   for f in b.outbox.failed_list(50)]
         return {"prints": b.print_queue_view(50), "failed_uploads": failed, "counts": b.outbox.counts(),
                 "failed_reasons": reasons.summary(f.get("error") or "" for f in b.outbox.failed_list(500)),
-                # Sent / waiting / failed per target: did Picdrop get what the gallery got?
+                # Sent / waiting / failed per target: did the second target get what the gallery got?
                 "targets": b.outbox.counts_by_target(),
                 "second_target": b.second_target.report().get("configured", False)}
 

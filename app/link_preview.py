@@ -12,12 +12,13 @@ control. So the decision never looks at the session:
 ``custom``   the admin uploaded a preview image. Used for a public gallery,
              and for a closed one only when "auch ohne Passwort zeigen" is
              ticked (``og_image_public``).
-``brand``    password, link password, draft, expired, not yet live,
-             watermark, or no picture yet: title and brand colour only, no
-             guest photo, no description (it may name people).
-``neutral``  silent mode, or a gallery that does not exist: "Fotogalerie"
-             and nothing else - the same bytes in both cases, so the image
-             is no way to learn whether a silent gallery exists.
+``brand``    password, link password, expired, watermark, or no picture
+             yet: title and brand colour only, no guest photo, no
+             description (it may name people).
+``neutral``  silent mode, a draft, a gallery not live yet, or one that does
+             not exist: "Fotogalerie" and nothing else - the same bytes and
+             headers in every case, so the image is no way to learn whether
+             such a gallery exists or what it is called.
 
 The rules are listed in SECURITY.md ("Link previews").
 """
@@ -139,9 +140,21 @@ def _cover(event: Dict[str, Any]) -> Optional[Path]:
     return p if p.is_file() else None
 
 
+def unknown_to_strangers(event: Dict[str, Any]) -> bool:
+    """A gallery whose page a stranger cannot reach: a draft, a folder under a
+    draft, or one whose start (``scheduled_live_at``) lies ahead. Its preview
+    must be the unknown name's, byte for byte - the title on a brand card
+    confirmed that a guessed name exists (18.11.2026)."""
+    from app import folders, schedule
+    if not event.get("published") or schedule.coming_soon(event):
+        return True
+    parent = folders.parent_of(event)
+    return bool(parent and (not parent.get("published") or schedule.coming_soon(parent)))
+
+
 def decide(event: Optional[Dict[str, Any]]) -> Tuple[str, List[Path]]:
     """(mode, source files) for this event; see the module docstring."""
-    if not event or _silent(event):
+    if not event or _silent(event) or unknown_to_strangers(event):
         return "neutral", []
     custom = custom_image(event)
     if restricted(event):
@@ -179,9 +192,41 @@ def _description(event: Optional[Dict[str, Any]], mode: str) -> str:
     text = " ".join(str(event.get("description") or "").split())
     if text:
         return text[:197] + "…" if len(text) > 200 else text
-    from app import db
-    n = len(db.list_media(int(event["id"])) or [])
+    n = guest_count(event)
     return t("og.count_desc", n=n) if n != 1 else t("og.count_desc_one")
+
+
+def _tile_count(event: Dict[str, Any]) -> int:
+    """Tiles a stranger sees in this gallery: the filter of ``public.gallery``
+    for a visitor without a session (no manage, no ``?show=originals``)."""
+    from app import db, ecosystem
+    gs = _gs(event)
+    rows = db.list_media(int(event["id"])) or []
+    _partners, absorbed = ecosystem.unframed_partners(rows)
+    rows = [m for m in rows if m["id"] not in absorbed]
+    originals = sum(1 for m in rows if (m.get("kind") or "photo") == "original")
+    proofing = gs["mode"] == "proofing"
+    n = 0
+    for m in rows:
+        if (m.get("kind") or "photo") == "original" and originals and len(rows) > originals:
+            continue
+        if not proofing and gs["hide_red_in_presentation"] and m.get("color_tag") == "red":
+            continue
+        n += 1
+    return n
+
+
+def guest_count(event: Dict[str, Any]) -> int:
+    """The count next to the photos on the gallery page for a stranger:
+    its tiles plus the pictures of folders a stranger may open. The preview
+    used to count every row of ``db.list_media`` (981 against 568 shown)."""
+    from app import db, folders
+    n = _tile_count(event)
+    for child in folders.children_of(int(event["id"])):
+        if not child.get("published") or _silent(child) or child.get("password_hash"):
+            continue
+        n += len(db.list_media(int(child["id"])) or [])
+    return n
 
 
 # ── Picture ───────────────────────────────────────────────────

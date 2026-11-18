@@ -250,7 +250,7 @@ async function makeCode(btn, long) {
 
   <section class="sy-card full">
     <h2>Ziele</h2>
-    <p class="hint">FTPS für Picdrop, FTP ohne TLS für NAS und Webspace, SFTP/SSH mit Passwort oder Schlüsseldatei.
+    <p class="hint">FTPS für Online-Galerien per FTP, FTP ohne TLS für NAS und Webspace, SFTP/SSH mit Passwort oder Schlüsseldatei.
       Passwörter stehen nie in der Galerie — leer lassen behält das gespeicherte. <b>Ordner wählen</b> zeigt,
       was am Ziel wirklich liegt.</p>
     <div id="targetRows"></div>
@@ -307,7 +307,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":
 // Passwords are sealed to the PC's key in the gallery (app/sync_secrets.py); a
 // version without a key takes none from here.
 const SEALING = {{ 'true' if (report or {}).get('sealing') else 'false' }};
-const TYPES = [["ftps","Picdrop / FTPS"],["ftp","FTP ohne Verschlüsselung (Passwort und Bilder lesbar)"],["sftp","NAS / SFTP (SSH)"],
+const TYPES = [["ftps","Online-Galerie / FTPS"],["ftp","FTP ohne Verschlüsselung (Passwort und Bilder lesbar)"],["sftp","NAS / SFTP (SSH)"],
                ["folder","Ordner / USB-Stick am PC"]];
 const LAYOUTS = [["event/date","Unterordner: Event / Datum"],["event","Unterordner: Event"],["flat","alles in einen Ordner"]];
 const KINDS = ["auto","photo","print","gif","video","boomerang","original"];
@@ -414,7 +414,7 @@ function addTargetRow(t) {
   d.className = "sy-card"; d.style.marginBottom = "10px"; d.dataset.row = "target";
   d.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
       <div class="form-group"><label class="form-label">Art</label><select class="form-control" data-t="type">${TYPES.map(([v, l]) => `<option value="${v}" ${t.type === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-      <div class="form-group"><label class="form-label">Name</label><input class="form-control" data-t="name" value="${esc(t.name || "")}" placeholder="picdrop"></div>
+      <div class="form-group"><label class="form-label">Name</label><input class="form-control" data-t="name" value="${esc(t.name || "")}" placeholder="zweites-ziel"></div>
       <div class="form-group net"><label class="form-label">Server</label><input class="form-control" data-t="host" value="${esc(t.host || "")}"></div>
       <div class="form-group net"><label class="form-label">Port</label><input class="form-control" data-t="port" value="${esc(t.port || "")}" placeholder="21 / 22"></div>
       <div class="form-group net"><label class="form-label">Benutzer</label><input class="form-control" data-t="user" value="${esc(t.user || "")}" autocomplete="off"></div>
@@ -454,7 +454,7 @@ function readTargets() {
     });
     if (o.port) o.port = Number(o.port);
     o.limit_kbps = Number(o.limit_kbps || 0);
-    if (!o.name) o.name = o.type === "sftp" ? "nas" : o.type === "ftp" ? "ftp" : "picdrop";
+    if (!o.name) o.name = o.type === "sftp" ? "nas" : o.type === "ftp" ? "ftp" : "ftps";
     return o;
   }).filter((o) => o.host || o.path);
 }

@@ -61,10 +61,12 @@ def test_the_booth_asks_only_when_choice_is_allowed_and_there_is_something_to_ch
     """Beide Bedingungen stehen im Kiosk zusammen — sonst erschiene eine leere Auswahl."""
     js = APP_JS.read_text(encoding="utf-8")
     assert "const mayFormat = may.format !== false" in js
-    # Photo and boomerang: the general switch (the boomerang also by its own,
-    # boomerang.guest_choice); the layout: collage, or a boomerang with its sheet.
-    assert re.search(r"showFormat = p\.formats\.length > 1 && \(\(mayFormat && FORMAT_MODES\.includes\(mode\)\)", js)
-    assert re.search(r"showTemplate = mayTemplate && sheetModes && S\.templates\.length > 1", js)
+    # Photo and boomerang: the general switch (the boomerang and the GIF also by
+    # their own, boomerang.guest_choice / gif.guest_choice); the layout: collage,
+    # or a boomerang with its sheet.
+    assert re.search(r"showFormat = (?:!flow\.photoTemplate && )?p\.formats\.length > 1 && \(\(mayFormat && FORMAT_MODES\.includes\(mode\)\)", js)
+    assert re.search(r'\|\| \(mode === "gif" && !!\(p\.gif \|\| \{\}\)\.guest_choice\)\);', js)
+    assert re.search(r"showTemplate = mayTemplate && sheetModes && (?:S\.templates|tpls)\.length > 1", js)
     assert "const mayLook = !S.profile.guest_choice || S.profile.guest_choice.look !== false" in js
 
 

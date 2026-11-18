@@ -1,6 +1,6 @@
 """Forward a gallery to another address - the event stays, the guests go there.
 
-The operator moves finished galleries to Picdrop and wants every printed link
+The operator moves finished galleries to an FTP-fed proofing gallery and wants every printed link
 to keep working: ``/gallery/<slug>``, its old names, the password page and the
 share links of the event answer with a 302 to the address stored at the event
 (``events.redirect_url``). The column existed since release 2.1 for exactly
@@ -46,7 +46,7 @@ def clean_url(raw: Optional[str]) -> str:
 
 
 def host(url: Optional[str]) -> str:
-    """The host to show in the admin ("leitet weiter auf www.picdrop.com")."""
+    """The host to show in the admin ("leitet weiter auf galerie.example.com")."""
     try:
         return urlsplit(clean_url(url)).hostname or ""
     except ValueError:

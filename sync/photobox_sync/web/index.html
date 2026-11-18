@@ -118,11 +118,11 @@ code{font-size:12px;background:var(--bg);padding:2px 6px;border-radius:6px}
           </div>
         </details>
         <h2 style="margin-top:8px">Sync-Aufträge</h2>
-        <p class="hint">Ein Auftrag je Ordner. dslrBooth legt Originale, Drucke und GIFs getrennt ab — jeder Auftrag kann eigene Ziele haben, etwa Drucke ans NAS und Originale zu Picdrop. Standard unter <code>Bilder\dslrBooth</code>. Übertragen wird nur, was nach dem Speichern entsteht. Für Sofort-Upload in dslrBooth unter Einstellungen → Trigger die URL <code>http://127.0.0.1:8766/trigger</code> eintragen.</p>
+        <p class="hint">Ein Auftrag je Ordner. dslrBooth legt Originale, Drucke und GIFs getrennt ab — jeder Auftrag kann eigene Ziele haben, etwa Drucke ans NAS und Originale in eine Online-Galerie. Standard unter <code>Bilder\dslrBooth</code>. Übertragen wird nur, was nach dem Speichern entsteht. Für Sofort-Upload in dslrBooth unter Einstellungen → Trigger die URL <code>http://127.0.0.1:8766/trigger</code> eintragen.</p>
         <div id="folders"></div>
         <button onclick="addFolder()">+ Auftrag</button>
         <h2 style="margin-top:18px">Weitere Ziele</h2>
-        <p class="hint">Zusätzlich zur Galerie: Picdrop („Live Push“, FTPS), NAS oder Webspace (FTP, SFTP/SSH) und eine Kopie in einen Ordner oder auf einen USB-Stick. Zugangsdaten stehen in Picdrop unter Galerie → Upload per FTP. <b>Ziele prüfen</b> meldet sich bei jedem Ziel einmal an — erst speichern, dann prüfen.</p>
+        <p class="hint">Zusätzlich zur Galerie: eine Online-Galerie per FTPS, NAS oder Webspace (FTP, SFTP/SSH) und eine Kopie in einen Ordner oder auf einen USB-Stick. Die Zugangsdaten nennt der Anbieter der Online-Galerie (meist unter „FTP-Zugang“). <b>Ziele prüfen</b> meldet sich bei jedem Ziel einmal an — erst speichern, dann prüfen.</p>
         <div id="targetRows"></div>
         <div class="actions"><button type="button" onclick="addTarget({type:'ftps', flat:true}); renderChips()">+ Ziel</button>
           <button type="button" id="checkBtn" onclick="checkTargets()">Ziele prüfen</button></div>
@@ -247,8 +247,8 @@ function addTarget(t = {}) {
   d.dataset.extra = JSON.stringify(t);
   d.innerHTML = `<div class="row">
       <label>Art<select data-k="type">${TYPES.map(([v, l]) => `<option value="${v}" ${(t.type || "ftps") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-      <label>Name<input data-k="name" value="${esc(t.name || "")}" placeholder="picdrop"></label>
-      <label class="net">Server<input data-k="host" value="${esc(t.host || "")}" placeholder="ftp.picdrop.com"></label>
+      <label>Name<input data-k="name" value="${esc(t.name || "")}" placeholder="zweites-ziel"></label>
+      <label class="net">Server<input data-k="host" value="${esc(t.host || "")}" placeholder="ftp.example.com"></label>
     </div><div class="row">
       <label class="net">Benutzer<input data-k="user" value="${esc(t.user || "")}" autocomplete="off"></label>
       <label class="net">Passwort<input data-k="password" type="password" value="${esc(t.password || "")}" autocomplete="new-password"></label>
@@ -281,12 +281,12 @@ function addTarget(t = {}) {
   fit();
   $("targetRows").appendChild(d);
 }
-const TYPES = [["ftps", "Picdrop / FTPS"], ["ftp", "FTP ohne Verschlüsselung (Passwort und Bilder lesbar)"], ["sftp", "NAS / SFTP (SSH)"],
+const TYPES = [["ftps", "Online-Galerie / FTPS"], ["ftp", "FTP ohne Verschlüsselung (Passwort und Bilder lesbar)"], ["sftp", "NAS / SFTP (SSH)"],
                ["folder", "Ordner / USB-Stick"]];
 const LAYOUTS = [["event/date", "Unterordner: Event / Datum"], ["event", "Unterordner: Event"],
                  ["flat", "alles in einen Ordner"]];
 function defaultTargetName(type) {
-  return {sftp: "nas", ftp: "ftp", folder: "ablage"}[type] || "picdrop";
+  return {sftp: "nas", ftp: "ftp", folder: "ablage"}[type] || "ftps";
 }
 document.addEventListener("input", (e) => { if (e.target.closest(".target")) renderChips(); });
 function readTargets() {

@@ -1,6 +1,6 @@
 """The second upload target ("Zweites Ziel im Netz") set from the gallery.
 
-The card for Picdrop, an FTP server or an SFTP NAS exists in the booth's own
+The card for an FTP-fed proofing gallery, an FTP server or an SFTP NAS exists in the booth's own
 admin and, since 17.11.2026, on the gallery's sync page of the booth and
 through MCP (docs/SECOND-TARGET-FROM-THE-GALLERY.md). Since the owner's
 decision of 17.11.2026 (evening) there is no switch at the booth any more:
@@ -8,7 +8,7 @@ a paired booth takes the setting from its gallery. What protects the
 password instead:
 
 * **One target, its fields only.** The jobs touch the entry named
-  ``picdrop`` (or the older ``zweites-ziel``) of ``targets`` and nothing
+  ``"picdrop"`` (the stored legacy name, or the older ``zweites-ziel``) of ``targets`` and nothing
   else: type, host, port, user, password, path, the flat-folder flag,
   enabled and the two upload choices. Everything is checked again here.
 * **The password is sealed to this booth.** An X25519 key pair lives in
@@ -51,7 +51,8 @@ log = logging.getLogger("boothcore.second_target")
 #: The kinds of target, the fields and their limits. The gallery has the same
 #: in app/second_target.py; a test in each suite compares them.
 TYPES = ("ftps", "ftp", "sftp")
-FIELDS = ("type", "host", "port", "user", "path", "flat", "enabled", "originals", "print_sheets")
+FIELDS = ("type", "host", "port", "user", "path", "flat", "enabled", "originals", "print_sheets",
+          "direct")
 LIMITS = {"host": 253, "user": 128, "password": 256, "path": 255}
 #: Names the booth admin card uses for its one target ("zweites-ziel" before 09.2026).
 NAMES = ("picdrop", "zweites-ziel")
@@ -117,7 +118,10 @@ def clean_fields(raw: Any) -> Dict[str, Any]:
                            "path": clean_path(raw.get("path"))}
     if port:
         out["port"] = port
-    for flag, default in (("flat", True), ("enabled", True), ("originals", True), ("print_sheets", False)):
+    # ``direct`` (18.11.2026): upload under the final name only, for live-push
+    # accounts. A gallery sends it only when it is on, so a job without it means off.
+    for flag, default in (("flat", True), ("enabled", True), ("originals", True), ("print_sheets", False),
+                          ("direct", False)):
         value = raw.get(flag, default)
         if not isinstance(value, bool):
             raise ValueError(f"{flag}: ja oder nein")
@@ -314,6 +318,7 @@ class SecondTarget:
                         "user": str(t.get("user") or ""), "path": str(t.get("path") or ""),
                         "flat": t.get("flat") is not False, "originals": t.get("originals") is not False,
                         "print_sheets": bool(t.get("print_sheets")),
+                        "direct": bool(t.get("direct")),
                         "password_set": bool(t.get("password")), "key_file": bool(t.get("key_file")),
                         "awaiting_password": needs_password(t)})
             if is_sftp(t.get("type")) and t.get("host"):
@@ -369,8 +374,9 @@ class SecondTarget:
         else:
             targets.append(entry)
         self.b.store.save_local({"targets": targets})
-        changed = [k for k in ("type", "host", "port", "user", "path", "flat", "enabled", "originals", "print_sheets")
-                   if (old or {}).get(k) != entry.get(k)]
+        # "direct" missing in an entry from before 18.11.2026 means off, not a change.
+        before = dict(old or {}, direct=bool((old or {}).get("direct")))
+        changed = [k for k in FIELDS if before.get(k) != entry.get(k)]
         self._audit(f"Zweites Ziel aus der Galerie geändert ({', '.join(changed) or 'nichts'}): {fields['type']} "
                     f"{fields['host']}, {'an' if fields['enabled'] else 'aus'}, {pw_note}")
         return (f"Zweites Ziel übernommen ({fields['type']}, {fields['host']}, "

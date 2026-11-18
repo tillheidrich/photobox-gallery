@@ -883,8 +883,21 @@ def _session_closed(event) -> str:
     return ""
 
 
-def _visible_items(uid: str) -> list:
+def _run_items(uid: str) -> list:
     return [m for m in ecosystem.session_media(uid) if m.get("variant") != "original" or m.get("kind") == "original"]
+
+
+def _visible_items(uid: str, event=None) -> list:
+    """The run's pictures this visitor may see: with ``event``, without the red
+    ones while that gallery hides red from guests (as in the gallery and its
+    file routes, ``public._guest_may_see``)."""
+    items = _run_items(uid)
+    if event is None:
+        return items
+    from app import gallery_settings as gsm
+    from app.blueprints.public import _red_hidden
+    gs = gsm.for_event(event)
+    return [m for m in items if not _red_hidden(event, gs, m)]
 
 
 def _session_state(uid: str, event, items=None) -> str:
@@ -894,11 +907,11 @@ def _session_state(uid: str, event, items=None) -> str:
     never told that the organiser rejected their picture.
     """
     if items is None:
-        items = _visible_items(uid)
+        items = _visible_items(uid, event)
     if items:
         return "ready"
-    if ecosystem.is_deleted(uid):
-        return "gone"
+    if ecosystem.is_deleted(uid) or _run_items(uid):
+        return "gone"           # deleted, or every picture is red-hidden: like a rejection
     con = db.get_db()
     held = con.execute("SELECT 1 FROM media WHERE session_uid=? AND event_id=? AND review_state='pending' LIMIT 1",
                        (uid, event["id"])).fetchone()
@@ -933,7 +946,7 @@ def session_page(code: str):
         return render_template("public/session.html", event=event, state="status", items=[], uid=uid,
                                message=t("gallery.expired_text"), status_title=t("gallery.expired_title"), noindex=True), 410
     remember_session_uid(uid)
-    items = _visible_items(uid)
+    items = _visible_items(uid, event)
     gallery_ok = bool(event.get("published"))
     gallery_href = _gallery_href(event)
     if not items:

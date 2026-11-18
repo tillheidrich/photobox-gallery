@@ -289,7 +289,7 @@ class Agent:
                              limit_kbps=float(s.get("limit_kbps") or 0))
 
     def targets(self):
-        """Alle Ziele: Galerie (wenn eingerichtet), zweite Ablage, Stick, NAS/Picdrop.
+        """Alle Ziele: Galerie (wenn eingerichtet), zweite Ablage, Stick, NAS/Online-Galerie.
 
         Ohne Galerie bleiben die lokalen Ziele — die Box läuft dann standalone.
         """
@@ -782,7 +782,7 @@ class Agent:
                     self.outbox.mark_retry(item["id"], "Ziel nicht konfiguriert")
                 elif not self.paused(item["target"]):
                     by_target.setdefault(item["target"], []).append(item)
-            # Ziele laufen nebeneinander: Ein hängendes NAS darf Picdrop nicht
+            # Ziele laufen nebeneinander: Ein hängendes NAS darf die Online-Galerie nicht
             # aufhalten, und drei Ziele brauchen nicht die dreifache Zeit.
             results: Dict[str, int] = {}
             threads = []

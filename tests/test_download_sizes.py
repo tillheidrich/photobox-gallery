@@ -133,3 +133,46 @@ def test_size_picker_rendered_in_gallery(app, client):
     assert 'id="dlSheet"' in html
     assert 'data-size="web"' in html
     assert 'data-size="original"' in html
+
+
+# ── The event's ban on originals wins, also with the size choice off ──
+# Review 18.11.2026: with "download_sizes_enabled" off every request became
+# the original, so "size=large" brought the original of an event that bans it,
+# and the gallery script asked for "size=original" and got 403.
+
+def _ban_original(app, eid, **more):
+    import json
+    from app import db, gallery_settings as gsm
+    with app.app_context():
+        db.update_event(eid, {"gallery_json": json.dumps(gsm.clean({"download_original": False, **more}))})
+        db.set_setting("download_sizes_enabled", "0")
+
+
+def test_with_the_choice_off_a_ban_on_originals_still_holds(app, client):
+    slug, eid, mid = _event_with_photo(app, w=3000, h=2000)
+    _ban_original(app, eid)
+    for size in ("large", "web", "", "quatsch"):
+        r = client.get(f"/gallery/{slug}/photo/{mid}/download?size={size}")
+        assert r.status_code == 200, size
+        assert _longest_edge(r.get_data()) == 2048, size     # the best the event allows
+    assert client.get(f"/gallery/{slug}/photo/{mid}/download?size=original").status_code == 403
+    z = client.get(f"/gallery/{slug}/selection.zip?ids={mid}&size=large")
+    zf = zipfile.ZipFile(io.BytesIO(z.get_data()))
+    assert _longest_edge(zf.read(zf.namelist()[0])) == 2048
+
+
+def test_with_the_choice_off_the_best_is_the_largest_enabled_size(app, client):
+    slug, eid, mid = _event_with_photo(app, w=3000, h=2000)
+    _ban_original(app, eid, download_2048=False)
+    r = client.get(f"/gallery/{slug}/photo/{mid}/download")
+    assert r.status_code == 200
+    assert _longest_edge(r.get_data()) == 1024
+
+
+def test_the_gallery_script_asks_for_the_best_allowed_size_not_a_fixed_original(app, client):
+    slug, eid, _ = _event_with_photo(app)
+    _ban_original(app, eid)
+    html = client.get(f"/gallery/{slug}").get_data(as_text=True)
+    assert "const DL_BEST = \"large\";" in html
+    assert "return 'original'" not in html
+    assert ": 'original'" not in html

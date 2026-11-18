@@ -161,7 +161,8 @@ def test_a_closed_gallery_shows_no_photo_and_no_description(client, closed):
     _, img = _card(client, ev["slug"])
     assert not _has_colour(img, RED_PIC)
     meta = link_preview.meta(db.get_event_by_id(ev["id"]), "https://fotos.example.test")
-    assert meta["mode"] == "brand"
+    # A draft answers like an unknown name since 18.11.2026 (test_og_hides_unpublished_galleries.py).
+    assert meta["mode"] == ("neutral" if closed == "draft" else "brand")
     assert "Sommerfest im Garten" not in meta["description"]
 
 

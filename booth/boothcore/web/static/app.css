@@ -235,6 +235,20 @@ button[disabled]{opacity:.35;pointer-events:none}
 .setup-scroll[data-pickers="2"] .picker{--thumb-h:clamp(84px,12vh,190px)}
 /* A narrow 9:16 picture at that height would cut its name ("Hochform…"). */
 .setup-scroll[data-pickers="2"] .lcard-text{min-width:max(100%,8.5em)}
+/* Three or four rows (a boomerang with its length, format, layout, frame). */
+.setup-scroll[data-pickers="3"],.setup-scroll[data-pickers="4"]{gap:18px}
+.setup-scroll[data-pickers="3"] .picker,.setup-scroll[data-pickers="4"] .picker{--thumb-h:clamp(72px,10vh,160px)}
+.setup-scroll[data-pickers="3"] .lcard-text,.setup-scroll[data-pickers="4"] .lcard-text{min-width:max(100%,8.5em)}
+/* The boomerang's length (boomerang.seconds_choices): a big number instead
+   of a picture, in a lower row so the other choices keep their room. */
+#secondsChips{--thumb-h:clamp(64px,9vh,120px)}
+.lcard-seconds .lcard-pic{display:grid;place-items:center;aspect-ratio:auto;width:calc(var(--thumb-h) * 1.8);max-width:none}
+.lcard-big{font-size:clamp(28px,5vh,56px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.lcard-seconds .lcard-text{min-width:max(100%,7em)}
+/* The tick would sit on the number: the chosen length is marked by the
+   accent ring and an accent number instead. */
+.lcard-seconds .lcard-check{display:none}
+.lcard-seconds[aria-pressed="true"] .lcard-big{color:var(--accent)}
 .cards{display:flex;gap:clamp(12px,1.2vw,20px);overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scroll-snap-type:x proximity;scroll-padding-inline:6px;padding:6px 6px 12px;margin:-6px -6px 0;scrollbar-width:none}
 .cards::-webkit-scrollbar{display:none}
@@ -953,3 +967,12 @@ button[disabled]{opacity:.35;pointer-events:none}
 .osk[data-layer="numbers"]{padding-left:max(12px,calc(50vw - 300px));padding-right:max(12px,calc(50vw - 300px))}
 .osk[data-layer="numbers"] .osk-key{max-width:none}
 body.osk-open{padding-bottom:var(--osk-height,0px)}
+
+/* Text on the start picture (start.text_tone, 18.11.2026): a light theme put
+   dark text on a dark start photo. "hell" = the dark scheme's look - white
+   on a dark shade; "dunkel" = dark on a light shade. Only the title block,
+   the shade and the status line: tiles, pills and the instructions keep the theme. */
+#s-start[data-tone="hell"] :is(.start-copy, .statusline){--text:#ffffff;--muted:rgba(255,255,255,.82);color:var(--text);text-shadow:0 2px 18px rgba(0,0,0,.55)}
+#s-start[data-tone="hell"] :is(.start-shade, .statusline){--bg-rgb:12,12,16}
+#s-start[data-tone="dunkel"] :is(.start-copy, .statusline){--text:#111114;--muted:rgba(17,17,20,.78);color:var(--text);text-shadow:0 1px 12px rgba(255,255,255,.45)}
+#s-start[data-tone="dunkel"] :is(.start-shade, .statusline){--bg-rgb:250,250,248}

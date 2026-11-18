@@ -96,7 +96,7 @@ def _is_admin() -> bool:
     return session.get("admin_logged_in") is True and not g.get("guest_view")
 
 
-#: The owner's two ways into a gallery (Picdrop-style): exactly the guest's
+#: The owner's two ways into a gallery (as proofing galleries do it): exactly the guest's
 #: page, and the same page with the tools to hide, mark and delete.
 VIEW_PREVIEW, VIEW_MANAGE = "vorschau", "verwalten"
 
@@ -418,6 +418,54 @@ def _wartet_auf_freigabe(row) -> bool:
     return str((row or {}).get("review_state") or "") == "pending"
 
 
+def _viewer_proofing(event, gs) -> bool:
+    """Is this visitor looking at the gallery in proofing mode?
+
+    The same decision the gallery page makes: the mode remembered in the
+    session where switching is allowed (guests with ``allow_mode_switch``, the
+    operator always), else the event's mode.
+    """
+    may_switch = gs["allow_mode_switch"] or _is_admin()
+    if may_switch:
+        return (session.get(f"gallery_mode_{event['id']}") or gs["mode"]) == "proofing"
+    return gs["mode"] == "proofing"
+
+
+def _red_hidden(event, gs, row) -> bool:
+    """Red-marked and the gallery hides red pictures from this visitor."""
+    return (bool(gs["hide_red_in_presentation"]) and (row or {}).get("color_tag") == "red"
+            and not _is_admin() and not _viewer_proofing(event, gs))
+
+
+def _guest_may_see(event, row, gs=None) -> bool:
+    """May this visitor get this picture (file, EXIF, QR) by its id?
+
+    No for a picture waiting for approval, one the operator hid, and a red
+    one while red pictures are hidden from this visitor - the routes answer
+    exactly as for an id that does not exist (review 18.11.2026: the download
+    route asked only ``review_state``, so a hidden picture came down by its
+    sequential number). The one hidden row that stays reachable is the
+    booth's full-size original of a web version (same ``uid``,
+    ``variant='original'``, not pending): it goes and comes with that web
+    version, and whether the original itself may be downloaded is the
+    download switches' business.
+    """
+    if _is_admin():
+        return True
+    if not row or _wartet_auf_freigabe(row):
+        return False
+    shown = row
+    if int(row.get("hidden") or 0):
+        if row.get("variant") != "original" or not row.get("uid"):
+            return False
+        from app import ecosystem
+        shown = ecosystem.media_by_uid(row["uid"], "web")
+        if (not shown or int(shown["event_id"]) != int(row["event_id"])
+                or int(shown.get("hidden") or 0) or _wartet_auf_freigabe(shown)):
+            return False
+    return not _red_hidden(event, gs if gs is not None else _gs(event), shown)
+
+
 def _forward_guest(event):
     """The 302 to the address the event forwards to (app/redirects.py), or None.
 
@@ -635,7 +683,7 @@ def gallery(slug: str):
     event, canonical_slug, is_alias = db.resolve_event_slug(slug)
     if not event:
         abort(404)
-    # A gallery that moved (e.g. to Picdrop) sends its guests there before
+    # A gallery that moved (e.g. to an FTP-fed proofing gallery) sends its guests there before
     # any other gate: the old name, the password form, an expired or an
     # unpublished gallery all forward. Only silent mode still says 404.
     forward = _forward_guest(event)
@@ -731,8 +779,8 @@ def gallery(slug: str):
                                    pin_mode=True, title=t("gallery.pin_title"))
         session[mode_key] = wanted
         return redirect(url_for("public.gallery", slug=slug))
-    proofing = ((session.get(mode_key) or gs["mode"]) == "proofing") if darf_wechseln \
-        else gs["mode"] == "proofing"
+    # One decision for the page and for the file routes (``_red_hidden``).
+    proofing = _viewer_proofing(event, gs)
     # Markieren darf, wer im Abstimmungsmodus ist — und der Betreiber immer.
     # Die Schnittstelle erlaubt ihm das seit jeher („Admin immer"), nur die
     # Oberfläche bot es nie an.
@@ -805,7 +853,7 @@ def gallery(slug: str):
             "unframed_id": (partner_of.get(m["id"]) or {}).get("id"),
             "srcset":    srcset,
             **({"url": f"/gallery/{event['slug']}/wm/{m['id']}/full.jpg", "thumb_url": f"/gallery/{event['slug']}/wm/{m['id']}/thumb.jpg"} if wm else {}),
-            "size_h": media.human_bytes(int(m.get("size_bytes") or 0)),
+            "size_h": media.guest_bytes(int(m.get("size_bytes") or 0)),
             "taken": _format_datetime(m.get("taken_at") or m.get("created_at")),
             "hidden": int(m["id"]) in hidden_ids,
             "pending": int(m["id"]) in hidden_ids and str(m.get("review_state") or "") == "pending",
@@ -840,7 +888,7 @@ def gallery(slug: str):
         for p in photos:
             p["guest_upload"] = src_of.get(p["id"]) == "guest"
 
-    return render_template(
+    resp = make_response(render_template(
         "public/gallery.html",
         event=event,
         photos=photos,
@@ -873,7 +921,12 @@ def gallery(slug: str):
         client_comments=bool(gs["comments"] and _client_holds(event)),
         comment_marks=_comment_marks(event, gs),
         owner=owner, manage=manage, view_qs=f"?ansicht={view}" if view else "",
-        noindex=True,)
+        noindex=True,))
+    if view:
+        # The owner's views carry hidden and pending pictures (manage) and the
+        # owner bar with its CSRF token: no browser or proxy keeps a copy.
+        resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 def _owner_bar(event, view: str, gs) -> dict:
@@ -963,6 +1016,9 @@ def my_shots():
         gs = gsm.for_event(event)
         if (gsm.is_expired(gs) or _not_yet_live(event)) and not _is_admin():
             continue        # abgelaufen oder noch nicht freigeschaltet: nichts zeigen
+        rows = [m for m in rows if not _red_hidden(event, gs, m)]
+        if not rows:
+            continue
 
         sizes = [s for s in media.allowed_download_sizes(gs) if s != "original"]
         name_of = guest_namer(event)
@@ -986,6 +1042,10 @@ def my_shots():
             "shots": shots,
             "taken": max((m.get("taken_at") or m.get("created_at") or "") for m in rows),
             "download_size": sizes[-1] if sizes else "",
+            # The one download a guest gets: the best this event allows.
+            "best_size": media.best_download_size(gs),
+            # What the share button fetches: the best up to 2048 px (iOS share sheet).
+            "share_size": media.share_download_size(gs),
             "allow_original": bool(gs["download_original"]),
             "allow_download": bool(gs["download_single"]) and not gs["watermark"],
             # Sharing follows the event's switches, as in its gallery.
@@ -1131,8 +1191,10 @@ def gallery_download_zip(slug: str):
     if not _zip_allowed(event) or (_gs(event)["watermark"] and not _is_admin()):
         return _zip_not_allowed(event)
 
-    all_media = db.list_media(event["id"]) or []
-    
+    # What the gallery shows this visitor: no red picture while red is hidden.
+    gs = _gs(event)
+    all_media = [m for m in (db.list_media(event["id"]) or []) if not _red_hidden(event, gs, m)]
+
     # Handle selective download via ids parameter
     ids_param = request.args.get('ids')
     if ids_param:
@@ -1190,7 +1252,9 @@ def _folder_zip_entries(event) -> list:
         nummern = dateinamen.nummern(int(child["id"]))
         namen = dateinamen.event_datetime_namen(child)
         names: set = set()
-        for i, m in enumerate(db.list_media(int(child["id"])) or [], 1):
+        child_gs = _gs(child)
+        shown = [m for m in (db.list_media(int(child["id"])) or []) if not _red_hidden(child, child_gs, m)]
+        for i, m in enumerate(shown, 1):
             rel = m.get("path_original") or m.get("path_webp")
             if not rel:
                 continue
@@ -1229,18 +1293,24 @@ def _labelled_download_options(gs: dict, rows: list) -> list:
 
 
 def _requested_size(raw: Optional[str], gs: Optional[dict] = None) -> str:
-    """Gewünschte Größe — bei abgeschalteter Auswahl immer das Original.
+    """The size to deliver for a requested ``size``.
 
-    Ist die gewünschte Größe für dieses Event abgeschaltet, liefern wir die
-    größte erlaubte statt einer Fehlerseite. Das Original bleibt streng: dafür
-    entscheidet ``download_original`` in der Route.
+    With the size choice switched off (``download_sizes_enabled``) and with
+    no size asked for, it is the best this event allows (``original`` if
+    offered, else its largest scaled size) - never a plain "original": until
+    18.11.2026 the switch turned every request into the original, past an
+    event that bans originals. A size this event switched off becomes the
+    largest it allows instead of an error page. The original stays strict:
+    the routes refuse it where ``download_original`` is off.
     """
-    if not _download_sizes_enabled():
-        return "original"
-    size = media.normalize_download_size(raw)
     if gs is None:
-        return size
+        return media.normalize_download_size(raw) if _download_sizes_enabled() else "original"
     allowed = media.allowed_download_sizes(gs)
+    if not _download_sizes_enabled() or not (raw or "").strip():
+        # No choice offered or none made: what the guest page asks for too
+        # (``dlBest()``, ``best_download_size``).
+        return allowed[-1]
+    size = media.normalize_download_size(raw)
     if size in allowed:
         return size
     scaled = [s for s in allowed if s != "original"]
@@ -1262,8 +1332,8 @@ def download_photo(slug: str, media_id: int):
     # Zugang: veröffentlichte Galerie mit Passwort-Session — oder ein gültiger
     # QR-Code dieses Durchgangs (der Link auf der Durchgangs-Seite).
     code_ok = False
-    if _wartet_auf_freigabe(row) and not _is_admin():
-        abort(404)
+    if not _guest_may_see(event, row):
+        abort(404)          # hidden, pending or red-hidden: as if it did not exist
     code = request.args.get("code", "")
     if code and row.get("session_uid"):
         uid, sig = ecosystem.parse_share_code(code)
@@ -1278,20 +1348,30 @@ def download_photo(slug: str, media_id: int):
         abort(403)          # vor dem Start nur der eigene Durchgang per QR-Code
 
     gs = _gs(event)
+    asked = request.args.get("size")
+    if request.args.get("share") == "1":
+        # A share button: the best size up to 2048 px (media.share_download_size),
+        # whatever the size choice says - iOS drops the share sheet while a
+        # several-MB original is still on its way.
+        size, asked = media.share_download_size(gs), None
+    else:
+        size = _requested_size(asked, gs)
+    # The event's ban on originals wins whatever was asked and however the
+    # size was resolved (the size choice switched off included).
+    original_banned = not gs["download_original"] and "original" in (size, asked)
     if not code_ok and not _is_admin():
-        if not gs["download_single"] or gs["watermark"] or (request.args.get("size") == "original" and not gs["download_original"]):
+        if not gs["download_single"] or gs["watermark"] or original_banned:
             abort(403)
     if code_ok and not _is_admin():
         # The run page /p/<code> follows the same switches since 15.11.2026:
         # no single downloads, no original, no "ohne Rahmen" when they are off.
         # The watermark stays the gallery's business: the guest owns their run.
-        if not gs["download_single"] or (request.args.get("size") == "original" and not gs["download_original"]):
+        if not gs["download_single"] or original_banned:
             abort(403)
         if not gs["run_frame_choice"] and (row.get("kind") or "") == "original":
             _partners, absorbed = ecosystem.unframed_partners(ecosystem.session_media(row["session_uid"]))
             if row["id"] in absorbed:
                 abort(403)
-    size = _requested_size(request.args.get("size"), gs)
     base = secure_filename(row["filename"] or f"foto_{media_id}") or f"foto_{media_id}"
     stem = base.rsplit(".", 1)[0]
 
@@ -1300,13 +1380,19 @@ def download_photo(slug: str, media_id: int):
     if size == "original" and row.get("uid") and row.get("variant") == "web":
         source_row = ecosystem.media_by_uid(row["uid"], "original") or row
 
-    try:
-        db.add_stat(event["id"], "download", media_id=media_id, meta={"size": size})
-    except Exception:
-        pass
+    # A share=1 fetch (share button, iOS save-sheet preview) is counted by the
+    # page itself (share_photo, or download when the sheet opens); counting it
+    # here too made one guest action two downloads.
+    if request.args.get("share") != "1":
+        try:
+            db.add_stat(event["id"], "download", media_id=media_id, meta={"size": size})
+        except Exception:
+            pass
 
     if source_row.get("storage") == "remote" and source_row.get("remote_path"):
-        if size != "original" and row.get("path_webp"):
+        # An animated GIF is streamed as itself: a scaled copy would be a still.
+        animated = (row.get("kind") or "") == "gif" or str(source_row.get("remote_path") or "").lower().endswith(".gif")
+        if size != "original" and row.get("path_webp") and not animated:
             source_rel = row["path_webp"]        # skaliert aus der Web-Fassung, NAS nicht nötig
         else:
             s = storage.store()
@@ -1358,7 +1444,7 @@ def photo_exif(slug: str, media_id: int):
         abort(404)
     _deny_if_silent(event)
     if not _is_admin():
-        if _wartet_auf_freigabe(row) or int(row.get("hidden") or 0) or not event.get("published"):
+        if not _guest_may_see(event, row) or not event.get("published"):
             abort(404)
         if not _check_password_access(event) or _expired_for_guest(event) or _not_yet_live(event):
             abort(403)
@@ -1504,11 +1590,14 @@ def gallery_download_selection(slug: str):
 
     id_set = set(id_list)
     all_media = db.list_media(event["id"]) or []
-    selected = [m for m in all_media if m.get("id") in id_set]
+    gs = _gs(event)
+    selected = [m for m in all_media if m.get("id") in id_set and not _red_hidden(event, gs, m)]
     if not selected:
         abort(404)
 
-    size = _requested_size(request.args.get("size"), _gs(event))
+    size = _requested_size(request.args.get("size"), gs)
+    if size == "original" and not gs["download_original"] and not _is_admin():
+        abort(403)          # every scaled size off and the original banned: nothing to give
 
     used_names: set = set()
     entries = []
@@ -1742,7 +1831,7 @@ def photo_qr(slug: str, media_id: int):
     row = db.get_media(media_id)
     if not row or int(row["event_id"]) != int(event["id"]):
         abort(404)
-    if _wartet_auf_freigabe(row) and not _is_admin():
+    if not _guest_may_see(event, row):
         abort(404)
     token = row.get("share_token") or ""
     base = _get_base_url() or request.host_url.rstrip("/")
@@ -1888,7 +1977,7 @@ def _pruefe_datei_gegen_aufnahme(event, rel: str) -> None:
     con = db.get_db()
     try:
         row = con.execute(
-            "SELECT kind, hidden, path_original, path_webp, path_thumb, path_poster FROM media "
+            "SELECT kind, hidden, color_tag, path_original, path_webp, path_thumb, path_poster FROM media "
             "WHERE event_id=? AND ? IN (path_original, path_webp, path_thumb, path_poster) "
             "ORDER BY hidden ASC LIMIT 1",
             (int(event["id"]), rel)).fetchone()
@@ -1896,7 +1985,7 @@ def _pruefe_datei_gegen_aufnahme(event, rel: str) -> None:
         con.close()
     if not row:
         return
-    if int(row["hidden"] or 0):
+    if int(row["hidden"] or 0) or _red_hidden(event, _gs(event), dict(row)):
         abort(404)
     is_video = str(row["path_original"] or "").lower().endswith((".mp4", ".webm", ".mov"))
     shown = {row["path_webp"], row["path_thumb"], row["path_poster"]}

@@ -18,7 +18,8 @@
 ; local.json, sessions, logs, the EDSDK folder the operator filled). The
 ; uninstaller asks before deleting it and keeps it by default.
 ;
-; Never in here: the Canon EDSDK. See the edition switch below.
+; The free edition never contains a file of the Canon EDSDK; only the edition
+; with camera SDK (website only, built outside CI) adds it. See below.
 
 ; 6.4 renamed FileCopy to CopyFile; older compilers stop here with a clear
 ; sentence instead of "Unknown identifier" deep in [Code].
@@ -57,18 +58,37 @@
   #define OutputDir "..\dist"
 #endif
 
-; Edition switch. "community" is the only edition of this repository: no Canon
-; file, header or text. A later "canon" edition for the website would, in its
-; own build outside this repository, add
-;   [Files]  Source: "{#EdsdkDir}\*"; DestDir: "{localappdata}\PhotoboxBooth\EDSDK"
-;   and a second licence page (Canon's SDK terms) via CreateOutputMsgMemoPage,
-; guarded by  #if Edition == "canon". Until that edition is cleared with
-; Canon, any other value stops the build here.
-#ifndef Edition
-  #define Edition "community"
+; Two editions, both free of charge (docs/INSTALLER.md):
+;   free edition         no define: no Canon file. The only one built in CI
+;                        and the only one that is code-signed.
+;   edition with camera  CameraSdkDir defined by build.ps1 -WithCameraSdk on
+;   SDK                  the build PC: a folder OUTSIDE the repository with
+;                        EDSDK\*.dll (Canon's runtime libraries, unmodified)
+;                        and CAMERA-SDK-LICENCE.txt. Adds them to {app}\EDSDK
+;                        and a second licence page with the end-user terms
+;                        that must be accepted (silently only with
+;                        /ACCEPTSDKTERMS=1). The booth's load order
+;                        (camera/edsdk.py): configured edsdk_dll, then the data
+;                        folder (--install-edsdk), then {app}\EDSDK, then a
+;                        bundle inside the program. Website only, as a setup
+;                        only; never on a CI runner.
+; The former "Edition" switch is gone; a build that still passes it stops.
+#ifdef Edition
+  #error The Edition define is gone. Free edition: no define. Edition with camera SDK: build.ps1 -WithCameraSdk.
 #endif
-#if Edition != "community"
-  #error Only the community edition exists. A Canon edition is not part of this repository.
+#ifdef CameraSdkDir
+  #if GetEnv("GITHUB_ACTIONS") != "" || GetEnv("CI") != ""
+    #error The edition with camera SDK is never built on a CI runner.
+  #endif
+  #define SetupSuffix "-mit-Kamera-SDK"
+  #ifndef NoticesFile
+    #error The edition with camera SDK needs NoticesFile (notices with the SDK section).
+  #endif
+#else
+  #define SetupSuffix ""
+#endif
+#ifndef NoticesFile
+  #define NoticesFile DistDir + "\THIRD-PARTY-NOTICES.txt"
 #endif
 
 #include BuildDir + "\publisher.isi"
@@ -86,11 +106,17 @@ AppSupportURL={#SupportURL}
 AppUpdatesURL={#PublisherURL}/releases
 AppContact={#PublisherContact}
 AppCopyright=Copyright (C) {#PublisherName}. AGPL-3.0-or-later
+; The setup's version resource matches the programs' (version_resource.py):
+; one product name and one product version string per build, which a code
+; signing service checks (docs/CODE-SIGNING.md). The four-number fields stay
+; numeric; the text fields carry VERSION as it is, like the programs do.
 VersionInfoVersion={#AppVersionNumeric}
+VersionInfoTextVersion={#AppVersion}
 VersionInfoCompany={#PublisherName}
 VersionInfoDescription={#AppName} Setup
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#AppVersionNumeric}
+VersionInfoProductTextVersion={#AppVersion}
 VersionInfoCopyright=Copyright (C) {#PublisherName}. AGPL-3.0-or-later
 ; Per machine by default (C:\Program Files\Photobox); the privileges dialog
 ; or /CURRENTUSER installs for this user only, without administrator rights.
@@ -116,7 +142,7 @@ SetupIconFile=..\photobox.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
 OutputDir={#OutputDir}
-OutputBaseFilename=Photobox-Setup-{#AppVersion}
+OutputBaseFilename=Photobox-Setup-{#AppVersion}{#SetupSuffix}
 Compression=lzma2/max
 SolidCompression=yes
 SetupLogging=yes
@@ -151,9 +177,19 @@ Name: "webview2"; Description: "{cm:TaskWebView2}"; GroupDescription: "{cm:Group
 [Files]
 Source: "{#DistDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DistDir}\{#SyncExeName}"; DestDir: "{app}\{#SyncDir}"; Flags: ignoreversion
-Source: "{#DistDir}\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#NoticesFile}"; DestDir: "{app}"; DestName: "THIRD-PARTY-NOTICES.txt"; Flags: ignoreversion
 ; The same file once more, for the notices page during setup.
-Source: "{#DistDir}\THIRD-PARTY-NOTICES.txt"; Flags: dontcopy
+Source: "{#NoticesFile}"; DestName: "THIRD-PARTY-NOTICES.txt"; Flags: dontcopy
+#ifdef CameraSdkDir
+; Edition with camera SDK: Canon's runtime libraries, unmodified, in the
+; EDSDK folder next to the program (searched after edsdk_dll and the data
+; folder), and the end-user terms beside the program (with the uninstaller
+; data, the marker by which the booth knows the bundle).
+Source: "{#CameraSdkDir}\EDSDK\*.dll"; DestDir: "{app}\EDSDK"; Flags: ignoreversion
+Source: "{#CameraSdkDir}\CAMERA-SDK-LICENCE.txt"; DestDir: "{app}"; Flags: ignoreversion
+; Once more for the licence page during setup.
+Source: "{#CameraSdkDir}\CAMERA-SDK-LICENCE.txt"; Flags: dontcopy
+#endif
 Source: "{#Root}\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
 Source: "{#Root}\LICENSE-EXCEPTION"; DestDir: "{app}"; DestName: "LICENSE-EXCEPTION.txt"; Flags: ignoreversion
 Source: "{#Root}\THIRD_PARTY.md"; DestDir: "{app}\docs"; Flags: ignoreversion
@@ -266,6 +302,18 @@ de.AskDeleteData=Den Datenordner mit allen Aufnahmen der Gäste, Einstellungen u
 en.AskDeleteData=Also delete the data folder with all guests' photos, settings and logs?%n%n%1%n%nRecommended: No. Additional storage folders and USB sticks are never touched.
 de.DataKept=Der Datenordner bleibt erhalten: %1
 en.DataKept=The data folder is kept: %1
+de.SdkTermsTitle=Kamera-SDK: Bedingungen
+en.SdkTermsTitle=Camera SDK: terms
+de.SdkTermsSubtitle=Diese Fassung enthält die Laufzeitbibliotheken des Canon EOS Digital SDK. Für sie gelten eigene Bedingungen.
+en.SdkTermsSubtitle=This edition contains the runtime libraries of the Canon EOS Digital SDK. Terms of their own apply to them.
+de.SdkTermsIntro=Bitte lesen. Die Datei liegt nach der Installation als CAMERA-SDK-LICENCE.txt im Programmordner.
+en.SdkTermsIntro=Please read. After installation the file is in the program folder as CAMERA-SDK-LICENCE.txt.
+de.SdkAccept=Ich akzeptiere diese Bedingungen
+en.SdkAccept=I accept these terms
+de.SdkDecline=Ich akzeptiere sie nicht (dann bitte die freie Fassung ohne Kamera-SDK verwenden)
+en.SdkDecline=I do not accept them (then please use the free edition without the camera SDK)
+de.SdkTermsSilent=Diese Fassung enthält das Canon EOS Digital SDK mit eigenen Bedingungen (CAMERA-SDK-LICENCE.txt). Eine stille Installation nimmt sie nicht stillschweigend an: wer sie gelesen hat und annimmt, ruft das Setup mit /ACCEPTSDKTERMS=1 auf. Abgebrochen, nichts wurde installiert.
+en.SdkTermsSilent=This edition contains the Canon EOS Digital SDK with terms of its own (CAMERA-SDK-LICENCE.txt). A silent installation does not accept them tacitly: if you have read and accept them, run the setup with /ACCEPTSDKTERMS=1. Stopped, nothing was installed.
 
 [Code]
 const
@@ -278,6 +326,12 @@ const
 
 var
   NoticesPage: TOutputMsgMemoWizardPage;
+#ifdef CameraSdkDir
+  { Edition with camera SDK: Canon's end-user terms, to be accepted like the
+    licence page (Next stays disabled until "I accept" is chosen). }
+  SdkTermsPage: TOutputMsgMemoWizardPage;
+  SdkAccept, SdkDecline: TNewRadioButton;
+#endif
   BoothWasRunning: Boolean;
   FailedSteps: String;
 
@@ -549,8 +603,25 @@ function InitializeSetup(): Boolean;
 begin
   SetEnvironmentVariable('PHOTOBOX_NO_PAUSE', '1');
   Result := True;
+#ifdef CameraSdkDir
+  { /SILENT and /VERYSILENT skip the terms page; Canon's terms are never
+    accepted on the operator's behalf. Said in the setup log (/LOG), in our
+    own log and in a message box (which /SUPPRESSMSGBOXES hides). }
+  if WizardSilent() and (ExpandConstant('{param:ACCEPTSDKTERMS|0}') <> '1') then begin
+    Note('Stopped: silent installation without /ACCEPTSDKTERMS=1, camera SDK terms not accepted.');
+    SuppressibleMsgBox(CustomMessage('SdkTermsSilent'), mbCriticalError, MB_OK, IDOK);
+    Result := False;
+  end;
+#endif
 end;
 
+#ifdef CameraSdkDir
+procedure SdkChoiceClick(Sender: TObject);
+begin
+  WizardForm.NextButton.Enabled := SdkAccept.Checked;
+end;
+
+#endif
 procedure InitializeWizard();
 begin
   { Third-party notices, scrollable, right after the project licence. The
@@ -566,7 +637,46 @@ begin
   end;
   if NoticesPage.RichEditViewer.Lines.Count = 0 then
     NoticesPage.RichEditViewer.Lines.Text := CustomMessage('NoticesMissing');
+#ifdef CameraSdkDir
+  SdkTermsPage := CreateOutputMsgMemoPage(NoticesPage.ID, CustomMessage('SdkTermsTitle'),
+    CustomMessage('SdkTermsSubtitle'), CustomMessage('SdkTermsIntro'), '');
+  ExtractTemporaryFile('CAMERA-SDK-LICENCE.txt');
+  SdkTermsPage.RichEditViewer.Lines.LoadFromFile(ExpandConstant('{tmp}\CAMERA-SDK-LICENCE.txt'));
+  { Room for the two choices below the text, as on the licence page. }
+  SdkTermsPage.RichEditViewer.Height := SdkTermsPage.SurfaceHeight - ScaleY(52);
+  SdkAccept := TNewRadioButton.Create(SdkTermsPage);
+  SdkAccept.Parent := SdkTermsPage.Surface;
+  SdkAccept.Caption := CustomMessage('SdkAccept');
+  SdkAccept.Top := SdkTermsPage.RichEditViewer.Top + SdkTermsPage.RichEditViewer.Height + ScaleY(8);
+  SdkAccept.Width := SdkTermsPage.SurfaceWidth;
+  SdkAccept.Height := ScaleY(17);
+  SdkAccept.OnClick := @SdkChoiceClick;
+  SdkDecline := TNewRadioButton.Create(SdkTermsPage);
+  SdkDecline.Parent := SdkTermsPage.Surface;
+  SdkDecline.Caption := CustomMessage('SdkDecline');
+  SdkDecline.Top := SdkAccept.Top + SdkAccept.Height + ScaleY(4);
+  SdkDecline.Width := SdkTermsPage.SurfaceWidth;
+  SdkDecline.Height := ScaleY(17);
+  SdkDecline.Checked := True;
+  SdkDecline.OnClick := @SdkChoiceClick;
+#endif
 end;
+
+#ifdef CameraSdkDir
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = SdkTermsPage.ID then
+    WizardForm.NextButton.Enabled := SdkAccept.Checked;
+end;
+
+{ Also when Enter is pressed: without "I accept" the setup does not go on. }
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if (CurPageID = SdkTermsPage.ID) and not SdkAccept.Checked then
+    Result := False;
+end;
+#endif
 
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
   MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;

@@ -111,7 +111,11 @@ def test_the_run_page_plays_only_the_first_video(client):
     videos = re.findall(r"<video[^>]*>", html)
     assert len(videos) == 2
     assert "autoplay" in videos[0]
-    assert "autoplay" not in videos[1] and 'preload="none"' in videos[1]
+    assert "autoplay" not in videos[1]
+    # With a poster nothing loads; without one only the metadata and the
+    # first frame (#t=0.1), so the clip is a picture, not a black box.
+    assert ('poster=' in videos[1] and 'preload="none"' in videos[1]) \
+        or ('poster=' not in videos[1] and 'preload="metadata"' in videos[1] and "#t=0.1" in videos[1])
     img = re.search(r'<figure class="sess-item"[^>]*>\s*<img ([^>]*)>', html).group(1)
     assert "srcset=" in img and "sizes=" in img
 

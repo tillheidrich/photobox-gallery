@@ -475,7 +475,7 @@
     row.append(text, box);
     return row;
   }
-  const ZIEL_NAME = { gallery: "Galerie", picdrop: "Zweites Ziel", "zweites-ziel": "Zweites Ziel", folder: "Zweite Ablage", usb: "USB-Stick" };
+  const ZIEL_NAME = { gallery: "Galerie", "picdrop": "Zweites Ziel", "zweites-ziel": "Zweites Ziel", folder: "Zweite Ablage", usb: "USB-Stick" };
   async function warteschlangen() {
     let d;
     try { d = await call("/api/admin/queues"); } catch (e) { return; }
@@ -595,6 +595,7 @@
     $("start_fit").value = ["drift", "cover", "contain"].includes(start.fit) ? start.fit : "drift";
     const dim = Number(start.dim ?? -1);
     $("start_dim").value = [...$("start_dim").options].some((o) => +o.value === dim) ? String(dim) : "-1";
+    $("start_text_tone").value = ["auto", "hell", "dunkel"].includes(start.text_tone) ? start.text_tone : "auto";
     $("start_seconds").value = start.media_seconds || 8;
     startKacheln();
   }
@@ -608,6 +609,7 @@
                 done: $("snd_done").value, print: $("snd_print").value },
       start: { ...(PROFILE.start || {}), media: startWahl.slice(),
                fit: $("start_fit").value, dim: +$("start_dim").value,
+               text_tone: $("start_text_tone").value,
                media_seconds: +$("start_seconds").value || 8 },
     };
     $("medienSpeichern").disabled = true;
@@ -852,6 +854,7 @@
     $("zt_flat").checked = !zweites || zweites.flat !== false;
     $("zt_originals").checked = !zweites || zweites.originals !== false;
     $("zt_prints").checked = !!(zweites && zweites.print_sheets);
+    $("zt_direct").checked = !!(zweites && zweites.direct);
     if (wartet) $("zt_result").textContent = "Wartet auf das Passwort: Server, Port, Art oder Benutzer wurden geändert. "
       + "Bis das Passwort für den neuen Server eingetragen ist, bleiben die Dateien in der Warteschlange.";
     ftpWarnung(); serverSchluessel(); ordnerBeispiel();
@@ -871,6 +874,10 @@
       ["Python", esc(a.python || "–")],
       ["System", esc(a.platform || "–")],
       ["Datenordner", `<code>${esc(a.data_dir || d.data_dir || "")}</code>`],
+      // Only in the edition with camera SDK: Canon's libraries, listed as
+      // what they are - a separate proprietary component, not under the AGPL.
+      ["Kamera-SDK", a.camera_sdk ? `${esc(a.camera_sdk.name)} (${esc((a.camera_sdk.files || []).join(", "))}) · `
+        + `proprietär, nicht unter der AGPL · <a href="${esc(a.camera_sdk.terms_url)}" target="_blank" rel="noopener">Bedingungen</a>` : ""],
     ].filter(([k, v]) => v).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("");
     loadLegal();
     $("log").textContent = (d.log_tail || []).join("\n");
@@ -966,7 +973,8 @@
     if (!host && !$("zt_on").checked) return null;
     const z = { type: $("zt_type").value, name: "picdrop", host, user: $("zt_user").value.trim(),
                 path: $("zt_path").value.trim(), flat: $("zt_flat").checked, enabled: $("zt_on").checked,
-                originals: $("zt_originals").checked, print_sheets: $("zt_prints").checked };
+                originals: $("zt_originals").checked, print_sheets: $("zt_prints").checked,
+                direct: $("zt_direct").checked };
     if (+$("zt_port").value) z.port = +$("zt_port").value;
     const pw = $("zt_pass").value;
     z.password = pw ? pw : ($("zt_pass").dataset.stored ? "••••" : "");
@@ -979,7 +987,10 @@
     try {
       const d = await call("/api/gallery?offset=0&limit=12");
       liste.textContent = "";
-      (d.items || []).forEach((it) => {
+      // Only runs with a print sheet: a film (video, boomerang without
+      // boomerang.print) has none, and its "Drucken" only ever answered 409.
+      const druckbar = (d.items || []).filter((it) => it.has_print);
+      druckbar.forEach((it) => {
         const knopf = document.createElement("button");
         knopf.type = "button"; knopf.className = "btn-secondary";
         knopf.style.cssText = "display:grid;gap:8px;padding:10px;justify-items:center;height:auto";
@@ -998,7 +1009,8 @@
         };
         liste.append(knopf);
       });
-      aus.textContent = (d.items || []).length ? "" : "Es gibt noch keine Aufnahmen.";
+      aus.textContent = druckbar.length ? "" : (d.items || []).length
+        ? "Unter den letzten Aufnahmen ist keine mit Druckbild." : "Es gibt noch keine Aufnahmen.";
     } catch (e) { aus.textContent = "Das hat nicht geklappt: " + e.message; }
   };
   // FTP without TLS says so where it is chosen; SFTP shows the server's key fingerprint.

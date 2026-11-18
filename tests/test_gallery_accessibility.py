@@ -144,7 +144,7 @@ def test_der_aktive_filterlink_traegt_aria_current(client):
 
 def test_die_kachelknoepfe_haben_einen_namen_nicht_nur_einen_tooltip(seite):
     """``title`` liest kein Screenreader zuverlässig vor und sieht keine Tastatur."""
-    # Since 17.11.2026 the tile's buttons live in the large view (Picdrop
+    # Since 17.11.2026 the tile's buttons live in the large view (proofing-gallery
     # round); the rule is the same for them there.
     raster = seite[seite.index('id="lightbox"'):]
     raster = raster[:raster.index('id="lbStage"')]

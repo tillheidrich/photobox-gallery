@@ -384,3 +384,30 @@ def test_an_unreadable_driver_name_is_no_failure(booth, monkeypatch):
         raise OSError("level 2 refused (fake)")
     monkeypatch.setattr(sys.modules["win32print"], "GetPrinter", kaputt)
     assert _print_module(booth).state == "ok"
+
+
+def test_canon_sdk_check_names_the_library_that_was_loaded(booth, tmp_path, monkeypatch):
+    """Which EDSDK.dll the booth really uses: with several copies on a PC
+    (data folder, program folder, bundle) the order decides, not the file
+    the operator looked at."""
+    from boothcore import edsdk_setup
+    from boothcore.camera import edsdk
+    from boothcore.doctor import Doctor
+    monkeypatch.setattr(edsdk_setup.sys, "platform", "win32")
+    loaded = str(tmp_path / "prog" / "EDSDK" / "EDSDK.dll")
+    monkeypatch.setattr(edsdk, "LOADED_DLL", loaded)
+    booth.store.local["camera"]["backend"] = "auto"
+    booth.store.local["camera"]["edsdk_dll"] = ""
+    check = next(c for c in Doctor(booth).run() if c.name == "Canon-SDK")
+    assert check.state == "ok"
+    assert f"Geladen: {loaded}" in check.message and check.detail["loaded"] == loaded
+
+
+def test_canon_sdk_check_stays_silent_about_loading_when_nothing_was_loaded(booth, monkeypatch):
+    from boothcore.camera import edsdk
+    from boothcore.doctor import Doctor
+    monkeypatch.setattr(edsdk, "LOADED_DLL", None)
+    booth.store.local["camera"]["backend"] = "auto"
+    booth.store.local["camera"]["edsdk_dll"] = ""
+    check = next(c for c in Doctor(booth).run() if c.name == "Canon-SDK")
+    assert check.state == "skip" and "Geladen" not in check.message

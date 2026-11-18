@@ -1,6 +1,6 @@
-"""A second upload target (Picdrop, a NAS) without writing JSON by hand.
+"""A second upload target (an FTP-fed proofing gallery, a NAS) without writing JSON by hand.
 
-14 Nov 2026: for the wedding the pictures are to go to Picdrop in parallel,
+14 Nov 2026: for the wedding the pictures are to go to an online gallery in parallel,
 "der sichere Weg". Until now a target was raw JSON in a text box — nobody
 types an FTP password into that at a venue, and nobody could tell whether it
 works before the first guest stood there.
@@ -92,3 +92,42 @@ def test_the_reason_is_said_for_a_person_not_for_a_programmer(roh, wort):
     from boothcore.app import ziel_fehler_text
     text = ziel_fehler_text(roh)
     assert wort in text and "Errno" not in text.split("(")[0]
+
+
+@pytest.mark.parametrize("roh", [
+    "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1006)",
+    "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1006)",
+])
+def test_an_unverifiable_certificate_is_not_blamed_on_the_chosen_kind(roh):
+    from boothcore.app import ziel_fehler_text
+    text = ziel_fehler_text(roh)
+    satz = text.split(" (")[0]
+    assert "Zertifikat des Servers ließ sich nicht prüfen" in satz
+    assert "gewählte Art" not in satz.replace("An der gewählten Art liegt es nicht", "")
+    assert text.endswith(f"({roh})"), "the technical wording stays for whoever helps on the phone"
+
+
+def test_an_expired_certificate_is_said_as_such():
+    from boothcore.app import ziel_fehler_text
+    text = ziel_fehler_text("[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1006)")
+    assert "abgelaufen" in text.split(" (")[0]
+
+
+@pytest.mark.parametrize("roh", [
+    "[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:2706)",
+    "EOF occurred in violation of protocol (_ssl.c:2427)",
+])
+def test_a_dropped_tls_data_connection_is_said_as_such(roh):
+    from boothcore.app import ziel_fehler_text
+    text = ziel_fehler_text(roh)
+    satz = text.split(" (")[0]
+    assert "Der Server hat die verschlüsselte Datenverbindung abgebrochen" in satz
+    assert "gewählte Art" not in satz
+    assert text.endswith(f"({roh})")
+
+
+def test_a_certificate_for_another_name_keeps_its_own_sentence():
+    from boothcore.app import ziel_fehler_text
+    text = ziel_fehler_text("[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, "
+                            "certificate is not valid for 'ftp.example.org'. (_ssl.c:1006)")
+    assert "anderen Namen" in text.split(" (")[0]

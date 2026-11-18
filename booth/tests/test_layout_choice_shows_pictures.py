@@ -105,7 +105,8 @@ def test_the_kiosk_draws_cards_with_pictures_and_keeps_the_trigger_keys():
     assert ':focus-visible' in js
     assert '"ArrowRight", "F13"' in js
     # Only one layout: no choice is shown (the old rule stays).
-    assert "S.templates.length > 1" in js
+    # (since 18.11.2026 per mode: templatesFor, test_photo_offers_single_layouts.py)
+    assert "showTemplate = mayTemplate && sheetModes && tpls.length > 1" in js
 
 
 def test_template_info_says_where_each_slot_sits():

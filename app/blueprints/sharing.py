@@ -232,14 +232,15 @@ def watermarked(slug: str, media_id: int, which: str):
     """
     from app import folders
     from app.blueprints.public import (_check_password_access, _expired_for_guest, _is_admin, _not_yet_live,
-                                       _wartet_auf_freigabe, _deny_if_silent)
+                                       _guest_may_see, _deny_if_silent)
 
     event = folders.apply_parent(db.get_event_by_slug(slug))
     row = db.get_media(media_id)
     if not event or not row or row["event_id"] != event["id"] or which not in ("thumb", "full") or not event.get("published"):
         abort(404)
     _deny_if_silent(event)
-    if _wartet_auf_freigabe(row) and not _is_admin():
+    # Hidden, pending or red-hidden: the same 404 as an id that does not exist.
+    if not _guest_may_see(event, row):
         abort(404)
     # Same gate as the gallery: password, link key, client code, parent (S18).
     if not _check_password_access(event):

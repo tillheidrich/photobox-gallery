@@ -35,7 +35,7 @@ def _jpeg(path: Path, when="2019:06:01 14:00:00", color=(120, 80, 40)):
 
 
 def _tree(tmp_path, tag):
-    root = tmp_path / f"picdrop-{tag}"
+    root = tmp_path / f"galerie-{tag}"
     _jpeg(root / f"Hochzeit {tag}" / "IMG_0001.jpg", "2019:06:01 14:00:00")
     _jpeg(root / f"Hochzeit {tag}" / "Trauung" / "IMG_0002.jpg", "2019:06:01 12:00:00", (10, 20, 30))
     _jpeg(root / f"Hochzeit {tag}" / "Trauung" / "Kirche" / "IMG_0003.jpg", "2019:06:01 11:00:00", (40, 50, 60))

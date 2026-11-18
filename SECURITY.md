@@ -18,12 +18,12 @@ the queue.
 ## Supported versions
 
 There is one line of development. Security fixes go into the `ecosystem`
-branch and into the next release; there are no backports to older releases.
+integration branch first and reach `main` (the release branch) with the next release; there are no backports to older releases.
 
 | Version | Supported |
 |---|---|
 | the latest release (see [`VERSION`](VERSION) and `/ueber`) | yes |
-| `ecosystem` branch | yes, fixes land here first |
+| `ecosystem` (integration branch) | yes, fixes land here first |
 | anything older | no — update first, then report if it still happens |
 
 If you run a modified version, tell us what you changed; a finding that only
@@ -268,7 +268,7 @@ booth, see the section below); that server's key is then pinned on first use
 ### Second target without the booth's opt-in (17.11.2026, evening, branch `feat/second-target-open`)
 
 The owner removed the switch "Zweites Ziel aus der Galerie einstellen
-lassen": every paired booth takes its second target (Picdrop/FTP/FTPS/SFTP)
+lassen": every paired booth takes its second target (FTP/FTPS/SFTP)
 from the gallery. The orchestrated compromise, as implemented:
 
 | Rule | What it means | Enforced where | Pinned by |
@@ -297,9 +297,9 @@ the same card as a stranger, and the endpoint sets no cookie:
 | Gallery | Card | Description |
 |---|---|---|
 | public, published, no password | admin's own image, else the cover, else up to three visible photos, with the title | the event description, else "n Fotos" |
-| password (own or the parent's), link password, draft, expired, not yet live | title and brand colour only — the admin's own image only if "auch ohne Passwort zeigen" is ticked | "Passwortgeschützte Fotogalerie" / "Fotogalerie", never the event description |
+| password (own or the parent's), link password, expired | title and brand colour only — the admin's own image only if "auch ohne Passwort zeigen" is ticked | "Passwortgeschützte Fotogalerie" / "Fotogalerie", never the event description |
 | watermark on | title and colour (an unwatermarked photo must not leave), or the admin's image | as public |
-| silent mode, or a name that does not exist | one neutral card ("Fotogalerie"), the same bytes for both | generic |
+| silent mode, draft (or a folder under one), not yet live (`scheduled_live_at` ahead), or a name that does not exist | one neutral card ("Fotogalerie"): same status, bytes and headers as an unknown name (since 18.11.2026; before, a draft's card carried its title) | generic |
 | run page `/p/…`, share link `/l/…` | title and colour, never photos | as closed |
 
 A photo counts only while a guest sees it: hidden, pending, red-marked (when
@@ -309,7 +309,11 @@ that picture is hidden. Cards are cached under `cache/og/` and keyed by
 mode, title, colours and the source files; the key travels in `?v=`, so a
 change gives a new address (a chat app that cached the old one keeps it until
 its own cache ends — that cannot be revoked from here).
-Pinned by `tests/test_link_preview.py`.
+Pinned by `tests/test_link_preview.py`, `tests/test_og_hides_unpublished_galleries.py` and the
+guard `tests/test_hidden_gallery_is_unknown_everywhere.py`, which walks every
+public route with a gallery slug (from the url_map) and compares a draft with
+an unknown name byte for byte. Known and kept: the countdown page of a gallery
+not yet live (`/gallery/<slug>` with a start ahead) shows its name on purpose.
 
 ### Open (as of 15.11.2026, after the final review)
 

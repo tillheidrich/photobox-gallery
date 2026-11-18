@@ -901,6 +901,17 @@
     return m ? "/static/start/" + m[1] + ".svg" : "/assets/" + encodeURIComponent(name);
   }
 
+  // <start-tone> — which text the title block and status line wear on the
+  // start screen: light on a dark shade when an own start picture lies
+  // behind them and no colour is set, else the theme's. "hell"/"dunkel"
+  // force it (start.text_tone, 18.11.2026: a light theme put dark text on a
+  // dark start photo).
+  function startTone(wanted, mediaCount, colour) {
+    if (wanted === "hell" || wanted === "dunkel") return wanted;
+    return mediaCount > 0 && !colour ? "hell" : "";
+  }
+  // </start-tone>
+
   function renderStartMedia() {
     const bg = $("#startBg");
     const media = S.start_media || [];
@@ -909,6 +920,7 @@
     const st = S.profile.start || {};
     const farbe = hex(st.bg_color, "");
     bg.style.backgroundColor = farbe;           // "" = theme.bg from the stylesheet
+    $("#s-start").dataset.tone = startTone(st.text_tone, media.length, farbe);
     const paint = () => {
       bg.classList.remove("is-live");
       if (!media.length && farbe) {             // a colour instead of the live picture
@@ -1152,10 +1164,19 @@
   // ── Einwilligung je Durchgang ──────────────────────────
   // Two equal buttons, none preselected, the note underneath. Only a tap
   // chooses: the buzzer and the start keys show a hint (triggerPrimary).
-  function consentOptions() { return (S && S.consent && S.consent.options) || []; }
+  // With a mode: "Nur drucken" only where that mode has a print sheet
+  // (consent.print_modes). A video offered it: the guest got neither a
+  // print nor a link. Fewer than two options left means no screen.
+  function consentOptions(mode) {
+    const all = (S && S.consent && S.consent.options) || [];
+    const printing = (S && S.consent && S.consent.print_modes) || null;
+    if (!mode || !printing || printing.includes(mode)) return all;
+    const left = all.filter((o) => o !== "print");
+    return left.length >= 2 ? left : [];
+  }
   function askConsent(mode) {
     flow = { pendingMode: mode };
-    const options = consentOptions();
+    const options = consentOptions(mode);
     const box = $("#consentChoices");
     box.style.setProperty("--n", String(options.length));
     box.innerHTML = options.map((o) =>
@@ -1165,12 +1186,15 @@
     show("consent");
   }
 
-  const FORMAT_MODES = ["photo", "boomerang"];
-  // The card pre-selected for a boomerang: the operator's boomerang format
-  // when it is offered (a guest who does not choose gets what they got
-  // before), else the photo's default, else the first one offered.
-  function clipDefaultFormat(p) {
-    const own = (p.boomerang || {}).format;
+  // The GIF is set up like the boomerang (18.11.2026): the same format
+  // cards and the same frames, only that it takes photos.
+  const FORMAT_MODES = ["photo", "boomerang", "gif"];
+  const FRAME_MODES = ["boomerang", "video", "gif"];
+  // The card pre-selected for a boomerang (or GIF): the operator's format of
+  // that mode when it is offered (a guest who does not choose gets what they
+  // got before), else the photo's default, else the first one offered.
+  function clipDefaultFormat(p, mode = "boomerang") {
+    const own = (p[mode] || {}).format;
     if (p.formats.includes(own)) return own;
     return p.formats.includes(p.default_format) ? p.default_format : p.formats[0];
   }
@@ -1183,9 +1207,23 @@
     const own = ((S.layout_thumbs || {}).boomerang || {})[`${tp.id}@${flow.format}`];
     return own || tp.thumb || "";
   }
+  // The layouts a mode offers (18.11.2026): photo those with exactly one
+  // photo the booth names (S.photo_templates; none = the plain photo as
+  // before), collage then those with two or more (all if there is none),
+  // a printed boomerang all. The booth chooses by the same rule.
+  function templatesFor(mode) {
+    const all = S.templates || [];
+    const einzel = new Set(S.photo_templates || []);
+    if (mode === "photo") return all.filter((tp) => einzel.has(tp.id));
+    if (mode === "collage" && einzel.size) {
+      const mehr = all.filter((tp) => (Number(tp.shots) || 1) >= 2);
+      return mehr.length ? mehr : all;
+    }
+    return all;
+  }
   function renderTemplateCards() {
     const boom = flow.mode === "boomerang";
-    $("#templateChips").innerHTML = S.templates.map((tp) => {
+    $("#templateChips").innerHTML = templatesFor(flow.mode).map((tp) => {
       const land = tp.orientation === "landscape";
       const n = Number(tp.shots) || 1;
       const meta = (n === 1 ? t("setup.photos_one") : t("setup.photos_n", { n })) + " · " +
@@ -1252,15 +1290,20 @@
     if (gate.busy("run")) return;
     if (S.locked) return toast(t("locked"));
     if (S.camera.state !== "ready") return toast(t(S.camera.error_code || "camera.off"));
-    if (consentOptions().length >= 2 && !chosen) return askConsent(mode);
+    if (consentOptions(mode).length >= 2 && !chosen) return askConsent(mode);
     const p = S.profile;
-    flow = { mode, format: VIDEO_MODES.includes(mode) ? p[mode].format : p.default_format,
-             template: S.templates[0] && S.templates[0].id, background: null, shot: 0,
+    const tpls = templatesFor(mode);
+    flow = { mode, format: FRAME_MODES.includes(mode) ? ((p[mode] || {}).format || p.default_format) : p.default_format,
+             template: tpls[0] && tpls[0].id, background: null, shot: 0,
+             // A photo on a one-photo layout: the layout's slot is the shape (preview like a collage's).
+             photoTemplate: mode === "photo" && tpls.length > 0,
              consent: chosen ? { option: chosen, lang } : null };
     // Consent is on but there is nothing to choose (no printer): the choice
     // screen is skipped, its note is not — it stands here, and the run says
     // it was shown.
-    const notice = !!(S.consent && S.consent.notice_only);
+    // A mode without a print sheet has no choice either; its note stands here too.
+    const notice = !!(S.consent && (S.consent.notice_only
+      || (consentOptions().length >= 2 && consentOptions(mode).length < 2)));
     const notes = (S.consent && S.consent.note) || {};
     $("#consentNotice").hidden = !notice;
     $("#consentNotice").textContent = notice ? (notes[lang] || notes.de || "") : "";
@@ -1275,23 +1318,30 @@
     // Photo and boomerang: the same format choice (guest_choice.format), the
     // same cards. boomerang.guest_choice still opens it for the boomerang
     // alone when the general switch is off. The film keeps the operator's.
-    const showFormat = p.formats.length > 1 && ((mayFormat && FORMAT_MODES.includes(mode))
-      || (mode === "boomerang" && !!(p.boomerang || {}).guest_choice));
-    if (showFormat && mode === "boomerang") flow.format = clipDefaultFormat(p);
+    const showFormat = !flow.photoTemplate && p.formats.length > 1 && ((mayFormat && FORMAT_MODES.includes(mode))
+      || (mode === "boomerang" && !!(p.boomerang || {}).guest_choice)
+      || (mode === "gif" && !!(p.gif || {}).guest_choice));
+    if (showFormat && (mode === "boomerang" || mode === "gif")) flow.format = clipDefaultFormat(p, mode);
     // boomerang.print: the boomerang's sheet takes a collage layout, chosen
     // on the same cards (one layout: no choice).
-    const sheetModes = mode === "collage" || (mode === "boomerang" && !!(p.boomerang || {}).print);
-    const showTemplate = mayTemplate && sheetModes && S.templates.length > 1;
+    const sheetModes = mode === "collage" || flow.photoTemplate || (mode === "boomerang" && !!(p.boomerang || {}).print);
+    const showTemplate = mayTemplate && sheetModes && tpls.length > 1;
     const showBackground = mayBackground && mode === "collage" && S.backgrounds.length;
     // Frames: shown when the guest may choose and there is more than one
     // choice; one choice (or no guest choice) is taken without asking.
     flow.motionFrame = "";
-    const showFrame = VIDEO_MODES.includes(mode) && chooseFrames(mode, showFormat);
-    const needsChoice = showFormat || showTemplate || showBackground || hasScenes || showFrame;
+    const showFrame = FRAME_MODES.includes(mode) && chooseFrames(mode, showFormat);
+    // The boomerang's length (boomerang.seconds_choices): big buttons, the
+    // operator's seconds pre-selected. It opens this screen on its own.
+    const showSeconds = secondsOffer(mode).length >= 2;
+    flow.seconds = showSeconds ? secondsDefault(mode) : undefined;
+    const needsChoice = showFormat || showTemplate || showBackground || hasScenes || showFrame || showSeconds;
     // A boomerang or film says how long it records ("Boomerang · 2 Sekunden").
-    $("#setupTitle").textContent = VIDEO_MODES.includes(mode) ? `${t("mode." + mode)} · ${clipSecondsText(mode)}` : t("mode." + mode);
+    $("#setupTitle").textContent = VIDEO_MODES.includes(mode) ? `${t("mode." + mode)} · ${clipSecondsText(mode, flow.seconds)}` : t("mode." + mode);
+    $("#groupSeconds").hidden = !showSeconds;
+    if (showSeconds) renderSecondsCards();
     $("#groupFormat").hidden = !showFormat;
-    $("#s-setup .setup-scroll").dataset.pickers = String(Number(!!showFormat) + Number(!!showTemplate) + Number(!!showFrame));
+    $("#s-setup .setup-scroll").dataset.pickers = String(Number(!!showFormat) + Number(!!showTemplate) + Number(!!showFrame) + Number(showSeconds));
     $("#groupTemplate").hidden = !showTemplate;
     $("#groupFrame").hidden = !showFrame;
     $("#groupBackground").hidden = !showBackground;
@@ -1598,7 +1648,7 @@
     pic.onload = () => {
       if (flow.uid !== uid || app.dataset.screen !== "processing") return;
       const [fmt, prof] = previewInput();
-      const v = processingView(mode, fmt, currentTemplate(), last ? last.index : 0, prof,
+      const v = processingView(flow.photoTemplate ? "collage" : mode, fmt, currentTemplate(), last ? last.index : 0, prof,
         pic.naturalWidth, pic.naturalHeight);
       if (!v) return;
       still.style.setProperty("--proc-ar", String(v.aspect));
@@ -1622,14 +1672,14 @@
   // With a frame, the live picture shows what fills its window: the window's
   // aspect, cropped ("cover"), whatever the mode's own layout says.
   function previewInput() {
-    const fr = VIDEO_MODES.includes(flow.mode) ? currentFrame() : null;
+    const fr = FRAME_MODES.includes(flow.mode) ? currentFrame() : null;
     if (!fr) return [flow.format, S.profile];
     return [`${fr.window[0]}:${fr.window[1]}`, { ...S.profile, [flow.mode]: { ...(S.profile[flow.mode] || {}), layout: "crop" } }];
   }
   function placeLive(img, frame, guide, area) {
     const nw = img.naturalWidth || 3, nh = img.naturalHeight || 2;
     const [fmt, prof] = previewInput();
-    const rule = previewRule(flow.mode, fmt, currentTemplate(), flow.shot || 0, prof, nw, nh);
+    const rule = previewRule(flow.photoTemplate ? "collage" : flow.mode, fmt, currentTemplate(), flow.shot || 0, prof, nw, nh);
     const lay = previewLayout(rule, nw, nh, Math.max(1, area[0]), Math.max(1, area[1]));
     const [bx, by, bw, bh] = lay.box;
     let ox = 0, oy = 0;
@@ -1818,19 +1868,57 @@
   // ── How long a boomerang or film records ───────────────
   // boomerang.seconds / video.seconds: shown on the mode tile and in the
   // set-up title before the start, counted down in a ring while recording.
-  function clipSeconds(mode) {
+  // `chosen`: the length the guest picked on the set-up screen (boomerang.seconds_choices).
+  function clipSeconds(mode, chosen) {
+    if (Number(chosen) > 0) return Number(chosen);
     const v = Number(((S && S.profile[mode]) || {}).seconds);
     return v > 0 ? v : 2;
   }
-  function clipSecondsText(mode) {
-    const n = Math.round(clipSeconds(mode) * 10) / 10;
+  const secondsNumber = (n) => (Math.round(n * 10) / 10).toLocaleString(lang === "de" ? "de-DE" : "en-GB");
+  function clipSecondsText(mode, chosen) {
+    const n = Math.round(clipSeconds(mode, chosen) * 10) / 10;
     if (n === 1) return t("clip.second");
-    return t("clip.seconds", { n: n.toLocaleString(lang === "de" ? "de-DE" : "en-GB") });
+    return t("clip.seconds", { n: secondsNumber(n) });
   }
   function modeHint(m) {
     const hint = t("mode." + m + ".hint");
     if (!VIDEO_MODES.includes(m)) return hint;
-    return hint ? `${hint} · ${clipSecondsText(m)}` : clipSecondsText(m);
+    // With the guest's choice the tile names the range ("2–10 Sekunden").
+    const offer = secondsOffer(m);
+    const text = offer.length ? t("clip.seconds_range", { from: secondsNumber(Math.min(...offer)),
+      to: secondsNumber(Math.max(...offer)) }) : clipSecondsText(m);
+    return hint ? `${hint} · ${text}` : text;
+  }
+  // The lengths the booth offers for the mode (/api/state clip_seconds,
+  // checked there); fewer than two is no choice.
+  function secondsOffer(mode) {
+    const o = ((S && S.clip_seconds) || {})[mode] || {};
+    const list = Array.isArray(o.choices) ? o.choices.map(Number).filter((n) => n > 0) : [];
+    return list.length >= 2 ? list : [];
+  }
+  function secondsDefault(mode) {
+    const list = secondsOffer(mode), d = Number((((S && S.clip_seconds) || {})[mode] || {}).default);
+    return list.includes(d) ? d : list[0];
+  }
+  // Length of the finished film for a recording of `sec` seconds, by the
+  // booth's rule (media/boomerang.py loops_for_total): shown on the button.
+  function filmSeconds(mode, sec) {
+    const cfg = (S && S.profile[mode]) || {};
+    const low = Number(cfg.min_total_seconds) || 15, high = Math.max(Number(cfg.max_total_seconds) || 30, low);
+    let n = Math.max(1, Math.ceil(low / (2 * sec) - 1e-9));
+    while (n > 1 && n * 2 * sec > high + 1e-9) n -= 1;
+    return n * 2 * sec;
+  }
+  function renderSecondsCards() {
+    $("#secondsChips").innerHTML = secondsOffer(flow.mode).map((sec) => {
+      const big = t("clip.seconds_short", { n: secondsNumber(sec) });
+      const meta = t("setup.seconds_hint", { n: secondsNumber(filmSeconds(flow.mode, sec)) });
+      return `<button class="lcard lcard-seconds" data-seconds="${esc(String(sec))}" aria-pressed="${sec === flow.seconds}" aria-label="${esc(clipSecondsText(flow.mode, sec) + ", " + meta)}" style="--ar:1">` +
+        `<span class="lcard-pic"><span class="lcard-big" aria-hidden="true">${esc(big)}</span></span>` +
+        `<span class="lcard-text"><small>${esc(meta)}</small></span>` +
+        `<span class="lcard-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>`;
+    }).join("");
+    wireLayoutCards($("#secondsChips"));
   }
   // The ring empties over `seconds`; the number inside says the seconds left.
   // It stands until the booth answers the recording (the camera has stopped
@@ -2087,7 +2175,7 @@
     const meiner = lauf = { abgebrochen: false };
     try {
       if (!retakeFlow) {
-        const sess = await api("/api/session", { method: "POST", body: { mode: flow.mode, format: flow.format, template: flow.template, background: flow.background, chroma_background: flow.chroma || "", consent: flow.consent || undefined, motion_frame: flow.motionFrame || undefined } });
+        const sess = await api("/api/session", { method: "POST", body: { mode: flow.mode, format: flow.format, template: flow.template, background: flow.background, chroma_background: flow.chroma || "", consent: flow.consent || undefined, motion_frame: flow.motionFrame || undefined, seconds: flow.seconds || undefined } });
         flow.uid = sess.uid; flow.needed = sess.shots_needed; flow.lastShot = null;
         // Der Gruß kommt vor den Countdown: Danach warten alle auf das Bild,
         // und niemand tippt dann noch gern.
@@ -2104,7 +2192,7 @@
         await countdown(S.profile.countdown.first);
         const rec = $("#rec");
         rec.querySelector("b").textContent = flow.mode === "boomerang" ? t("capture.move") : t("capture.recording");
-        const ring = recordingIndicator(clipSeconds(flow.mode));
+        const ring = recordingIndicator(clipSeconds(flow.mode, flow.seconds));
         try {
           // Answers when the camera stops; the film is made while "processing" shows.
           await api(`/api/session/${flow.uid}/clip`, { method: "POST" });
@@ -2821,7 +2909,7 @@
     const bust = `t=${Date.now()}`;
     const media = $("#fullMedia");
     if (view.is_video) {
-      media.innerHTML = `<video src="${esc(view.result_url)}?${bust}" autoplay loop muted playsinline controls></video>`;
+      media.innerHTML = `<video src="${esc(view.result_url)}?${bust}" poster="${esc(view.thumb_url)}?${bust}" autoplay loop muted playsinline controls></video>`;   // the poster, not a black box until the film starts
     } else {
       const src = view.animated && view.animUrl ? view.animUrl : `${view.result_url}?${bust}`;
       media.innerHTML = `<img src="${esc(src)}" alt="" data-action="full-close">`;
@@ -3006,6 +3094,12 @@
     if (b.dataset.consent) return openSetup(flow.pendingMode, b.dataset.consent);
     if (b.dataset.format) { flow.format = b.dataset.format; press($("#formatChips"), "format", flow.format); if (flow.mode === "boomerang" && !$("#groupTemplate").hidden) renderTemplateCards(); framesFollowFormat(); return applyFrame(); }
     if (b.dataset.frame) { flow.motionFrame = b.dataset.frame; press($("#frameChips"), "frame", flow.motionFrame); return applyFrame(); }
+    if (b.dataset.seconds) {
+      flow.seconds = Number(b.dataset.seconds);
+      press($("#secondsChips"), "seconds", b.dataset.seconds);
+      $("#setupTitle").textContent = `${t("mode." + flow.mode)} · ${clipSecondsText(flow.mode, flow.seconds)}`;
+      return;
+    }
     if (b.dataset.template) { flow.template = b.dataset.template; press($("#templateChips"), "template", flow.template); return applyFrame(); }
     if (b.dataset.scroll) return scrollPicker(b);
     if (b.dataset.bg !== undefined) { flow.background = b.dataset.bg || null; return press($("#bgChips"), "bg", b.dataset.bg); }
@@ -3234,7 +3328,7 @@
   // start keys, whatever keys_start says; off, nothing here runs.
   const arrowNavOn = () => CONTROLS().arrow_navigation !== false;
   const ARROWS = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
-  const CHOICE_ROWS = "#formatChips, #templateChips, #bgChips, #chromaChips, #looks, #animToggle";
+  const CHOICE_ROWS = "#secondsChips, #formatChips, #templateChips, #bgChips, #chromaChips, #looks, #animToggle";
   const NAV_FORGET_MS = 15000;
 
   function openOverlayEl() {
@@ -3377,12 +3471,15 @@
     }
   }
 
+  // Returns what came of the press ("acted:…" or "ignored:…") for the
+  // booth log (reportPress): a buzzer that "sometimes does nothing" must
+  // leave a trace of why.
   function triggerPrimary() {
     // Prellschutz: mechanische Buzzer schließen zwei- bis dreimal. Ohne diese
     // Sperre startet ein Druck zwei Durchgänge hintereinander.
     const now = Date.now();
     const gap = Number(CONTROLS().repeat_ms ?? 1200);
-    if (now - lastTrigger < gap) return;
+    if (now - lastTrigger < gap) return "ignored:bounce";
     lastTrigger = now;
     const sc = app.dataset.screen;
     // Steht irgendein Fenster offen, gehört der Druck ihm — nicht dem
@@ -3390,13 +3487,33 @@
     // (overlayOpen), der Buzzer nur drei von sechs Fenstern: Wer seine
     // E-Mail-Adresse tippte und dabei den Buzzer hörte, stand hinterher auf
     // dem Startbildschirm, mit der Tastatur darüber und der Adresse weg.
-    if (overlayOpen()) return;
-    if (sc === "start" && S && S.profile.modes.length) return openSetup(startModus());
-    if (sc === "setup") return runCapture();
-    if (sc === "consent") return toast(t("consent.use_screen"));   // a choice is made by tapping, never by the buzzer
-    if (sc === "review") return reviewFertig();     // Buzzer heißt hier „passt, weiter"
-    if (sc === "result") return view.fromGallery ? openGallery() : afterPhase();
-    if (sc === "gallery" || sc === "error") return home();
+    if (overlayOpen()) return "ignored:overlay";
+    if (sc === "start" && S && S.profile.modes.length) {
+      // openSetup refuses these with a toast; the log names the reason.
+      const why = gate.busy("run") ? "busy" : S.locked ? "locked" : S.camera.state !== "ready" ? "camera" : "";
+      openSetup(startModus());
+      return why ? "ignored:" + why : "acted:start";
+    }
+    if (sc === "setup") { runCapture(); return "acted:capture"; }
+    if (sc === "consent") { toast(t("consent.use_screen")); return "ignored:consent"; }   // a choice is made by tapping, never by the buzzer
+    if (sc === "review") { reviewFertig(); return "acted:review"; }     // Buzzer heißt hier „passt, weiter"
+    if (sc === "result") { if (view.fromGallery) openGallery(); else afterPhase(); return "acted:result"; }
+    if (sc === "gallery" || sc === "error") { home(); return "acted:home"; }
+    return "ignored:busy";                          // capture and processing: the run goes on
+  }
+
+  // One line in booth.log per press handled as the trigger (/api/input-log).
+  // The bounce guard's refusals at most once a second: a chattering buzzer
+  // would otherwise post for every contact.
+  let lastBounceReport = 0;
+  function reportPress(source, input, outcome) {
+    if (outcome === "ignored:bounce") {
+      if (Date.now() - lastBounceReport < 1000) return;
+      lastBounceReport = Date.now();
+    }
+    api("/api/input-log", { method: "POST",
+      body: { source, input: String(input), screen: app.dataset.screen || "", outcome: String(outcome || "acted") } })
+      .catch(() => {});
   }
 
   // Ein Knopf, eine Aufgabe. „trigger" ist der Auslöser von oben; alles andere
@@ -3522,7 +3639,8 @@
     }
     if (start.includes(e.code)) {
       e.preventDefault();
-      triggerPrimary();
+      const outcome = triggerPrimary();
+      if (!e.repeat) reportPress("key", e.code, outcome);   // a held key repeats 30 times a second
     } else if (back.includes(e.code) && sc !== "capture" && sc !== "processing") {
       zurueckTaste();
     } else if (print.includes(e.code) && sc === "result" && !$("#printBox").hidden) {
@@ -3620,12 +3738,16 @@
     const r = pressRule({ touch: false, button: e.button, mouseStart: c.mouse_start,
       mouseRight: c.mouse_right, mouseMiddle: c.mouse_middle, swallow: c.mouse_swallow,
       onControl: isControl(e.target), screen: app.dataset.screen, overlay: overlayOpen() });
-    if (r.act === "none") return;
+    if (r.act === "none") {
+      // Not a trigger: a window is open, or the button is not set as one.
+      if (c.mouse_start && c.mouse_start !== "off") reportPress("mouse", "button" + e.button, overlayOpen() ? "ignored:overlay" : "ignored:not_trigger");
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     swallowClickUntil = performance.now() + 1000;
-    if (dismissAttract()) return;
-    fuehreAus(r.act);
+    if (dismissAttract()) return reportPress("mouse", "button" + e.button, "acted:wake");
+    reportPress("mouse", "button" + e.button, fuehreAus(r.act) || "acted:" + r.act);
   }, true);   // Erfassungsphase: vor allen Schaltflächen
 
   document.addEventListener("click", (e) => {

@@ -74,7 +74,7 @@
       {% if it.is_video and loop.first %}
         <video src="{{ it.src }}" {% if it.poster %}poster="{{ it.poster }}"{% endif %} autoplay loop muted playsinline controls></video>
       {% elif it.is_video %}
-        <video src="{{ it.src }}" {% if it.poster %}poster="{{ it.poster }}"{% endif %} preload="none" loop muted playsinline controls></video>
+        <video src="{{ it.src }}{% if not it.poster %}#t=0.1{% endif %}" {% if it.poster %}poster="{{ it.poster }}"{% endif %} preload="{{ 'none' if it.poster else 'metadata' }}" loop muted playsinline controls></video>{# no poster: its first frame, not an empty black box #}
       {% else %}
         <img src="{{ it.src }}"{% if it.srcset %} srcset="{{ it.srcset }}" sizes="(max-width: 760px) 100vw, 724px"{% endif %} alt="" width="{{ it.width }}" height="{{ it.height }}" {% if loop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async">
       {% endif %}
@@ -84,8 +84,12 @@
         Rahmen". The download route checks the same switches for a QR code. -#}
     {% set can_share = gs.share_native or gs.share_link_copy %}
     <div class="sess-actions" style="margin-top:-12px;margin-bottom:26px">
+      {#- Where the guest may download, the shared file comes from the download
+          route at the best size up to 2048 px (share=1, media.share_download_size),
+          the download itself is the best size; otherwise the picture as shown. -#}
+      {% set share_src = ('/gallery/' ~ event.slug ~ '/photo/' ~ it.id ~ '/download?size=' ~ share_download_size(gs) ~ '&share=1&code=' ~ code) if (gs.download_single and not it.is_video) else it.src %}
       {% if can_share %}
-      <button class="btn btn--primary" onclick="shareItem({{ it.src|tojson|forceescape }},{{ it.filename|tojson|forceescape }},{{ it.share_token|tojson|forceescape }},{{ 'true' if it.is_video else 'false' }})">{{ t('gallery.share') }}</button>
+      <button class="btn btn--primary" onclick="shareItem({{ share_src|tojson|forceescape }},{{ it.filename|tojson|forceescape }},{{ it.share_token|tojson|forceescape }},{{ 'true' if it.is_video else 'false' }},{{ it.id }})">{{ t('gallery.share') }}</button>
       {% endif %}
       {% if not gs.download_single %}
       {% elif it.is_video %}
@@ -96,7 +100,7 @@
             eigens gebaute Ausnahme „gültiger QR-Code dieses Durchgangs" lief nie
             an: Beide Knöpfe antworteten bei einer geschützten Galerie mit 403.
             Gefunden am 19.09.2026. -#}
-        {% set full = 'original' if gs.download_original else 'large' %}
+        {% set full = best_download_size(gs) %}
         {% if it.unframed_id %}
         {#- The same shot twice: as it came out of the booth with its frame,
             and the camera's picture without. Both in full size (or the
@@ -104,10 +108,9 @@
         <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.id }}/download?size={{ full }}&code={{ code }}" title="{{ t('session.with_frame_hint') }}">{{ t('session.with_frame') }}</a>
         <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.unframed_id }}/download?size={{ full }}&code={{ code }}" title="{{ t('session.without_frame_hint') }}">{{ t('session.without_frame') }}</a>
         {% else %}
-        <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.id }}/download?size=large&code={{ code }}">{{ t('session.download') }}</a>
-        {% if gs.download_original %}
-        <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.id }}/download?size=original&code={{ code }}">{{ t('session.original') }}</a>
-        {% endif %}
+        {#- One download, the best this event allows (18.11.2026): "Herunterladen"
+            used to be 2048 px next to a separate "Original". -#}
+        <a class="btn btn--secondary" href="/gallery/{{ event.slug }}/photo/{{ it.id }}/download?size={{ full }}&code={{ code }}">{{ t('session.download') }}</a>
         {% endif %}
       {% endif %}
     </div>
@@ -124,15 +127,24 @@
     <script>
       // Which ways of sharing this gallery allows (share_native, share_link_copy).
       const SHARE = {{ {"native": gs.share_native, "copy": gs.share_link_copy}|tojson }};
-      async function shareItem(src, name, token, isVideo){
+      // A share counts like one in the gallery (trackAction 'share_photo');
+      // /api/track drops it for an unpublished or password gallery.
+      function countShare(mediaId){
+        fetch('/api/track', {method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({event_id: {{ event.id|tojson }}, action: 'share_photo', media_id: mediaId || null})}).catch(() => {});
+      }
+      async function shareItem(src, name, token, isVideo, mediaId){
         const link = location.origin + '/s/' + token;
         try {
           if (SHARE.native && navigator.canShare) {
-            const blob = await (await fetch(src)).blob();
+            // A 403/404 page must not go out as the picture: the link instead, as in the gallery.
+            const resp = await fetch(src, {credentials: 'same-origin'});
+            if (!resp.ok) throw new Error('fetch ' + resp.status);
+            const blob = await resp.blob();
             const file = new File([blob], name, {type: blob.type});
-            if (navigator.canShare({files:[file]})) { await navigator.share({files:[file], title: document.title}); return; }
+            if (navigator.canShare({files:[file]})) { await navigator.share({files:[file], title: document.title}); countShare(mediaId); return; }
           }
-          if (SHARE.native && navigator.share) { await navigator.share({url: link, title: document.title}); return; }
+          if (SHARE.native && navigator.share) { await navigator.share({url: link, title: document.title}); countShare(mediaId); return; }
         } catch(e) { if (e.name === 'AbortError') return; }
         if (!SHARE.copy) return;
         try { await navigator.clipboard.writeText(link); alert({{ t('gallery.link_copied')|tojson }}); } catch(e) { prompt({{ t('gallery.link_copied')|tojson }}, link); }

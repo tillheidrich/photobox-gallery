@@ -1,6 +1,6 @@
 """The start-screen QR works without a gallery when the operator set an own link.
 
-A booth that is not paired and has the QR mode "custom" (Picdrop, Nextcloud,
+A booth that is not paired and has the QR mode "custom" (an online gallery, Nextcloud,
 an own page) used to show no start-screen QR at all, because ``event_url``
 only knew the gallery. Now it shows the operator's link. The start screen has
 no photo yet, so placeholders that name one photo cannot be filled: the link
@@ -25,10 +25,10 @@ def test_unpaired_custom_mode_keeps_the_event_placeholder_and_the_utm():
 
 
 def test_a_photo_placeholder_in_the_path_cuts_back_to_the_folder():
-    p = _profil(mode="custom", url="https://picdrop.example/abc/{uid}")
-    assert share.event_url(p) == "https://picdrop.example/abc/"
-    p = _profil(mode="custom", url="https://picdrop.example/abc/foto-{code}.jpg?x=1")
-    assert share.event_url(p) == "https://picdrop.example/abc/"
+    p = _profil(mode="custom", url="https://galerie.example/abc/{uid}")
+    assert share.event_url(p) == "https://galerie.example/abc/"
+    p = _profil(mode="custom", url="https://galerie.example/abc/foto-{code}.jpg?x=1")
+    assert share.event_url(p) == "https://galerie.example/abc/"
 
 
 def test_a_photo_placeholder_in_the_query_drops_the_query():

@@ -1,6 +1,6 @@
 """A booth's second upload target, set from the gallery (17.11.2026).
 
-The booth's card "Zweites Ziel im Netz" (Picdrop over FTPS, FTP, an SFTP
+The booth's card "Zweites Ziel im Netz" (an FTP-fed proofing gallery over FTPS, FTP, an SFTP
 NAS) can now be filled in on the gallery's sync page of the booth and by an
 assistant with the right ``secure``. The design and why each part is as it
 is: docs/SECOND-TARGET-FROM-THE-GALLERY.md. In short:
@@ -36,7 +36,8 @@ from typing import Any, Dict, Optional
 
 #: Same lists as booth/boothcore/second_target.py (compared by a test in each suite).
 TYPES = ("ftps", "ftp", "sftp")
-FIELDS = ("type", "host", "port", "user", "path", "flat", "enabled", "originals", "print_sheets")
+FIELDS = ("type", "host", "port", "user", "path", "flat", "enabled", "originals", "print_sheets",
+          "direct")
 LIMITS = {"host": 253, "user": 128, "password": 256, "path": 255}
 NAMES = ("picdrop", "zweites-ziel")
 
@@ -104,11 +105,17 @@ def clean_fields(raw: Any) -> Dict[str, Any]:
                            "path": clean_path(raw.get("path"))}
     if port:
         out["port"] = port
-    for flag, default in (("flat", True), ("enabled", True), ("originals", True), ("print_sheets", False)):
+    for flag, default in (("flat", True), ("enabled", True), ("originals", True), ("print_sheets", False),
+                          ("direct", False)):
         value = raw.get(flag, default)
         if not isinstance(value, bool):
             raise ValueError(f"{flag}: ja oder nein")
         out[flag] = value
+    # ``direct`` (18.11.2026, live-push accounts) travels only when it is on: a
+    # booth from before refuses a job with a field it does not know, and the
+    # booth reads a job without it as off.
+    if not out["direct"]:
+        out.pop("direct")
     return out
 
 
@@ -149,7 +156,7 @@ def clean_report(raw: Any) -> Dict[str, Any]:
             pass
     if out["configured"]:
         # The operator's own data, shown back in the form: not redacted (a
-        # Picdrop user is often an e-mail address, and a masked one would be
+        # the user of a proofing gallery's FTP access is often an e-mail address, and a masked one would be
         # saved back masked), only stripped of control characters.
         for key in ("type", "host", "user", "path"):
             out[key] = _CONTROL.sub("", str(raw.get(key) or ""))[:LIMITS.get(key, 20)]
@@ -160,7 +167,7 @@ def clean_report(raw: Any) -> Dict[str, Any]:
         except (TypeError, ValueError):
             port = 0
         out["port"] = port if 0 <= port <= 65535 else 0
-        for flag in ("enabled", "flat", "originals", "print_sheets", "password_set", "key_file",
+        for flag in ("enabled", "flat", "originals", "print_sheets", "direct", "password_set", "key_file",
                      "awaiting_password"):
             out[flag] = raw.get(flag) is True
         # The SFTP server's key: the pinned fingerprint and a different one it
@@ -309,7 +316,8 @@ def masked_payload(row: Dict[str, Any]) -> Dict[str, Any]:
 
 #: Field names as the change log and the card say them.
 FIELD_LABELS = {"type": "Art", "host": "Server", "port": "Port", "user": "Benutzer", "path": "Ordner",
-                "flat": "ein Ordner", "enabled": "ein/aus", "originals": "Originale", "print_sheets": "Druckblätter"}
+                "flat": "ein Ordner", "enabled": "ein/aus", "originals": "Originale", "print_sheets": "Druckblätter",
+                "direct": "direkt hochladen"}
 ENDPOINT = ("type", "host", "port", "user")
 AUDIT_PREFIX = "Zweites Ziel"
 
@@ -322,7 +330,7 @@ def _norm(key: str, value: Any) -> Any:
             return 0
     if key in ("flat", "enabled", "originals"):
         return value is not False
-    if key == "print_sheets":
+    if key in ("print_sheets", "direct"):
         return bool(value)
     return str(value or "").strip().lower() if key in ("type", "host") else str(value or "")
 
@@ -331,7 +339,9 @@ def changed_fields(current: Dict[str, Any], fields: Dict[str, Any]) -> list:
     """The fields a change sets differently from what the booth reports (all of them for a new target)."""
     if not current.get("configured"):
         return [k for k in FIELDS if k in fields]
-    return [k for k in FIELDS if k in fields and _norm(k, current.get(k)) != _norm(k, fields.get(k))]
+    # "direct" is left out of a job while it is off (clean_fields), which still means "off".
+    return [k for k in FIELDS
+            if (k in fields or k == "direct") and _norm(k, current.get(k)) != _norm(k, fields.get(k))]
 
 
 def drops_password(current: Dict[str, Any], fields: Dict[str, Any], password_given: bool) -> bool:
@@ -386,3 +396,146 @@ def path_example(path: Any, flat: bool, event: Optional[Dict[str, Any]] = None) 
         return {"ok": "1", "text": text}
     except ValueError as e:
         return {"ok": "", "text": str(e)}
+
+
+# ── What the page shows (18.11.2026) ────────────────────────────────────
+#
+# The owner saved the form and got it back empty: the page rendered the
+# booth's last report, which still predated the change, and ignored the job it
+# had just queued. The card is now built from three things: the booth's report,
+# the newest open set job (its non-secret fields only) and the last contact.
+
+#: Text the gallery writes into a set job that a newer one replaced (supersede_open).
+REPLACED = "ersetzt durch eine neuere Änderung"
+#: A booth that has not called for this long will not take anything soon.
+SILENT_MINUTES = 3
+
+
+def _ago(ts: Any) -> Dict[str, Any]:
+    from app import booth as booth_mod
+    return booth_mod.ago_words(ts)
+
+
+def _open_job(device_id: int, jtype: str) -> Optional[Dict[str, Any]]:
+    from app import db, ecosystem
+    ecosystem.expire_jobs(int(device_id))
+    con = db.get_db()
+    row = con.execute("SELECT * FROM device_jobs WHERE device_id=? AND type=? AND done_at IS NULL "
+                      "ORDER BY id DESC LIMIT 1", (int(device_id), jtype)).fetchone()
+    con.close()
+    return dict(row) if row else None
+
+
+def pending_set(device_id: int) -> Optional[Dict[str, Any]]:
+    """The newest open ``set_second_target``: action, the fields it sets, whether a password travels.
+
+    Never the sealed password itself: only that there is one.
+    """
+    row = _open_job(device_id, "set_second_target")
+    if not row:
+        return None
+    try:
+        payload = json.loads(row.get("payload_json") or "{}")
+    except (TypeError, ValueError):
+        payload = {}
+    payload = payload if isinstance(payload, dict) else {}
+    target = payload.get("target") if isinstance(payload.get("target"), dict) else {}
+    try:
+        fields = clean_fields(target) if target else {}
+    except ValueError:
+        fields = {}
+    from app import ecosystem
+    return {"id": row["id"], "created_at": row["created_at"], "state": ecosystem.job_state(row),
+            "action": "clear" if payload.get("action") == "clear" else "set", "target": fields,
+            "with_password": bool(payload.get("password_sealed"))}
+
+
+def pending_check(device_id: int) -> Optional[Dict[str, Any]]:
+    row = _open_job(device_id, "check_second_target")
+    if not row:
+        return None
+    from app import ecosystem
+    return {"id": row["id"], "created_at": row["created_at"], "state": ecosystem.job_state(row)}
+
+
+def form_values(st: Dict[str, Any], pending: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """What the form shows: the waiting change, else what the booth reports, else the defaults. No password."""
+    keys = FIELDS
+    if pending and pending.get("action") == "set" and pending.get("target"):
+        src, values = "pending", pending["target"]
+    elif st.get("configured"):
+        src, values = "booth", st
+    else:
+        src, values = "new", {}
+    out = {k: values.get(k) for k in keys}
+    out["type"] = out["type"] or "ftps"
+    out["port"] = int(out["port"] or 0)
+    for k in ("host", "user", "path"):
+        out[k] = str(out[k] or "")
+    for flag, default in (("flat", True), ("enabled", True), ("originals", True), ("print_sheets", False),
+                          ("direct", False)):
+        out[flag] = default if out[flag] is None else bool(out[flag])
+    return {"source": src, "values": out}
+
+
+def password_note(st: Dict[str, Any], pending: Optional[Dict[str, Any]]) -> str:
+    """One of: sent, will_wait, awaiting, stored, none — said under the password field."""
+    if pending and pending.get("action") == "set":
+        if pending.get("with_password"):
+            return "sent"
+        if drops_password(st, pending.get("target") or {}, False) and (st.get("password_set")
+                                                                       or not st.get("configured")):
+            return "will_wait"
+    if st.get("awaiting_password"):
+        return "awaiting"
+    return "stored" if st.get("password_set") else "none"
+
+
+def job_words(row: Dict[str, Any]) -> Dict[str, str]:
+    """A job of this card in plain words: what it was, what became of it, the booth's answer."""
+    from app import ecosystem
+    from app.i18n import t
+    kinds = {"set_second_target": "set", "check_second_target": "check", "backfill_second_target": "backfill",
+             "accept_second_target_host_key": "accept"}
+    kind = kinds.get(row.get("type"), "set")
+    if kind == "set":
+        try:
+            if json.loads(row.get("payload_json") or "{}").get("action") == "clear":
+                kind = "clear"
+        except (TypeError, ValueError, AttributeError):
+            pass
+    state = row.get("state") or ecosystem.job_state(row)
+    result = str(row.get("result") or "")
+    if state == "expired":
+        outcome = "replaced" if result == REPLACED else "expired"
+        result = ""
+    elif state == "done":
+        outcome = "ok" if row.get("ok") else "refused"
+    else:
+        outcome = state                                    # issued, delivered
+    return {"when": _ago(row.get("created_at"))["text"], "kind": t(f"sync.second_target.job_kind_{kind}"),
+            "outcome": outcome, "outcome_text": t(f"sync.second_target.job_{outcome}"), "answer": result[:300]}
+
+
+def card(device: Dict[str, Any], status: Dict[str, Any]) -> Dict[str, Any]:
+    """Everything the card and its status endpoint show. Holds no secret."""
+    from app import ecosystem
+    st = state(status)
+    did = int(device["id"])
+    pend = pending_set(did) if st.get("supported") else None
+    check = pending_check(did) if st.get("supported") else None
+    contact = _ago(device.get("last_heartbeat_at"))
+    contact["silent"] = contact["min"] is None or contact["min"] >= SILENT_MINUTES
+    if pend:
+        pend["since"] = _ago(pend["created_at"])["text"]
+    if check:
+        check["since"] = _ago(check["created_at"])["text"]
+    last_check = None
+    if isinstance(st.get("check"), dict) and st["check"].get("at"):
+        last_check = {**st["check"], "ago": _ago(float(st["check"]["at"]))["text"]}
+    jobs = [job_words(j) for j in ecosystem.recent_jobs(did, 20) if j.get("type") in JOBS][:5]
+    form = form_values(st, pend)
+    return {"st": st, "pending": pend, "pending_check": check, "contact": contact, "last_check": last_check,
+            "jobs": jobs, "form": form["values"], "form_source": form["source"],
+            "password_note": password_note(st, pend), "busy": bool(pend or check),
+            "can_check": bool(st.get("configured") or (pend and pend.get("action") == "set"))}

@@ -25,7 +25,7 @@ getestet. Vor dem ersten Event: Dauertest (siehe unten).**
 | Mehrsprachig (DE/EN, weitere per Text-Profil) | ✅ |
 | Fernsteuerung über die Galerie: Profil, Medien, Pause, Aufträge | ✅ |
 | Outbox: lädt hoch, sobald Netz da ist, kleine Dateien zuerst | ✅ |
-| Zusatzziele NAS (SFTP) und Picdrop (FTPS „Live Push“) | ✅ (ungetestet gegen Picdrop) |
+| Zusatzziele NAS (SFTP) und Online-Galerie per FTPS | ✅ (ungetestet gegen eine echte Online-Galerie) |
 | PIN-Verwaltung an der Box, Log, Testfoto, Testdruck | ✅ |
 | Plugins (pluggy) | ✅ |
 | Buzzer/Fußschalter (Leertaste/Enter) | ✅ |
@@ -102,4 +102,4 @@ boothcore/
   web/              Kiosk-Oberfläche (ohne Build-Schritt) + Verwaltung
 ```
 
-Lizenz: noch offen (Vorschlag MIT, wie photobooth-app). Das Canon-SDK darf nicht mitverteilt werden.
+Lizenz: AGPL-3.0-or-later mit Zusatzerlaubnis für das Canon-EDSDK, siehe `LICENSE` und `LICENSE-EXCEPTION` im Stammordner. Das Canon-SDK ist nie Teil dieses Repositorys oder des freien Downloads.

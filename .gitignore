@@ -32,7 +32,7 @@ packaging/windows/installer/build/
 packaging/windows/publisher.json
 booth/boothcore/web/static/legal/
 
-# Canon EDSDK — steht unter NDA und gehört Canon. Gehört nie ins Repo, auch
+# Canon EDSDK — proprietär, gehört Canon. Gehört nie ins Repo, auch
 # nicht versehentlich über einen Ordner neben dem Programm.
 EDSDK/
 **/EDSDK/

@@ -91,10 +91,10 @@ def test_status_target_stays_on_our_own_page(app):
 
 def test_external_target_replaces_the_uid_placeholder(app):
     _slug, _eid, event = _event(app, qr_target="external",
-                                external_url="https://picdrop.test/g/{uid}?ref=abc")
+                                external_url="https://galerie.test/g/{uid}?ref=abc")
     with app.app_context():
         url = ecosystem.qr_url_for(event, "abcd2345xy", "https://fotos.test")
-    assert url.startswith("https://picdrop.test/g/abcd2345xy?ref=abc")
+    assert url.startswith("https://galerie.test/g/abcd2345xy?ref=abc")
     assert "utm_medium=qr" in url
 
 
@@ -144,7 +144,7 @@ def test_admin_form_shows_the_fields_and_an_example(app, client):
 
 
 def test_admin_form_warns_when_the_qr_leaves_our_gallery(app, client):
-    _slug, eid, _ = _event(app, qr_target="external", external_url="https://picdrop.test/g/{uid}")
+    _slug, eid, _ = _event(app, qr_target="external", external_url="https://galerie.test/g/{uid}")
     with client.session_transaction() as s:
         s["admin_logged_in"] = True
     html = client.get(f"/admin/events/{eid}/edit").get_data(as_text=True)

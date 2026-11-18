@@ -58,25 +58,23 @@
       <figure class="mine-card">
         {% if it.is_video %}
         {#- width/height: a 9:16 boomerang takes its portrait box at once, not after loading -#}
-        <video src="{{ it.src }}" {% if it.poster %}poster="{{ it.poster }}"{% endif %} width="{{ it.width }}" height="{{ it.height }}" controls playsinline loop muted preload="metadata"></video>
+        <video src="{{ it.src }}{% if not it.poster %}#t=0.1{% endif %}" {% if it.poster %}poster="{{ it.poster }}"{% endif %} width="{{ it.width }}" height="{{ it.height }}" controls playsinline loop muted preload="metadata"></video>
         {% else %}
         <img src="{{ it.src }}" alt="" width="{{ it.width }}" height="{{ it.height }}" loading="lazy" decoding="async">
         {% endif %}
         <div class="mine-actions">
           {% if group.share.native or group.share.link %}
           <button class="btn btn--primary btn--sm" type="button"
-                  onclick="mineShare({{ it.src|tojson|forceescape }}, {{ it.filename|tojson|forceescape }}, {{ it.share_token|tojson|forceescape }}, {{ group.share|tojson|forceescape }})">{{ t('gallery.share') }}</button>
+                  onclick="mineShare({{ (("/gallery/" ~ group.event.slug ~ "/photo/" ~ it.id ~ "/download?size=" ~ group.share_size ~ "&share=1&code=" ~ group.code) if (group.allow_download and not it.is_video) else it.src)|tojson|forceescape }}, {{ it.filename|tojson|forceescape }}, {{ it.share_token|tojson|forceescape }}, {{ group.share|tojson|forceescape }}, {{ group.event.id }}, {{ it.id }})">{{ t('gallery.share') }}</button>
           {% endif %}
           {% if group.allow_download %}
             {% if it.is_video %}
             <a class="btn btn--secondary btn--sm" href="{{ it.src }}" download="{{ it.filename }}">{{ t('session.download') }}</a>
             {% else %}
+            {#- One download, the best the event allows (18.11.2026); it used to be
+                the largest scaled size next to a separate "Original". -#}
             <a class="btn btn--secondary btn--sm"
-               href="/gallery/{{ group.event.slug }}/photo/{{ it.id }}/download?size={{ group.download_size or 'original' }}&code={{ group.code }}">{{ t('session.download') }}</a>
-            {% if group.allow_original %}
-            <a class="btn btn--ghost btn--sm"
-               href="/gallery/{{ group.event.slug }}/photo/{{ it.id }}/download?size=original&code={{ group.code }}">{{ t('session.original') }}</a>
-            {% endif %}
+               href="/gallery/{{ group.event.slug }}/photo/{{ it.id }}/download?size={{ group.best_size }}&code={{ group.code }}">{{ t('session.download') }}</a>
             {% endif %}
           {% endif %}
         </div>
@@ -94,16 +92,25 @@
   {% endif %}
 </div>
 <script>
-async function mineShare(src, name, token, allow) {
+// A share counts like one in the gallery (trackAction 'share_photo');
+// /api/track drops it for an unpublished or password gallery.
+function mineCount(eventId, mediaId) {
+  fetch('/api/track', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({event_id: eventId, action: 'share_photo', media_id: mediaId || null})}).catch(function () {});
+}
+async function mineShare(src, name, token, allow, eventId, mediaId) {
   allow = allow || {native: true, link: true};
   var link = token ? (location.origin + '/s/' + token) : location.href;
   try {
     if (allow.native && navigator.canShare) {
-      var blob = await (await fetch(src, {credentials: 'same-origin'})).blob();
+      // A 403/404 page must not go out as the picture: the link instead, as in the gallery.
+      var resp = await fetch(src, {credentials: 'same-origin'});
+      if (!resp.ok) throw new Error('fetch ' + resp.status);
+      var blob = await resp.blob();
       var file = new File([blob], name || 'foto.jpg', {type: blob.type || 'image/jpeg'});
-      if (navigator.canShare({files: [file]})) { await navigator.share({files: [file], title: document.title}); return; }
+      if (navigator.canShare({files: [file]})) { await navigator.share({files: [file], title: document.title}); mineCount(eventId, mediaId); return; }
     }
-    if (allow.native && navigator.share) { await navigator.share({url: link, title: document.title}); return; }
+    if (allow.native && navigator.share) { await navigator.share({url: link, title: document.title}); mineCount(eventId, mediaId); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
   if (!allow.link) return;
   try { await navigator.clipboard.writeText(link); alert({{ t('gallery.link_copied')|tojson }}); }

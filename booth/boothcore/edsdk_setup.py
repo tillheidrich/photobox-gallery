@@ -1,7 +1,9 @@
 """Canon EDSDK einrichten: die richtigen Dateien finden, prüfen, an ihren Platz legen.
 
-Das SDK kommt aus dem Canon Developer Programme und steht unter NDA. Es darf
-weder ins Repo noch in die .exe — der Betreiber lädt es selbst herunter. Was
+Das SDK kommt aus dem Canon Developer Programme und ist proprietär. Es darf
+nie ins Repo und nie in die freie .exe — mit der freien Fassung lädt der
+Betreiber es selbst herunter (die Fassung mit Kamera-SDK bringt es mit,
+siehe camera_sdk_bundle.py). Was
 danach folgt, ist trotzdem unnötig fehleranfällig: Im entpackten Archiv liegen
 mehrere ``EDSDK.dll`` (32 und 64 Bit, teils in mehreren Sprachordnern), und wer
 die falsche erwischt, bekommt beim Start nur „%1 ist keine zulässige
@@ -203,6 +205,11 @@ def has_sdk_platform() -> bool:
 
 def status(target: Optional[Path] = None) -> Tuple[bool, str]:
     """Für die Selbstdiagnose: liegt ein brauchbares SDK bereit?"""
+    if target is None:
+        from .camera_sdk_bundle import sdk_dir as bundled_sdk_dir
+        bundled = bundled_sdk_dir()
+        if bundled is not None and not (target_dir() / "EDSDK.dll").exists():
+            return True, f"EDSDK liegt dieser Fassung bei ({bundled})"
     folder = (target or target_dir())
     if sys.platform == "darwin":
         fw = folder / MAC_FRAMEWORK

@@ -45,6 +45,7 @@ PROFILE_LIMITS = {
     "gif.video_seconds": (0, 60), "gif.from_collage_min": (2, 8),
     "gif.boomerang.fps": (5, 60), "gif.boomerang.loops": (1, 10),
     "boomerang.seconds": (1, 10), "boomerang.fps": (5, 60), "boomerang.loops": (1, 10),
+    "boomerang.min_total_seconds": (5, 60), "boomerang.max_total_seconds": (5, 60),
     "video.seconds": (1, 60), "video.fps": (5, 60),
     "attract.after_seconds": (10, 3600), "attract.seconds_per_item": (2, 120), "attract.dim": (0, 80),
     "attract.hint_size": (100, 250),
@@ -54,6 +55,10 @@ PROFILE_LIMITS = {
     "print.queue_max": (1, 50), "print.queue_max_hours": (1, 24),
 }
 
+#: Lists of numbers, path -> (min, max, most entries). The boomerang lengths
+#: a guest may choose: 15 s is one loop of 30 s, the longest film allowed.
+NUMBER_LISTS = {"boomerang.seconds_choices": (1, 15, 4)}
+
 MODES = ("photo", "collage", "gif", "boomerang", "video")
 #: Lists whose entries must each be one of a fixed set.
 ENUM_LISTS = {"modes": MODES, "guest_text.modes": MODES, "draw.modes": MODES}
@@ -61,7 +66,8 @@ ENUM_LISTS = {"modes": MODES, "guest_text.modes": MODES, "draw.modes": MODES}
 #: Where a boomerang or a film comes from: the live view, or a movie the
 #: camera records on its card (camera/edsdk.py record_movie).
 CLIP_SOURCES = ("live", "camera")
-ENUM_VALUES = {"http_trigger.mode": MODES, "boomerang.source": CLIP_SOURCES, "video.source": CLIP_SOURCES}
+ENUM_VALUES = {"http_trigger.mode": MODES, "boomerang.source": CLIP_SOURCES, "video.source": CLIP_SOURCES,
+               "start.text_tone": ("auto", "hell", "dunkel")}
 
 ID_RE = re.compile(r"[A-Za-z0-9_.:-]{1,80}")
 #: An identifier-like value; camera settings also use "/" and "+" (1/125, +1/3).
@@ -82,7 +88,8 @@ COLOR_PATHS = {"accent", "theme.accent", "theme.on_accent", "theme.bg", "theme.p
 URL_PATHS = {"webhooks.url", "qr.url", "qr_url_template", "event.base_url"}
 #: Lists whose entries are identifiers.
 ID_LISTS = {"looks", "luts.show", "webhooks.events", "controls.keys_start", "controls.keys_back",
-            "controls.keys_print", "collage_builtins", "boomerang.frame_builtins", "video.frame_builtins"}
+            "controls.keys_print", "collage_builtins", "boomerang.frame_builtins", "video.frame_builtins",
+            "gif.frame_builtins"}
 FORMAT_PATHS = {"formats", "default_format", "boomerang.format", "video.format", "gif.format",
                 "gif.boomerang.format"}
 #: Fields (last path part) that hold the name of an uploaded file.
@@ -92,7 +99,7 @@ FILE_KEYS = {"smile_media", "overlay", "print_overlay", "logo", "image", "media"
 #: (``sounds.shutter`` is a file, ``camera.shutter`` is "1/125").
 FILE_PATHS = {"sounds.countdown", "sounds.shutter", "sounds.done", "sounds.print"}
 FILE_LISTS = {"attract.media", "start.media", "backgrounds", "chroma.backgrounds", "collage_templates",
-              "boomerang.frame_templates", "video.frame_templates"}
+              "boomerang.frame_templates", "video.frame_templates", "gif.frame_templates"}
 #: Longer free text.
 TEXT_LIMITS = {"mail.body": 20000, "privacy.notice": 4000}
 TEXT_LIMIT = 2000
@@ -191,8 +198,28 @@ def _number(path: str, default: Any, value: Any, problems: List[Problem], strict
     return float(value)
 
 
+def _number_entry(path: str, item: Any, problems: List[Problem]):
+    """One entry of a list of numbers (NUMBER_LISTS); None means "drop it", in- or outside the bounds."""
+    low, high, _most = NUMBER_LISTS[path]
+    value = item
+    if isinstance(value, str):
+        try:
+            value = float(value.strip().replace(",", "."))
+        except ValueError:
+            value = None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        problems.append((path, "Zahl erwartet", _show(item)))
+        return None
+    if not low <= value <= high:
+        problems.append((path, f"jede zwischen {low} und {high}", _show(item)))
+        return None
+    return int(value) if float(value).is_integer() else float(value)
+
+
 def _list_entry(path: str, item: Any, problems: List[Problem]):
     """One entry of a list field; None means "drop it"."""
+    if path in NUMBER_LISTS:
+        return _number_entry(path, item, problems)
     if path in ENUM_LISTS:
         if item not in ENUM_LISTS[path]:
             problems.append((path, "nur " + ", ".join(ENUM_LISTS[path]), _show(item)))
@@ -314,6 +341,10 @@ def _walk(defaults: Dict[str, Any], incoming: Any, prefix: str, problems: List[P
                     items.append(clean)
             if len(value) > LIST_LIMIT:
                 problems.append((path, f"höchstens {LIST_LIMIT} Einträge", f"{len(value)} Einträge"))
+            most = NUMBER_LISTS.get(path, (0, 0, LIST_LIMIT))[2]
+            if len(items) > most:
+                problems.append((path, f"höchstens {most} Einträge", f"{len(items)} Einträge"))
+                items = items[:most]
             out[key] = items
         else:                                        # None default: shape not fixed
             clean = _free(path, value, problems, 1)

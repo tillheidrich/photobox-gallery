@@ -205,6 +205,21 @@ def normalize_download_size(size: Optional[str]) -> str:
     return DEFAULT_DOWNLOAD_SIZE
 
 
+def is_animated(path: Path) -> bool:
+    """More than one frame (animated GIF, WebP, APNG). Reads the header only.
+
+    Only formats that really animate count. A camera or phone JPEG with
+    embedded extra pictures (MPO: depth map, HDR gain map, preview) also
+    reports several frames, but it is a still photo and must be scaled like
+    one — otherwise every such original would leave in full size.
+    """
+    try:
+        with Image.open(path) as img:
+            return img.format in ("GIF", "WEBP", "PNG") and bool(getattr(img, "is_animated", False))
+    except Exception:                   # noqa: BLE001 — not an image: not animated
+        return False
+
+
 def build_download_variant(media_id: int, source_rel: str, size: str) -> Optional[Path]:
     """Liefert den Pfad zu einer skalierten Fassung (mit Cache).
 
@@ -217,6 +232,11 @@ def build_download_variant(media_id: int, source_rel: str, size: str) -> Optiona
 
     src = (data_dir() / source_rel).resolve()
     if not str(src).startswith(str(data_dir())) or not src.exists():
+        return None
+    if is_animated(src):
+        # A JPEG of an animated GIF is its first frame: the guest would get a
+        # still. The caller hands out the animated file itself (review
+        # 18.11.2026). Checked before the cache, which may hold an old still.
         return None
 
     target = download_cache_dir() / f"{int(media_id)}_{size}.jpg"
@@ -271,6 +291,35 @@ def allowed_download_sizes(cfg: Optional[dict] = None) -> list:
     return out or ["original"]
 
 
+def best_download_size(cfg: Optional[dict] = None) -> str:
+    """What a guest gets without choosing: the original if the event offers
+    it, else its largest scaled size (18.11.2026). Every guest page uses this."""
+    return allowed_download_sizes(cfg)[-1]
+
+
+#: The largest size a share fetches before ``navigator.share`` (18.11.2026).
+SHARE_SIZE_CAP = "large"
+
+
+def share_download_size(cfg: Optional[dict] = None) -> str:
+    """What a guest's share button sends: the best allowed size up to 2048 px.
+
+    iOS Safari refuses the share sheet when the user's tap is too long ago,
+    and fetching a several-MB original on a weak network is long enough. So
+    the share takes the 2048 px or 1024 px size where the event offers one,
+    else the original, and the 640 px size only where it is all there is.
+    The download keeps ``best_download_size``.
+    """
+    allowed = allowed_download_sizes(cfg)
+    capped = DOWNLOAD_SIZE_ORDER[:DOWNLOAD_SIZE_ORDER.index(SHARE_SIZE_CAP) + 1]
+    for size in reversed(capped):
+        if size in allowed and size != "small":
+            return size
+    if "original" in allowed:
+        return "original"
+    return allowed[-1]
+
+
 def download_options(cfg: Optional[dict] = None, rows: Optional[list] = None) -> list:
     """Auswahl-Blatt für den Gast: Kennung, Kantenlänge und geschätzte Größe.
 
@@ -300,7 +349,7 @@ def download_options(cfg: Optional[dict] = None, rows: Optional[list] = None) ->
             "id": sid,
             "px": px or 0,
             "bytes": est,
-            "size_h": human_bytes(est) if est else "",
+            "size_h": guest_bytes(est) if est else "",
         })
     return options
 
@@ -466,6 +515,33 @@ def delete_rel_path(rel: str) -> None:
             full.unlink()
     except Exception:
         return
+
+
+def guest_bytes(num: int, lang: Optional[str] = None) -> str:
+    """A file size as a guest reads it: "61 KB", "1,4 MB" (German comma), "1.4 MB".
+
+    Decimal units (1 KB = 1000 B, as phones show them), KB without decimals,
+    MB and GB with one below 10 and none above. The guest page's script
+    (``pbBytes`` in gallery.html) follows the same rule. ``human_bytes``
+    stays the operator's (binary, two decimals).
+    """
+    if lang is None:
+        try:
+            from flask import g
+            lang = getattr(g, "lang", "de") or "de"
+        except RuntimeError:
+            lang = "de"
+    n = max(0, int(num or 0))
+    if n < 999_500:
+        text, unit = str(max(1, round(n / 1000))) if n else "0", "KB"
+    else:
+        value, unit = (n / 1e9, "GB") if n >= 1_000_000_000 else (n / 1e6, "MB")
+        text = f"{value:.1f}" if value < 10 else f"{value:.0f}"
+        if text.endswith(".0"):
+            text = text[:-2]
+    if lang == "de":
+        text = text.replace(".", ",")
+    return f"{text} {unit}"
 
 
 def human_bytes(num: int) -> str:

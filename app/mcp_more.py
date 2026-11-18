@@ -1115,7 +1115,7 @@ def _decide_access_request(event_id: int, request_id: int, decision: str) -> dic
 
 # ══ The booth's second upload target (right secure) ══════════════════════
 #
-# Picdrop / FTP / SFTP of a booth (app/second_target.py). The fields and the
+# FTP/FTPS/SFTP second target of a booth (app/second_target.py). The fields and the
 # check, never the password and never a new SFTP server key: an assistant
 # should not carry FTP passwords — a chat transcript is a place the gallery
 # does not control. Rule B2 holds at the booth: a changed server (type,
@@ -1127,7 +1127,7 @@ def _second_state(device: dict) -> dict:
     from app import second_target
     st = second_target.state(db.get_device_status(device["id"]) or {})
     shown = {k: st.get(k) for k in ("supported", "configured", "enabled", "type", "host", "port", "user",
-                                    "path", "flat", "originals", "print_sheets", "password_set",
+                                    "path", "flat", "originals", "print_sheets", "direct", "password_set",
                                     "awaiting_password", "check")
              if k in st}
     if not st.get("supported"):
@@ -1139,11 +1139,18 @@ def _second_state(device: dict) -> dict:
         shown["note"] = ("Wartet auf das Passwort für den neuen Server: nur der Besitzer trägt es im Formular der "
                          "Galerie (Sync-Seite der Box) oder an der Box ein. Bis dahin sendet die Box nichts dorthin.")
     shown["last_changes"] = second_target.last_changes(device["id"])
+    # The same picture as the sync page: what the booth reports, plus a change
+    # still on its way (fields only, never the password) and the last contact.
+    pend = second_target.pending_set(device["id"]) if st.get("supported") else None
+    if pend:
+        shown["pending_change"] = {"action": pend["action"], "fields": pend["target"], "state": pend["state"],
+                                   "with_password": pend["with_password"], "since": pend["created_at"]}
+    shown["last_contact"] = device.get("last_heartbeat_at")
     return shown
 
 
 @tool("get_second_target",
-      "Das zweite Upload-Ziel einer Box (Picdrop, FTP, SFTP): Art, Server, Benutzer, Ordner, ein/aus, ob ein "
+      "Das zweite Upload-Ziel einer Box (FTP/FTPS/SFTP): Art, Server, Benutzer, Ordner, ein/aus, ob ein "
       "Passwort gespeichert ist, ob die Box auf ein Passwort wartet (awaiting_password), die letzte Prüfung "
       "und die letzten Änderungen (wer, wann, welche Felder). Das Passwort selbst nie. Dazu gesendet/offen/"
       "fehlgeschlagen je Ziel.",
@@ -1156,14 +1163,17 @@ def _get_second_target(booth_id: int) -> dict:
             "uploads_per_target": status.get("upload_targets") or {}}
 
 
-_SECOND_FIELDS = ("type", "host", "port", "user", "path", "flat", "enabled", "originals", "print_sheets")
+_SECOND_FIELDS = ("type", "host", "port", "user", "path", "flat", "enabled", "originals", "print_sheets",
+                  "direct")
 
 
 @tool("set_second_target",
       "Das zweite Upload-Ziel einer Box ändern. Nur die angegebenen Felder ändern sich, der Rest bleibt: "
       "path (Ordner; leer = Startordner der Anmeldung, „/“ vorn = ab oberster Ebene, Platzhalter {event} "
       "{event_name} {datum} {jahr} {monat} {tag}), flat, enabled, originals (volle Auflösung, Standard an), "
-      "print_sheets (Standard aus) frei; type (ftps|ftp|sftp), host (nur Name oder IP), port (0 = üblich) und "
+      "print_sheets (Standard aus), direct (Standard aus: direkt unter dem Endnamen hochladen, ohne Zwischennamen "
+      "und Umbenennen, für Live-Push-Zugänge, die nur Bilder und Filme annehmen; die Box erkennt das meist "
+      "auch selbst) frei; type (ftps|ftp|sftp), host (nur Name oder IP), port (0 = üblich) und "
       "user ebenfalls — aber dann löscht die Box das gespeicherte Passwort und den gemerkten SFTP-Schlüssel und "
       "lädt nichts mehr hoch, bis der Besitzer das Passwort für den neuen Server im Formular der Galerie oder an "
       "der Box einträgt. Ein Passwort lässt sich hier absichtlich NIE setzen, ein neuer SFTP-Server-Schlüssel "
@@ -1173,7 +1183,8 @@ _SECOND_FIELDS = ("type", "host", "port", "user", "path", "flat", "enabled", "or
                       "type": {"type": "string", "enum": ["ftps", "ftp", "sftp"]},
                       "host": {"type": "string"}, "port": {"type": "integer"}, "user": {"type": "string"},
                       "path": {"type": "string"}, "flat": {"type": "boolean"}, "enabled": {"type": "boolean"},
-                      "originals": {"type": "boolean"}, "print_sheets": {"type": "boolean"}}},
+                      "originals": {"type": "boolean"}, "print_sheets": {"type": "boolean"},
+                      "direct": {"type": "boolean"}}},
       scope="secure")
 def _set_second_target(booth_id: int, **given) -> dict:
     from app import second_target
@@ -1193,8 +1204,10 @@ def _set_second_target(booth_id: int, **given) -> dict:
     current = {"type": st.get("type") or "", "host": st.get("host") or "", "port": int(st.get("port") or 0),
                "user": st.get("user") or "", "path": st.get("path") or "", "flat": st.get("flat", True),
                "enabled": st.get("enabled", True), "originals": st.get("originals", True),
-               "print_sheets": bool(st.get("print_sheets"))} if st.get("configured") else \
-        {"port": 0, "user": "", "path": "", "flat": True, "enabled": True, "originals": True, "print_sheets": False}
+               "print_sheets": bool(st.get("print_sheets")), "direct": bool(st.get("direct"))} \
+        if st.get("configured") else \
+        {"port": 0, "user": "", "path": "", "flat": True, "enabled": True, "originals": True, "print_sheets": False,
+         "direct": False}
     fields = {**current, **{k: v for k, v in given.items() if k in _SECOND_FIELDS}}
     try:
         cleaned = second_target.clean_fields(fields)

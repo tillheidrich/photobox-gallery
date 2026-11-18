@@ -5,7 +5,7 @@ das überschreiben: eigenes Logo, eigene Akzentfarbe. Das ist die Voraussetzung
 dafür, dass ein Vermieter am selben Wochenende drei Kunden mit drei Marken
 bedienen kann.
 
-Wichtiger Grundsatz (von Picdrop abgeschaut): Der Betreiber darf sich **nicht**
+Wichtiger Grundsatz (von Auftragsgalerien abgeschaut): Der Betreiber darf sich **nicht**
 in einen unlesbaren Zustand konfigurieren. Deshalb rechnen wir die Textfarbe
 auf dem Akzent serverseitig aus, statt sie einstellbar zu machen.
 """

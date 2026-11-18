@@ -892,10 +892,12 @@ def edit_event(event_id: int):
         # changes. What the event sets for the boxes (layouts, looks, styles)
         # has to reach the boxes on this event, so their version moves on.
         nachher = db.get_event_by_id(event_id)
+        geschickt = 0
         if (ecosystem_mod.event_profile_overrides(nachher), frame_store.event_choice(nachher)) != vorher_box:
             for d in db.list_devices() or []:
                 if d.get("event_id") == event_id:
                     ecosystem_mod.bump_profile(d["id"])
+                    geschickt += 1
 
         # Kontrast prüfen, aber nicht blockieren: gespeichert ist gespeichert.
         for warn in branding.contrast_warnings(branding.event_branding(db.get_event_by_id(event_id))):
@@ -905,6 +907,10 @@ def edit_event(event_id: int):
         from app import publishing
         publishing.set_published(event_id, published, fallback_base=request.host_url)
         flash("Gespeichert", "success")
+        if geschickt:
+            # "Gespeichert" alone left open whether the booths have it; they
+            # fetch it at their next contact, the card shows when (18.11.2026).
+            flash(t("events.booths.saved_waiting", n=geschickt), "success")
         return redirect(url_for("admin.edit_event", event_id=event_id))
 
     event = db.get_event_by_id(event_id)  # re-fetch
@@ -936,8 +942,9 @@ def edit_event(event_id: int):
     from app import bewertung as bewertung_mod
     from app import dateinamen as dateinamen_mod
     from app import sharepic as sharepic_mod
+    from app import booth as booth_mod
     return render_template("admin/events/edit.html",
-                           event=event, photos=photos,
+                           event=event, photos=photos, eb=booth_mod.event_booths(event_id),
                            event_boxen=event_boxen, ohne_box=ohne_box, box_filter=box_filter,
                            brand=brand,
                            sharepic_event=sharepic_mod.event_design(event),
@@ -1042,6 +1049,25 @@ def deletions_sweep():
         if report.get(key):
             flash(f"{key.replace('_error', '')}: {report[key]}", "warning")
     return redirect(url_for("admin.deletions"))
+
+
+@bp.get("/events/<int:event_id>/booths-state")
+def event_booths_state(event_id: int):
+    """The booths on the event and whether they took its settings, polled by the event page.
+
+    Read-only (no form token), admin only; booth names and states, nothing else.
+    """
+    redir = _require_admin()
+    if redir:
+        return redir
+    if not db.get_event_by_id(event_id):
+        abort(404)
+    from app import booth as booth_mod
+    eb = booth_mod.event_booths(event_id)
+    resp = jsonify({"ok": True, "busy": eb["busy"],
+                    "html": render_template("admin/events/_booths_live.html", eb=eb)})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @bp.post("/events/<int:event_id>/delete")

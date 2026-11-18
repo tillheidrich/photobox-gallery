@@ -161,3 +161,26 @@ def test_with_frames_off_the_profile_for_the_box_is_as_before():
     for mode in ("boomerang", "video"):
         assert prof[mode]["frames"] is False and prof[mode]["frame_templates"] == []
     assert prof["event"]["frames_fixed"] is False
+
+
+def test_the_booth_form_sets_the_gifs_frames_and_format_switch_like_the_boomerangs(admin):
+    """The GIF is set up like the boomerang (18.11.2026) and takes the boomerang's frames."""
+    from app import db, frame_store
+    from app.blueprints.admin_booth import _assets_dir
+    frame, _ = frame_store.check(_frame(name="Fürs GIF"), _assets_dir())
+    frame_store.save(frame, _assets_dir())
+    dev = _device()
+    admin.post(f"/admin/devices/{dev['id']}/booth", data={
+        "csrf_token": "test-token", "mode_gif": "on", "gif_guest_choice": "on",
+        "gif_frames": "on", "gif_frame_none": "on", "gif_frame_guest_choice": "on",
+        "gif_frame_templates": ["", "rahmen-fuers-gif.json"], "gif_frame_builtins": ["titel-unten"]},
+        follow_redirects=True)
+    profile = ecosystem.device_profile(db.get_device_by_id(dev["id"]))
+    gif = profile["gif"]
+    assert gif["guest_choice"] is True and gif["frames"] is True
+    assert gif["frame_templates"] == ["rahmen-fuers-gif.json"] and gif["frame_builtins"] == ["titel-unten"]
+    assert gif["shots"] == 6                                  # the GIF's own keys stay
+    files = {a["file"] for a in ecosystem.assets_for_profile(profile)}
+    assert "rahmen-fuers-gif.json" in files
+    page = admin.get(f"/admin/devices/{dev['id']}/booth").get_data(as_text=True)
+    assert 'name="gif_frames" checked' in page and 'name="gif_guest_choice" checked' in page

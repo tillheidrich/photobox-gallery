@@ -162,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
         {% for ev in events %}<option value="{{ ev.id }}" {% if device.event_id == ev.id %}selected{% endif %}>{{ ev.name }} ({{ ev.slug }})</option>{% endfor %}
       </select>
     </div>
-    <div class="form-group"><label class="form-label">QR-Code stattdessen auf eine fremde Adresse (ohne eigenen Server, z. B. Picdrop)</label>
+    <div class="form-group"><label class="form-label">QR-Code stattdessen auf eine fremde Adresse (ohne eigenen Server, z. B. eine Online-Galerie)</label>
       <input class="form-control" name="qr_url_template" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ p.qr_url_template }}" placeholder="leer lassen = eigene Galerie (empfohlen)">
       <small style="color:var(--color-text-muted)"><code>{uid}</code> wird durch die Nummer der Aufnahme ersetzt.</small></div>
     <p style="margin:0">Tipp: Besser das QR-Ziel im Event umstellen (Galerie, Weiterleitung, Statusseite). Dann bleiben gedruckte Codes gültig.</p>
@@ -366,6 +366,13 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>{% endfor %}
     <small style="color:var(--color-text-muted)"><b>Film der Kamera</b>: Die Kamera filmt auf ihre SD-Karte, die Box macht daraus Boomerang oder Video in 1080×1920, ohne Ton. Braucht eine Kamera, die über USB filmen kann, und eine SD-Karte. Klappt es nicht, entsteht der Film aus dem Live-Bild.</small>
     <div class="form-group"><label class="form-label">Boomerang-Wiederholungen</label><input type="number" class="form-control" name="boomerang_loops" value="{{ p.boomerang.loops }}" min="1" max="10"></div>
+    <div class="bp-checks"><label><input type="checkbox" name="boomerang_seconds_guest_choice" {% if p.boomerang.seconds_guest_choice %}checked{% endif %}> Gast wählt die Boomerang-Aufnahmedauer</label></div>
+    <div class="bp-row">
+      <div class="form-group"><label class="form-label">Dauern zur Wahl (Sekunden)</label><input type="text" class="form-control" name="boomerang_seconds_choices" inputmode="decimal" placeholder="2, 5, 10" value="{{ (p.boomerang.seconds_choices or [])|join(', ') }}"></div>
+      <div class="form-group"><label class="form-label">Fertiger Film mindestens (s)</label><input type="number" class="form-control" name="boomerang_min_total" value="{{ p.boomerang.min_total_seconds or 15 }}" min="5" max="60"></div>
+      <div class="form-group"><label class="form-label">Fertiger Film höchstens (s)</label><input type="number" class="form-control" name="boomerang_max_total" value="{{ p.boomerang.max_total_seconds or 30 }}" min="5" max="60"></div>
+    </div>
+    <small style="color:var(--color-text-muted)">Mit Haken zeigt die Box vor der Aufnahme große Knöpfe mit den Dauern: zwei bis vier, je 1–15 Sekunden. Der Film läuft dann 15–30 Sekunden, die Wiederholungen werden dafür berechnet. Ohne Haken gelten die Einstellungen oben.</small>
     <div class="bp-checks"><label><input type="checkbox" name="boomerang_guest_choice" {% if p.boomerang.guest_choice %}checked{% endif %}> Gast wählt das Boomerang-Format auch, wenn die Formatwahl für Fotos aus ist</label></div>
     <small style="color:var(--color-text-muted)">Der Gast wählt das Boomerang-Format wie beim Foto (Schalter „Format“ unter „Gast darf wählen“); vorausgewählt ist das Format oben. Ohne Wahl gilt immer das Format oben.</small>
     <div class="bp-checks"><label><input type="checkbox" name="boomerang_print" {% if p.boomerang.print %}checked{% endif %}> Boomerang drucken: Bogen mit den Collage-Layouts</label></div>
@@ -376,16 +383,16 @@ document.addEventListener("DOMContentLoaded", () => {
     <h2>Rahmen für Boomerang &amp; Video</h2>
     <p>Der Film läuft im Fenster eines Rahmens: Hintergrund, Titel und Datum des Events drumherum. Das Format des Rahmens ist das Format des Films.
       Eigene Rahmen unter <a href="{{ url_for('admin_booth.frames_list') }}">Medien &amp; Vorlagen → Rahmen</a>. Aus = der Film ohne Rahmen.</p>
-    {% for clip in ['boomerang', 'video'] %}{% set c = p[clip] %}
+    {% for clip in ['boomerang', 'video', 'gif'] %}{% set c = p[clip] or {} %}{% set kind = 'boomerang' if clip == 'gif' else clip %}
     <fieldset class="bp-frames" style="border:1px solid var(--color-border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.8rem">
-      <legend style="padding:0 .3rem"><b>{{ 'Boomerang' if clip == 'boomerang' else 'Video' }}</b></legend>
+      <legend style="padding:0 .3rem"><b>{{ {'boomerang': 'Boomerang', 'video': 'Video', 'gif': 'GIF (Rahmen des Boomerangs, um jedes Bild)'}[clip] }}</b></legend>
       <div class="bp-checks"><label><input type="checkbox" name="{{ clip }}_frames" {% if c.frames %}checked{% endif %}> Rahmen anbieten</label>
         <label><input type="checkbox" name="{{ clip }}_frame_none" {% if c.frame_none is not sameas false %}checked{% endif %}> Auch „Ohne Rahmen“</label>
         <label><input type="checkbox" name="{{ clip }}_frame_guest_choice" {% if c.frame_guest_choice is not sameas false %}checked{% endif %}> Gast wählt (aus: immer die Vorauswahl)</label></div>
       <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.4rem 0">
         {#- Carries the list of own frames even when there are none yet (the parser drops ""). -#}
         <input type="hidden" name="{{ clip }}_frame_templates" value="">
-        {% for e in motion_offer.eigene + motion_offer.mitgeliefert %}{% if clip in e.modes %}
+        {% for e in motion_offer.eigene + motion_offer.mitgeliefert %}{% if kind in e.modes %}
         {% set own = e.kind == 'own' %}
         <label style="display:flex;flex-direction:column;align-items:center;gap:.2rem;width:7.5rem;font-size:.85rem;text-align:center">
           <img src="{{ url_for('admin_booth.frame_picture', ident=e.id) }}" alt="" loading="lazy" style="max-width:7rem;max-height:9rem;border-radius:4px;background:#222">
@@ -398,7 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <select name="{{ clip }}_frame_default" class="form-control" style="max-width:20rem">
           <option value="" {% if not c.frame_default %}selected{% endif %}>Der erste angebotene Rahmen</option>
           <option value="none" {% if c.frame_default == 'none' %}selected{% endif %}>Ohne Rahmen</option>
-          {% for e in motion_offer.eigene + motion_offer.mitgeliefert %}{% if clip in e.modes %}<option value="{{ e.id }}" {% if c.frame_default == e.id %}selected{% endif %}>{{ e.name }} ({{ e.format }})</option>{% endif %}{% endfor %}
+          {% for e in motion_offer.eigene + motion_offer.mitgeliefert %}{% if kind in e.modes %}<option value="{{ e.id }}" {% if c.frame_default == e.id %}selected{% endif %}>{{ e.name }} ({{ e.format }})</option>{% endif %}{% endfor %}
         </select></div>
     </fieldset>{% endfor %}
     <small style="color:var(--color-text-muted)">Gibt es nur eine Möglichkeit, wird sie ohne Frage genommen. Legt das Event Rahmen fest (Event → Rahmen für Boomerang &amp; Video), gelten die des Events.</small>
@@ -503,12 +510,13 @@ document.addEventListener("DOMContentLoaded", () => {
     <div class="bp-checks">
       <label><input type="checkbox" name="gif_pingpong" {% if (p.gif or {}).pingpong %}checked{% endif %}> Hin und zurück abspielen</label>
       <label><input type="checkbox" name="gif_mp4" {% if (p.gif or {}).also_mp4 %}checked{% endif %}> zusätzlich als MP4 speichern</label>
+      <label><input type="checkbox" name="gif_guest_choice" {% if (p.gif or {}).guest_choice %}checked{% endif %}> Gast wählt das Format auch, wenn die Formatwahl für Fotos aus ist</label>
       <label><input type="checkbox" name="gif_from_collage" {% if (p.gif or {}).from_collage %}checked{% endif %}> aus Collagen zusätzlich ein GIF erzeugen</label>
     </div>
     <div class="bp-row">
       <div class="form-group"><label class="form-label">GIF aus Collage ab … Bildern</label>
         <input type="number" class="form-control" name="gif_from_collage_min" min="2" max="8"
-               value="{{ (p.gif or {}).from_collage_min or 4 }}">
+               value="{{ (p.gif or {}).from_collage_min or 2 }}">
         <small style="color:var(--color-text-muted)">Aus denselben Aufnahmen — der Gast posiert einmal, bekommt den Streifen
           zum Drucken und ein Filmchen fürs Telefon. In der Galerie an der Box trägt die Kachel dann das
           Abspielzeichen, und ein Umschalter führt zurück zum gedruckten Bild.</small></div>
@@ -716,7 +724,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   <section class="bp-card">
     <h2>QR-Code</h2>
-    <p>Auch ohne Galerie sinnvoll: Der QR kann auf eine beliebige Seite zeigen — die eigene Website, ein Gewinnspiel, den Picdrop-Ordner.</p>
+    <p>Auch ohne Galerie sinnvoll: Der QR kann auf eine beliebige Seite zeigen — die eigene Website, ein Gewinnspiel, den Ordner einer Online-Galerie.</p>
     <div class="bp-row">
       <div class="form-group"><label class="form-label">Ziel</label>
         <select name="qr_mode" class="form-control">{% for v, l in [('auto','Galerie, sonst eigene Adresse'),('gallery','nur die eigene Galerie'),('custom','immer die eigene Adresse'),('off','keinen QR zeigen')] %}<option value="{{ v }}" {% if p.qr.mode == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
@@ -1124,6 +1132,9 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="form-group"><label class="form-label">Farbe ohne Startmedium</label>
         <input class="form-control" name="start_bg_color" value="{{ p.start.bg_color or '' }}" placeholder="leer = unscharfes Live-Bild" pattern="#[0-9a-fA-F]{6}">
         <small style="color:var(--color-text-muted)">Als <code>#rrggbb</code>. Gilt nur, wenn oben kein Startmedium gewählt ist.</small></div>
+      <div class="form-group"><label class="form-label">Schrift auf dem Startbild</label>
+        <select name="start_text_tone" class="form-control">{% for v, l in [('auto','automatisch: hell auf eigenem Startbild, sonst Farbschema'),('hell','immer hell'),('dunkel','immer dunkel')] %}<option value="{{ v }}" {% if (p.start.text_tone or 'auto') == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <small style="color:var(--color-text-muted)">Titel und Statuszeile; Kacheln und Knöpfe behalten das Farbschema.</small></div>
       <div class="form-group"><label class="form-label">Abdunklung über dem Startbild</label>
         <select name="start_dim" class="form-control">
           <option value="-1" {% if (p.start.dim if p.start.dim is not none else -1) == -1 %}selected{% endif %}>Verlauf (Standard)</option>

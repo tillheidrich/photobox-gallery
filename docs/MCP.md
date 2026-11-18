@@ -255,7 +255,7 @@ rights; *not possible* = with the reason.
 | `guest_contact_counts` | photos | number of notification sign-ups (no addresses) |
 | `list_guest_addresses` | photos | the confirmed sign-up addresses of one event |
 | `update_booth_profile_secure` | secure | change `access`, `mail`, `webhooks`, `http_trigger`, `qr`, `qr_url_template`, `wifi_share`, `meldungen.mail` (one address); secrets write-only; same compact answer and `ignored_keys` as `update_booth_profile` (`return: full` for the whole profile) |
-| `get_second_target` | secure | the booth's second upload target (Picdrop, FTP, SFTP): type, host, user, folder, on/off, "password stored yes/no", last check, sent/waiting/failed per target; never the password |
+| `get_second_target` | secure | the booth's second upload target (FTP/FTPS/SFTP): type, host, user, folder, on/off, "password stored yes/no", last check, sent/waiting/failed per target; never the password |
 | `set_second_target` | secure | set type/host/port/user/path/flags of the second target of a booth that allows it at the booth. No password through MCP — an assistant should not carry FTP passwords; it is set in the gallery form (sealed for the booth) or at the booth; the stored one stays |
 | `check_second_target` | secure | the booth checks its second target; the result in words shows in `get_second_target` after its next contact |
 | `set_event_qr_target` | secure | QR target (gallery, external, status) and the gallery's forward |

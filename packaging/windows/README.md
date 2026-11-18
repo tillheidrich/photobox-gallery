@@ -7,7 +7,7 @@ Befehle tippen. Deshalb kommt alles als `.exe`.
 |---|---|
 | `PhotoboxBooth.exe` | Die Fotobox: Kamera, Aufnahme, Druck, Sync, Verwaltung – in ihrem eigenen Programmfenster (WebView2, siehe `docs/EIGENES-FENSTER.md`). Ohne Argumente gestartet ist sie zuerst der Wächter, der die Box als Kindprozess startet und nach einem Absturz wiederbringt |
 | `Umstellen-auf-eigenes-Fenster.ps1` | Eine bestehende Box auf den aktuellen Stand bringen: neue `.exe` einspielen, eigenes Fenster, Aufgabe, Nutzungszeit (auch über ssh, beliebig oft) |
-| `PhotoboxSync.exe` | Nur der Sync — für Rechner, auf denen dslrBooth oder LumaBooth läuft |
+| `PhotoboxSync.exe` | Nur der Sync — für Rechner, auf denen andere Fotobox-Software läuft |
 
 ## Das Setup (der normale Weg zur Box)
 
@@ -29,7 +29,10 @@ Entwickler und für den Bau-Rechner.
 
 `Fotobox bauen.bat` doppelklicken. Das Skript holt sich Python, baut beide
 Dateien und legt sie in `packaging\windows\dist\`. Der Bau muss auf Windows
-laufen — eine Windows-`.exe` entsteht nicht auf dem Mac oder in der Cloud.
+laufen — eine Windows-`.exe` entsteht nicht auf dem Mac. In der Cloud baut
+`.github/workflows/windows-release.yml` mit demselben `build.ps1` auf einem
+Windows-Runner von GitHub, für Releases und die (noch nicht aktive) Signatur
+über die SignPath Foundation: [`docs/CODE-SIGNING.md`](../../docs/CODE-SIGNING.md).
 
 Installiert wird mit `constraints.txt` aus dem Projektstamm
 (`pip install -r requirements.txt -c constraints.txt`, das erledigt

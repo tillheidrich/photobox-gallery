@@ -443,6 +443,62 @@ def age_text(minutes: Optional[float]) -> str:
     return f"seit {int(minutes // (60 * 24))} Tagen nichts gehört"
 
 
+def ago_words(ts: Any) -> Dict[str, Any]:
+    """Age of a UTC time (SQLite text or epoch seconds) in the admin's language, and in minutes."""
+    from app.i18n import t
+    if isinstance(ts, (int, float)):
+        minutes = max(0.0, (time.time() - float(ts)) / 60.0) if ts > 0 else None
+    else:
+        minutes = _minutes_since(ts)
+    if minutes is None:
+        return {"min": None, "text": t("sync.second_target.ago_never")}
+    if minutes < 0.25:
+        text = t("sync.second_target.ago_now")
+    elif minutes < 1:
+        text = t("sync.second_target.ago_s", n=int(round(minutes * 60)))
+    elif minutes < 120:
+        text = t("sync.second_target.ago_min", n=int(minutes))
+    elif minutes < 48 * 60:
+        text = t("sync.second_target.ago_h", n=int(minutes // 60))
+    else:
+        text = t("sync.second_target.ago_d", n=int(minutes // (60 * 24)))
+    return {"min": minutes, "text": text}
+
+
+def event_booths(event_id: int) -> Dict[str, Any]:
+    """The booths on an event and whether each has the gallery's current profile.
+
+    The gallery counts a booth's profile version up when something the booth
+    gets changes (``ecosystem.bump_profile``); the booth fetches the profile at
+    its next contact and reports the version it runs in the one after. Equal:
+    "taken". Lower and the booth called within ``STALE_WARN_MIN``: "waiting".
+    Lower and silent (or never seen): "silent", because then nothing moves.
+    """
+    import json as _json
+
+    from app import db
+    out = []
+    for d in db.list_devices() or []:
+        if d.get("event_id") != event_id:
+            continue
+        try:
+            status = _json.loads(d.get("status_json") or "{}") if "status_json" in d else db.get_device_status(d["id"])
+        except (TypeError, ValueError):
+            status = {}
+        status = status if isinstance(status, dict) else {}
+        want = int(d.get("profile_version") or 1)
+        try:
+            has = int(status.get("profile_version") or 0)
+        except (TypeError, ValueError):
+            has = 0
+        contact = ago_words(d.get("last_heartbeat_at"))
+        silent = contact["min"] is None or contact["min"] >= STALE_WARN_MIN
+        state = "taken" if has >= want else ("silent" if silent else "waiting")
+        out.append({"id": int(d["id"]), "name": d.get("name") or f"Box {d['id']}", "state": state,
+                    "contact": contact["text"], "never": contact["min"] is None})
+    return {"booths": out, "busy": any(b["state"] == "waiting" for b in out)}
+
+
 def _paper_text(status: Dict[str, Any]) -> str:
     parts = []
     for s in status.get("sheets") or []:

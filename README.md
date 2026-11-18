@@ -5,8 +5,9 @@ and a photo printer, the online gallery where guests find their pictures, and
 the sync between them. One repository, three parts, no vendor cloud, no
 subscription, no AI processing of photos and no face recognition.
 
-**Open source and MCP-native.** Everything is AGPL-3.0, complete, no paid
-edition. The gallery has a built-in [MCP](https://modelcontextprotocol.io/)
+**Open source and MCP-native.** All code is AGPL-3.0 and complete in this
+repository; money is made with operation (managed hosting, set-up, support),
+not with a closed feature set. The gallery has a built-in [MCP](https://modelcontextprotocol.io/)
 server with 81 tools, so an AI assistant of your choice (Claude, or any
 client that speaks MCP with OAuth) can run an event from a chat: look at the
 booths, read their errors and queues, set up a gallery, change booth
@@ -19,9 +20,9 @@ actions only in two steps, secrets written in but never read back out
 <sub>Screenshots of the real program. The photos in them are drawn demo
 scenes, not guests; `tools/marketing_shots.mjs` takes them again.</sub>
 
-> **Status: beta, version 0.9.1.** It runs on the author's own rental booth
-> and has been endurance-tested on that real device (Canon EOS M50, Canon
-> SELPHY CP1300, Windows 11). The Windows setup is **not code-signed yet**.
+> **Status: beta, version 0.9.2 — the first public beta.** Developed and
+> tested on the author's own booth (Canon EOS M50, Canon SELPHY CP1300,
+> Windows 11). The Windows setup is **not code-signed yet**.
 > One version number for all three parts — see [`VERSION`](VERSION) and the
 > [`CHANGELOG`](CHANGELOG.md). Product page and documentation:
 > [photobox-gallery.com](https://photobox-gallery.com/) — docs in German at
@@ -42,7 +43,7 @@ signiert. Anleitung auf Deutsch: [photobox-gallery.com/doku](https://photobox-ga
 |---|---|---|
 | **Gallery** (`app/`) | Event galleries with QR codes, guest upload, share links, moderation, expiry, branding, template library and editor, layouts per event, remote management of booths | a small VPS (Flask, SQLite) |
 | **Booth** (`booth/`) | The booth itself: camera, countdown, photo/collage/GIF/boomerang/video, filters, greenscreen, printing with a queue on disk, e-mail, QR | the booth PC (Windows 10/11; from source also Linux and macOS) |
-| **Sync** (`sync/`) | Offline-first upload queue to the gallery, a NAS, FTPS or a local folder | wherever the pictures are — also next to dslrBooth or LumaBooth |
+| **Sync** (`sync/`) | Offline-first upload queue to the gallery, a NAS, FTPS or a local folder | wherever the pictures are — also next to other booth software |
 
 The booth runs standalone if you want it to. The gallery is optional, and so is
 the internet: everything a guest experiences at the booth works offline, and
@@ -50,26 +51,37 @@ whatever could not be uploaded is caught up later.
 
 ## The model
 
-The software is free and complete under the AGPL, for everyone: no editions,
-no licence keys, no feature held back. Money is made only by running it: the
-maintainer offers galleries and booths as a managed service (hosting, updates,
-setup, help). Details under [Licence](#licence).
+All code is AGPL and complete in the repository, for everyone: no licence
+keys, no feature held back for a paid version. Money is made with operation,
+not with a closed feature set: the maintainer offers galleries and booths as a
+managed service (hosting, updates, set-up, support). The Windows download is
+free of charge in two editions (see [Download](#download-windows)). Details
+under [Licence](#licence).
+
+If the program is useful to you, you can support the project voluntarily:
+[Support the project (PayPal)](https://www.paypal.com/ncp/payment/54FPXDFBMP5TJ).
+It buys nothing extra — every feature is in the free download.
 
 ## Known limits
 
 * **The booth is built for Windows.** The setup, its own window and the
   watchdog exist for Windows 10/11. On Linux and macOS it runs from source,
   for trying out; that is not tested for events.
-* **The Canon EDSDK is not included** and never will be. Canon over USB needs
-  your own copy from Canon (`--install-edsdk`). Without it: Canon over Wi-Fi
-  (CCAPI), digiCamControl, a webcam or a tethering folder.
+* **The Canon EDSDK is never part of this repository, of a GitHub release or
+  of a CI build.** For a Canon EOS camera over USB, take the edition with
+  camera SDK from the project website (free of charge, works with Canon EOS
+  cameras out of the box), or bring the SDK yourself from Canon's developer
+  programme and point the free edition at it (`--install-edsdk`). Without the
+  SDK: digiCamControl, a webcam, a tethering folder, or Canon over Wi-Fi
+  (CCAPI, not tested by the author).
 * **The setup is not code-signed yet**, so Windows SmartScreen warns about an
-  unknown publisher. Compare `SHA256SUMS.txt` first.
+  unknown publisher. Compare the checksums first. Code signing, once active,
+  covers the free edition only; the edition with camera SDK stays unsigned.
 * **Updates are not signed yet.** A booth checks a new version against a
   SHA-256 the gallery sends and refuses older versions, not against a
   signature: whoever controls the gallery's admin can ship code to its booths
   ([`SECURITY.md`](SECURITY.md), open item S-4).
-* **Beta.** Version 0.9.1; behaviour and settings can still change between
+* **Beta.** Version 0.9.2; behaviour and settings can still change between
   versions (the [CHANGELOG](CHANGELOG.md) says when to update booths first).
 * **Tested on real hardware** (15.11.2026, i5-6200U, Windows 11): Canon EOS M50
   over the EDSDK, Canon SELPHY CP1300 with Canon's driver, autostart; since
@@ -98,9 +110,9 @@ any picture.
 
 ## Why it exists
 
-Commercial booth software charges per machine and per year, keeps the gallery
-on someone else's servers, and deletes videos after a few months. This does the
-same job on hardware you own, under a licence that keeps it that way.
+Many booth products are rented per machine or per year and keep the gallery on
+the vendor's servers. This does the same job on hardware you own, with a
+gallery you host yourself, under a licence that keeps it that way.
 
 Deliberately **not** in the product: face recognition, "AI enhancement",
 stickers, anything that needs an account or a paid API. The gallery knows which
@@ -180,10 +192,45 @@ back when a guest downloads one. With the variables only on `pruner`, a
 download of an offloaded original answers 503. Put the values in `.env` next
 to the compose file, never into the compose file itself.
 
+## Run the gallery with Docker
+
+`docker-compose.yml` builds the gallery from this source (there is no
+prebuilt image) and starts two services: `web` and `pruner` (moves originals
+to a NAS if you configure one). Data lives in `./data`.
+
+```bash
+cp .env.example .env     # set SECRET_KEY and BASE_URL (your public address); TRUST_PROXY=1 only behind a reverse proxy
+docker compose up -d --build
+docker compose logs web  # the one-time admin password ("Erste Anmeldung")
+```
+
+`web` listens on `127.0.0.1:5000` only (`PORT` changes it): put a reverse proxy
+with TLS in front of it. For a NAS in the home network use
+`docker-compose.nas.yml` instead; step by step (German):
+[docs/INSTALL-NAS.md](docs/INSTALL-NAS.md).
+
 ## Download (Windows)
 
-Three files per release, each with the version in its name, plus
-`SHA256SUMS.txt` listing exactly these three:
+Two editions, both free of charge, the same program:
+
+* **Edition with camera SDK** — only on the project website,
+  [photobox-gallery.com](https://photobox-gallery.com/): the program plus the
+  runtime libraries of the Canon EOS Digital SDK, so a Canon EOS camera works
+  without an extra step. Offered only as a setup:
+  `Photobox-Setup-<version>-mit-Kamera-SDK.exe`, checksum in
+  `SHA256SUMS-mit-Kamera-SDK.txt`, notices in
+  `THIRD-PARTY-NOTICES-mit-Kamera-SDK.txt`; there is no portable program with
+  the camera SDK. A silent installation needs `/ACCEPTSDKTERMS=1`. Canon's
+  files in it are proprietary, not under the AGPL, and come with end-user terms of their own (shown by the
+  setup, and in `CAMERA-SDK-LICENCE.txt` next to the program). Not
+  code-signed. Built by the maintainer outside this repository and outside
+  CI.
+* **Free edition** — built from this repository alone, attached to the
+  GitHub releases, no file of Canon's SDK. For a Canon camera over USB, bring
+  the SDK yourself (`--install-edsdk`) or use a webcam or Wi-Fi camera.
+
+The free edition has three files per release, each with the version in its
+name, plus `SHA256SUMS.txt` listing exactly these three:
 
 | File | What it is |
 |---|---|
@@ -197,11 +244,28 @@ files are code-signed, Windows SmartScreen warns about an unknown publisher:
 "More info → Run anyway". The setup installs the program, a start at logon and
 the Start menu entries; photos and settings stay in
 `%LOCALAPPDATA%\PhotoboxBooth` and survive updates and uninstalling. The
-Canon EDSDK is never included — each operator gets it from Canon. Details
+free edition contains no file of the Canon EDSDK — see "Known limits". Details
 (German): [docs/INSTALLER.md](docs/INSTALLER.md), privacy for operators:
 [docs/PRIVACY-BOOTH.md](docs/PRIVACY-BOOTH.md). Releases appear on the
 repository's Releases page; you can always build the files yourself
 (`packaging/windows/`).
+
+Voluntary support, if you like the program:
+[Support the project (PayPal)](https://www.paypal.com/ncp/payment/54FPXDFBMP5TJ).
+
+## Code signing policy
+
+Free code signing through the SignPath Foundation is being prepared and is
+**not active yet: the current Windows files are unsigned.** Signed releases
+will carry the line "Free code signing provided by
+[SignPath.io](https://about.signpath.io), certificate by
+[SignPath Foundation](https://signpath.org)". Only the free edition, built by
+`.github/workflows/windows-release.yml` from this repository, is ever signed;
+the edition with camera SDK never is. Roles (author, reviewer and approver: Till
+Heidrich), privacy and uninstalling:
+[`docs/CODE-SIGNING-POLICY.md`](docs/CODE-SIGNING-POLICY.md) and
+[photobox-gallery.com/en/code-signing-policy](https://photobox-gallery.com/en/code-signing-policy/)
+(German: [/code-signing-policy/](https://photobox-gallery.com/code-signing-policy/)).
 
 ## Contributing — humans and agents
 
@@ -210,10 +274,15 @@ Contributions are welcome, including from AI coding agents. Read
 to "my change is correct here". [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the
 process, [`SECURITY.md`](SECURITY.md) how to report a vulnerability.
 
+Branches: `main` is the release branch (releases are cut from it);
+`ecosystem` is the integration branch where changes and fixes land first.
+Open pull requests against `ecosystem`.
+
 Two rules that save everyone time:
 
-1. **Never commit the Canon EDSDK.** It is under Canon's licence agreement.
-   The booth loads the libraries from a folder the operator provides.
+1. **Never commit the Canon EDSDK.** It is Canon's proprietary SDK. The
+   booth loads the libraries from a folder the operator provides, or from the
+   edition with camera SDK, which is built outside this repository.
 2. **No secrets in the repo.** Credentials live in environment variables and in
    the operator's own configuration.
 
@@ -231,22 +300,26 @@ may run, modify and distribute this. If you run a modified version as a network
 service, your users get the right to its source — which is why the gallery
 links its own source from the About page.
 
-This repository is the whole program. There is no second edition and no
-feature held back:
+This repository is the whole program; no feature is held back:
 
 * **The source is complete.** Everything the booth, the gallery and the sync
   do is in here and builds from here (`packaging/windows/`, `packaging/macos/`).
-* **The Canon EDSDK is never shipped** — not in this repository and not in any
-  build made from it. It is Canon's proprietary SDK under Canon's own
-  agreement. Whoever runs a booth with a Canon camera over USB gets the SDK
-  from Canon themselves and points the booth at it (`--install-edsdk`). The
-  permission in `LICENSE-EXCEPTION` makes that combination AGPL-clean; it gives
-  no rights under Canon's agreement. Other camera paths (gphoto2,
-  digiCamControl, a hot folder, a webcam) need nothing from Canon.
-* **Money is made with operation, not with the code.** The maintainer offers
-  to run galleries and booths for others as a managed service: hosting,
-  updates, setup, support. That is a service around the software, available
-  to anyone else under the same licence.
+* **The Canon EDSDK is never part of this repository, of its public mirror,
+  of a CI build or of a GitHub release.** It is Canon's proprietary SDK. The
+  edition with camera SDK on the project website carries its runtime
+  libraries unmodified, in object code only, solely for use with Canon
+  cameras. **Those files are not under the AGPL**; they come with end-user
+  terms of their own (`CAMERA-SDK-LICENCE.txt`). The permission in
+  `LICENSE-EXCEPTION` makes the combination AGPL-clean; it grants no rights
+  to Canon's files. With the free edition you bring the SDK yourself
+  (`--install-edsdk`); other camera paths (gphoto2, digiCamControl, a hot
+  folder, a webcam) need nothing from Canon.
+* **Money is made with operation, not with a closed feature set.** All code is
+  AGPL and complete here. The maintainer offers to run galleries and booths for
+  others as a managed service: hosting, updates, set-up, support. That is a
+  service around the software; anyone else may offer the same under the same
+  licence. Both Windows editions are free of charge; support is voluntary
+  ([PayPal](https://www.paypal.com/ncp/payment/54FPXDFBMP5TJ)).
 
 Contributions come with [`CLA.md`](CLA.md): you keep your copyright, this
 repository stays AGPL, and the maintainer holds the rights needed to keep the

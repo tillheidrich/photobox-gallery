@@ -90,6 +90,15 @@ def _gb(value: float) -> str:
     return f"{value:.1f} GB"
 
 
+def _loaded_edsdk() -> str:
+    """The EDSDK library this process loaded, or "" (see camera/edsdk.py)."""
+    try:
+        from .camera import edsdk
+    except Exception:  # noqa: BLE001 - the check must not fail over an import
+        return ""
+    return edsdk.LOADED_DLL or ""
+
+
 class Doctor:
     """Führt die Prüfungen gegen eine laufende :class:`~boothcore.app.Booth` aus."""
 
@@ -227,15 +236,27 @@ class Doctor:
         """
         backend = self.b.store.local["camera"].get("backend", "auto")
         configured = (self.b.store.local["camera"].get("edsdk_dll") or "").strip()
-        if backend not in ("edsdk", "auto") or (backend == "auto" and not configured):
+        loaded = _loaded_edsdk()
+        if backend not in ("edsdk", "auto") or (backend == "auto" and not configured and not loaded):
             return Check("Canon-SDK", SKIP, "Diese Box nutzt kein Canon-SDK.", "",
                          {"backend": backend})
-        from .edsdk_setup import has_sdk_platform, pe_machine, setup_hint, status, target_dir
+        from .edsdk_setup import has_sdk_platform
 
         if not has_sdk_platform():
             return Check("Canon-SDK", SKIP, "Für dieses System gibt es kein Canon-SDK.",
                          "Auf Linux läuft die Box mit gphoto2 — Backend in der Verwaltung umstellen.",
                          {"platform": os.name})
+        check = self._edsdk_files(configured)
+        if loaded:
+            # Several copies can lie on one PC; name the one that runs.
+            check.detail["loaded"] = loaded
+            check.message = f"{check.message} Geladen: {loaded}"
+            if not configured and check.state == WARN:
+                check.state, check.hint = OK, ""
+        return check
+
+    def _edsdk_files(self, configured: str) -> Check:
+        from .edsdk_setup import pe_machine, setup_hint, status, target_dir
 
         if configured:
             dll = Path(configured)

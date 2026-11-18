@@ -1,0 +1,16 @@
+{# The booths on this event and whether each has taken the event's settings
+   (app/booth.event_booths). Rendered into the event page and by
+   admin.event_booths_state, which the page polls while a booth fetches. #}
+<div data-live-body>
+  {% if eb.booths %}
+  <ul class="evb-list">
+    {% for b in eb.booths %}
+    <li data-booth-state="{{ b.state }}"><b>{{ b.name }}</b>:
+      {% if b.state == 'taken' %}<span class="evb-ok">{{ t('events.booths.taken') }}</span>
+      {% elif b.state == 'waiting' %}{{ t('events.booths.waiting') }}
+      {% else %}<span class="evb-bad">{{ t('events.booths.silent') }}</span>{% endif %}
+      <small>· {{ t('events.booths.contact', ago=b.contact) }}</small></li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="form-hint" style="margin:0">{{ t('events.booths.none') }}</p>{% endif %}
+</div>

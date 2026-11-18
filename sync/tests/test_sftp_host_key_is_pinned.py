@@ -266,7 +266,8 @@ class FtpsServer:
 
 def _trust(monkeypatch, ca: Path):
     echt = ssl.create_default_context
-    monkeypatch.setattr(targets.ssl, "create_default_context", lambda *a, **k: echt(cafile=str(ca)))
+    # The "system store" knows only the test CA; certifi is added on top and does not know it.
+    monkeypatch.setattr(ssl, "create_default_context", lambda *a, **k: echt(cafile=str(ca)))
 
 
 def test_ftps_refuses_a_certificate_for_another_name_before_the_password(tmp_path, monkeypatch):

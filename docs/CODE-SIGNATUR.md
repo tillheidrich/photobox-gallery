@@ -1,5 +1,14 @@
 # Die Box-Datei signieren lassen
 
+> **Nachtrag 18.11.2026:** Für Weg A (SignPath Foundation) ist das, was im
+> Repository liegen muss, vorbereitet: die Bau-Pipeline
+> `.github/workflows/windows-release.yml`, die Metadaten der Dateien und die
+> Code signing policy ([`CODE-SIGNING-POLICY.md`](CODE-SIGNING-POLICY.md)).
+> Was der Eigentümer in SignPath und in den Repository-Einstellungen anlegt:
+> [`CODE-SIGNING.md`](CODE-SIGNING.md). Aktiv ist die Signatur damit noch
+> nicht; die Texte unten zur Pipeline („existiert noch nicht“) sind insoweit
+> überholt, der Rest gilt weiter.
+
 Ohne Signatur zeigt Windows beim ersten Start von `PhotoboxBooth.exe` „unbekannter
 Herausgeber“. Auf dem eigenen Box-PC stört das nicht. Wer die Datei zum Download
 anbietet oder an Kundschaft weitergibt, will sie signieren. Diese Seite hat zwei
@@ -38,7 +47,7 @@ die Seite nennt ihre Bedingungen selbst einen Entwurf):
 |---|---|---|
 | Keine Schadsoftware oder unerwünschte Programme | Die Box ist ein Fotoprogramm; sie lädt nur dorthin hoch, wohin der Betreiber sie koppelt. | nein |
 | **OSI-anerkannte Lizenz, ohne kommerzielles Dual-Licensing für alle Bestandteile** | AGPL-3.0-oder-später mit einer zusätzlichen Erlaubnis nach Abschnitt 7 für das Canon-SDK (`LICENSE-EXCEPTION`). Die AGPL ist OSI-anerkannt. | **Ja.** Ob die zusätzliche Erlaubnis und der Satz in der README, dass der Herausgeber Lizenzbedingungen ändern könnte, als „kommerzielles Dual-Licensing“ gelten, entscheidet SignPath. Im Antrag offen schreiben (Text unten). |
-| Kein proprietärer, nicht quelloffener Bestandteil | Das Canon-SDK steckt nie in der Datei; der Betreiber holt es selbst (`--install-edsdk`). Systembibliotheken dürfen dabei sein. | Im Antrag ausdrücklich erklären. Windows-Laufzeiten (WebView2) sind Systembestandteile. |
+| Kein proprietärer, nicht quelloffener Bestandteil | Signiert wird nur die freie Fassung: das Canon-SDK steckt nie darin; der Betreiber holt es selbst (`--install-edsdk`). Die Fassung mit Kamera-SDK (nur auf der Website, nur als Setup) wird nie signiert; ihr Setup packt dasselbe Box-Programm und legt die Canon-Dateien getrennt in `EDSDK\`. Systembibliotheken dürfen dabei sein. | Im Antrag ausdrücklich erklären. Windows-Laufzeiten (WebView2) sind Systembestandteile. |
 | Aktiv gepflegt | Entwicklung läuft. | nein |
 | **Schon in der Form veröffentlicht, die signiert werden soll** | Es braucht eine Veröffentlichung (Release) der `.exe` im öffentlichen Repository. | **Ja.** Erst veröffentlichen, dann beantragen. |
 | Funktion auf der Download-Seite beschrieben | Eine Seite mit Beschreibung der Box nötig. | **Ja.** |
@@ -76,17 +85,21 @@ Home page and download page: [URL OF THE PROJECT PAGE]
 Licence: GNU Affero General Public License v3.0 or later (OSI approved), with
 one additional permission under section 7 of the AGPL for the Canon EOS
 Digital SDK (file LICENSE-EXCEPTION in the repository). There is no
-commercial dual licence and no closed-source edition; the whole program is
-under the AGPL. [CHECK AND CONFIRM THIS SENTENCE BEFORE SENDING.]
+commercial dual licence; the whole program is under the AGPL and every
+signed file is built from this repository alone. [CHECK AND CONFIRM THIS
+SENTENCE BEFORE SENDING.]
 
 What we ask you to sign: PhotoboxBooth.exe (the booth, with a watcher process
 that restarts it) and, if applicable, PhotoboxSync.exe. Both are built from
 this repository with PyInstaller.
 
 Proprietary components: none are part of the signed files. The booth can drive
-Canon cameras through the Canon EDSDK, which is proprietary. It is never
-shipped, never part of the repository and never inside the signed files; each
-operator obtains it from Canon and installs it on their own machine. The
+Canon cameras through the Canon EDSDK, which is proprietary. It is never part
+of the repository, of a CI build or of the signed files; with the signed free
+edition each operator obtains it from Canon and installs it on their own
+machine. A separate, unsigned "edition with camera SDK" that bundles Canon's
+runtime libraries is offered only on the project website, built outside this
+repository and outside the signing project. The
 AGPL side of using it together with the booth is settled by the section 7
 permission mentioned above.
 

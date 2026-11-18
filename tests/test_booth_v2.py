@@ -112,7 +112,7 @@ def test_qr_target_external_and_status(client):
     event, dev = _setup(client)
     from app import ecosystem
     code = _code(event, "zzzz2345aa")
-    ecosystem.set_event_qr(event["id"], "external", "https://www.picdrop.com/beispiel/xyz?ref={uid}", "")
+    ecosystem.set_event_qr(event["id"], "external", "https://galerie.example.com/beispiel/xyz?ref={uid}", "")
     r = client.get(f"/p/{code}")
     # Ziel bleibt das externe, die Kampagnen-Parameter hängen hinten dran
     assert r.status_code == 302

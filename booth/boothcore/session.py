@@ -86,6 +86,10 @@ class Session:
     #: (media/motion_frames.py), and its id; None = without a frame.
     motion_frame: Optional[Dict[str, Any]] = field(default=None, repr=False)
     motion_frame_id: str = ""
+    #: The boomerang length the guest chose (boomerang.seconds_choices),
+    #: checked against the offer; None = no choice, the profile's seconds
+    #: and loops apply as before.
+    clip_choice_seconds: Optional[float] = None
 
     @property
     def is_video(self) -> bool:
@@ -111,6 +115,7 @@ class Session:
             "share_url": self.share_url, "template": (self.template or {}).get("id"),
             "chroma_background": self.chroma_background, "print_only": self.print_only,
             **({"motion_frame": self.motion_frame_id} if self.motion_frame_id else {}),
+            **({"clip_seconds": self.clip_choice_seconds} if self.clip_choice_seconds else {}),
         }
 
 

@@ -14,8 +14,12 @@ what the page and the product share:
   site's `public/img/produkt/`.
 * **The wording rule.** Everything the page claims has to be true for the code
   in this repository: the software is AGPL and complete for everyone, there
-  are no editions and no licence keys, the Canon SDK is never shipped, and
-  money comes only from running galleries and booths as a managed service.
+  are no licence keys and no feature held back, the Canon SDK is never part of
+  the repository, a CI build or a GitHub release (only of the free-of-charge
+  edition with camera SDK on the website, whose Canon files are not under the
+  AGPL), and money comes from operation (managed hosting, set-up, support),
+  not from a closed feature set. Canon is named only in factual compatibility
+  statements ("works with Canon EOS cameras"), never as a product name.
   When a feature changes, take the screenshots again and check the page.
 
 ```bash

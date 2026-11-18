@@ -1,6 +1,6 @@
 """The booth's second upload target, set from the gallery's sync page (17.11.2026).
 
-The card "Zweites Ziel (Picdrop, FTP, SFTP)" on /admin/devices/<id>/sync is a
+The card "Zweites Ziel (FTP/FTPS/SFTP)" on /admin/devices/<id>/sync is a
 form only when the booth allows it and reports a key; the password is sealed
 in the request handler and only ciphertext reaches the database, inside a
 job that is emptied once the booth answers or the job expires. Old booths
@@ -469,3 +469,47 @@ def test_mcp_can_never_set_a_password_or_accept_a_server_key(mcp, keypair):
     assert not _jobs(dev["id"]) and not _jobs(dev["id"], "accept_second_target_host_key")
     desc = mcp_mod.TOOLS["set_second_target"]["description"]
     assert "NIE setzen" in desc and "Schlüssel" in desc and "Passwort" in desc
+
+
+# ── Direct upload for live-push accounts (rule L-S5, 18.11.2026) ─────────
+
+def test_the_direct_choice_travels_only_when_it_is_on(client, keypair):
+    from app import second_target
+    _admin(client)
+    dev = _booth({"second_target": _report(keypair)})
+    html = client.get(f"/admin/devices/{dev['id']}/sync").get_data(as_text=True)
+    assert 'name="direct"' in html and de.STRINGS["sync.second_target.f_direct"] in html
+    form = {"csrf_token": "t", "action": "save", "type": "ftps", "host": "ftp.example.org", "port": "",
+            "user": "demo", "password": DUMMY, "path": "", "flat": "1", "enabled": "1", "originals": "1"}
+    assert client.post(f"/admin/devices/{dev['id']}/sync/second-target", data={**form, "direct": "1"}).status_code == 302
+    assert json.loads(_jobs(dev["id"])[-1]["payload_json"])["target"]["direct"] is True
+    # Off: not in the job at all, so a booth from before 18.11.2026 still takes the change.
+    assert client.post(f"/admin/devices/{dev['id']}/sync/second-target", data=form).status_code == 302
+    assert "direct" not in json.loads(_jobs(dev["id"])[-1]["payload_json"])["target"]
+    assert "direct" in second_target.FIELDS and de.STRINGS.keys() >= {"sync.second_target.f_direct",
+                                                                      "sync.second_target.flag_direct"}
+    assert en.STRINGS.keys() >= {"sync.second_target.f_direct", "sync.second_target.direct_help",
+                                 "sync.second_target.flag_direct"}
+
+
+def test_the_booth_report_of_direct_is_kept_and_shown(client, keypair):
+    from app import second_target
+    assert second_target.clean_report(_report(keypair, direct=True))["direct"] is True
+    assert second_target.clean_report(_report(keypair, host="x.example.org"))["direct"] is False
+    _admin(client)
+    dev = _booth({"second_target": _report(keypair, direct=True)})
+    html = client.get(f"/admin/devices/{dev['id']}/sync").get_data(as_text=True)
+    assert re.search(r'name="direct" value="1"\s+checked', html), "the form shows what the booth reports"
+
+
+def test_mcp_sets_direct_and_leaves_it_out_when_off(mcp, keypair):
+    token, tool = mcp
+    dev = _booth({"second_target": _report(keypair, host="ftp.example.org")})
+    sec = token("read manage secure")
+    answer = tool(sec, "set_second_target", booth_id=dev["id"], direct=True)
+    assert not answer["result"].get("isError"), answer
+    assert json.loads(_jobs(dev["id"])[-1]["payload_json"])["target"]["direct"] is True
+    assert "direkt hochladen" in json.dumps(answer, ensure_ascii=False)
+    answer = tool(sec, "set_second_target", booth_id=dev["id"], path="/x")
+    assert "direct" not in json.loads(_jobs(dev["id"])[-1]["payload_json"])["target"]
+    assert '\\"direct\\": false' in json.dumps(tool(sec, "get_second_target", booth_id=dev["id"])["result"])

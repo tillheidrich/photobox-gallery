@@ -1,6 +1,6 @@
-"""The second target (Picdrop, FTP, SFTP) gets every file of the event (17.11.2026).
+"""The second target (FTP/FTPS/SFTP) gets every file of the event (17.11.2026).
 
-The owner: "everything from the folder must flow into Picdrop". The queue
+The owner: "everything from the folder must reach the second target". The queue
 side of it: counts per target for the heartbeat, a one-time "send what this
 event already has" that copies exactly the files the other targets were
 given (never another event's, never twice), the target's own choices

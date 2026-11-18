@@ -109,10 +109,91 @@ def test_it_never_reboots_on_its_own(iss):
     assert "CloseApplications=no" in iss
 
 
-def test_no_canon_file_ever(iss):
+def _free_edition(text: str) -> str:
+    """The script as ISPP sees it without CameraSdkDir: every
+    ``#ifdef CameraSdkDir ... #endif`` block (with its #else part) left out."""
+    out, depth, skipping = [], 0, False
+    for line in text.splitlines():
+        s = line.strip()
+        if not skipping and s == "#ifdef CameraSdkDir":
+            skipping, depth = True, 1
+            continue
+        if skipping:
+            if s.startswith("#if"):
+                depth += 1
+            elif s == "#endif":
+                depth -= 1
+                if depth == 0:
+                    skipping = False
+            elif s == "#else" and depth == 1:
+                skipping = False      # the #else part is the free edition's
+                depth = 0
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
+def test_no_canon_file_in_the_free_edition(iss):
+    free = _free_edition(iss)
+    files = _section(free, "Files")
+    assert files and "EDSDK" not in files.upper() and "EDSIMAGE" not in files.upper()
+    assert "CameraSdkDir" not in files and "SdkTermsPage" not in _section(free, "Code")
+    assert 'OutputBaseFilename=Photobox-Setup-{#AppVersion}{#SetupSuffix}' in iss
+    assert '#define SetupSuffix ""' in free
+
+
+def test_the_edition_with_camera_sdk_is_refused_on_a_ci_runner(iss):
+    block = iss[iss.index("#ifdef CameraSdkDir"):]
+    assert re.search(r'#if GetEnv\("GITHUB_ACTIONS"\) != "" \|\| GetEnv\("CI"\) != ""\s*#error', block)
+    assert "#ifdef Edition\n  #error" in iss.replace("\r\n", "\n")
+
+
+def test_the_edition_with_camera_sdk_packs_the_libraries_and_the_terms(iss):
     files = _section(iss, "Files")
-    assert "EDSDK" not in files.upper() and "EDSIMAGE" not in files.upper()
-    assert '#if Edition != "community"' in iss and "#error" in iss
+    assert 'Source: "{#CameraSdkDir}\\EDSDK\\*.dll"; DestDir: "{app}\\EDSDK"' in files
+    assert 'Source: "{#CameraSdkDir}\\CAMERA-SDK-LICENCE.txt"; DestDir: "{app}"' in files
+    assert '#define SetupSuffix "-mit-Kamera-SDK"' in iss
+
+
+def test_the_camera_sdk_terms_must_be_accepted(iss):
+    code = iss.replace("\r\n", "\n")
+    assert "CreateOutputMsgMemoPage(NoticesPage.ID, CustomMessage('SdkTermsTitle')" in code
+    assert "SdkDecline.Checked := True;" in code            # not accepted by default
+    assert "WizardForm.NextButton.Enabled := SdkAccept.Checked;" in code
+    assert "(CurPageID = SdkTermsPage.ID) and not SdkAccept.Checked" in code
+    assert "LoadFromFile(ExpandConstant('{tmp}\\CAMERA-SDK-LICENCE.txt'))" in code
+
+
+def test_a_silent_install_never_accepts_the_camera_sdk_terms_tacitly(iss):
+    # /SILENT and /VERYSILENT skip the terms page. Canon's terms are then
+    # accepted only with ACCEPTSDKTERMS=1 on the command line; otherwise the
+    # setup stops before it copies anything, says why in the setup log and in
+    # its own log, and shows a message box unless /SUPPRESSMSGBOXES is given.
+    body = _function(iss, "InitializeSetup")
+    assert "#ifdef CameraSdkDir" in body
+    guard = body[body.index("#ifdef CameraSdkDir"):]
+    guard = guard[:guard.index("#endif")]
+    assert "WizardSilent()" in guard
+    assert "ExpandConstant('{param:ACCEPTSDKTERMS|0}') <> '1'" in guard
+    assert "Note(" in guard and "SuppressibleMsgBox(CustomMessage('SdkTermsSilent')" in guard
+    assert "Result := False" in guard
+    # The free edition has no such rule.
+    assert "ACCEPTSDKTERMS" not in _section(_free_edition(iss), "Code")
+    doc = (ROOT / "docs" / "INSTALLER.md").read_text(encoding="utf-8")
+    assert "/ACCEPTSDKTERMS=1" in doc
+    assert "gilt das wie bei der Lizenzseite als angenommen" not in doc
+
+
+def test_the_sdk_comments_state_the_real_load_order(iss):
+    # camera/edsdk.py: configured edsdk_dll, then the data folder (filled by
+    # --install-edsdk), then {app}\EDSDK, then a bundle inside the program.
+    # The setup's copy is not the first place the booth looks.
+    flat = " ".join(iss.split())
+    assert "where the booth looks first" not in flat
+    assert "configured edsdk_dll, then the data" in flat
+    doc = " ".join((ROOT / "docs" / "INSTALLER.md").read_text(encoding="utf-8").split())
+    assert "dort sucht die Box neben sich zuerst" not in doc
+    assert "Eintrag `edsdk_dll`, dann der Datenordner" in doc
 
 
 def test_the_data_folder_is_never_removed_without_asking(iss):

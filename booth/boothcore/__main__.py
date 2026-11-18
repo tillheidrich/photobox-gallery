@@ -282,6 +282,13 @@ def main() -> None:
         os.environ["BOOTH_CAMERA"] = args.camera
     from . import window as fenster
     from .config import Store, data_dir
+    # The edition with camera SDK: the portable .exe has no setup page, so
+    # its first start shows Canon's end-user terms once (camera_sdk_bundle).
+    from .camera_sdk_bundle import acknowledge_once
+    try:
+        acknowledge_once(data_dir())
+    except Exception:  # noqa: BLE001 - never a reason not to start
+        logging.getLogger("booth").warning("camera SDK terms could not be shown", exc_info=True)
     if args.window_selftest:
         raise SystemExit(fenster.selftest_cli(data_dir(), Store(data_dir()).local))
     from .app import Booth, create_app

@@ -1,4 +1,4 @@
-"""Galerie-Einstellungen je Event — angelehnt an Picdrop, zugeschnitten auf Fotobox-Gäste.
+"""Galerie-Einstellungen je Event — angelehnt an Auftragsgalerien, zugeschnitten auf Fotobox-Gäste.
 
 Alles hat einen sicheren Standard und ist einzeln abschaltbar. Gespeichert als
 JSON in ``events.gallery_json``; unbekannte Schlüssel werden verworfen.

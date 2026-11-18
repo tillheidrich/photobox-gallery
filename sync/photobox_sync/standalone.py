@@ -3,7 +3,7 @@
 * beobachtet einen oder mehrere Ordner (z. B. ``Bilder\\dslrBooth``)
 * nimmt dslrBooth-Trigger entgegen: ``http://127.0.0.1:8766/trigger`` — damit
   gehören Dateien eines Durchgangs zusammen (Session) und landen sofort statt nach Polling
-* lädt über die Outbox zur Photobox Gallery und optional zu NAS (SFTP) oder Picdrop (FTPS)
+* lädt über die Outbox zur Photobox Gallery und optional zu NAS (SFTP) oder einer Online-Galerie (FTPS)
 * meldet sich in der Galerie wie eine Box: Status, Event-Zuordnung, Aufträge
 * lokale Oberfläche für Status und Einstellungen: ``http://127.0.0.1:8766``
 """

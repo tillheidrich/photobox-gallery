@@ -58,7 +58,7 @@ bp = Blueprint("mcp", __name__)
 #: here, otherwise with the newest one.
 PROTOCOL_VERSIONS = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 PROTOCOL_VERSION = PROTOCOL_VERSIONS[0]
-SERVER_INFO = {"name": "photobox-gallery", "version": "0.9.1"}
+SERVER_INFO = {"name": "photobox-gallery", "version": "0.9.2"}
 
 # Werkzeug-Name -> (Beschreibung, Eingabeschema, Umfang, Funktion)
 TOOLS: Dict[str, Dict[str, Any]] = {}
@@ -495,6 +495,11 @@ _PROFILE_RETURN_FIELD = {"type": "string", "enum": list(PROFILE_RETURN),
       "{\"boomerang\": {\"frames\": true, \"frame_builtins\": [\"titel-unten\"], \"frame_templates\": "
       "[\"rahmen-….json\"], \"frame_none\": true, \"frame_default\": \"\", \"frame_guest_choice\": true}} "
       "(beide Listen leer = alle mitgelieferten; Namen aus list_templates.rahmen). "
+      "Dieselben Schlüssel unter gif rahmen jedes GIF-Bild mit den Rahmen des Boomerangs; gif.guest_choice "
+      "öffnet die Formatwahl nur für das GIF. "
+      "Boomerang-Dauer wählt der Gast: {\"boomerang\": {\"seconds_guest_choice\": true, "
+      "\"seconds_choices\": [2, 5, 10]}} (je 1–15 s, höchstens vier; der fertige Film läuft "
+      "min_total_seconds bis max_total_seconds, 15–30 s). "
       "Antwort: changed, values (gespeicherter Wert je angefasstem Feld, Punkt-Pfad), ignored_keys "
       "(übergebene Schlüssel, die das Profil nicht kennt — werden gemeldet, nicht still verworfen; "
       "ist nichts übernommen, kommt ein Fehler), profile_version; return=full gibt das ganze Profil. "
@@ -512,7 +517,7 @@ def _update_profile(booth_id: int, changes: dict, **opts) -> dict:
         raise ValueError(f"Keine Box mit der Nummer {booth_id}")
     if not isinstance(changes, dict) or not changes:
         raise ValueError("changes muss ein Objekt mit mindestens einem Eintrag sein")
-    for mode in ("boomerang", "video"):
+    for mode in ("boomerang", "video", "gif"):
         teil = changes.get(mode)
         if isinstance(teil, dict) and ("frame_templates" in teil or "frame_builtins" in teil):
             from app import frame_store                 # only frames the gallery lists reach the kiosk

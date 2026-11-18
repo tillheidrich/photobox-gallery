@@ -61,7 +61,7 @@ JOB_TYPES = {
     # The booth's second upload target (app/second_target.py): refused by the
     # booth unless allowed there; the password travels sealed to the booth's
     # key, and the payload is emptied once the booth answered or the job expired.
-    "set_second_target": "Zweites Ziel einstellen (Picdrop, FTP, SFTP)",
+    "set_second_target": "Zweites Ziel einstellen (FTP/FTPS/SFTP)",
     "check_second_target": "Zweites Ziel prüfen",
     "backfill_second_target": "Bisherige Aufnahmen dieses Events an das zweite Ziel nachsenden",
     # A different SFTP host key, compared by a person, accepted on purpose (A-3c).
@@ -306,9 +306,12 @@ DEFAULT_PROFILE: Dict[str, Any] = {
     "review_seconds": 12,
     # layout: crop by default (owner's decision 15.11.2026); "blur" stays when stored.
     # Frames ("Rahmen") for boomerang and video: see boothcore/config.py.
+    # Lengths the guest may choose ("seconds_choices", 18.11.2026): see boothcore/config.py.
     "boomerang": {"format": "9:16", "layout": "crop", "source": "live", "seconds": 2.0, "fps": 20, "loops": 3, "width": "auto", "max_width": 1080, "scale": "native", "guest_choice": False, "print": False,
                   "frames": False, "frame_templates": [], "frame_builtins": [], "frame_none": True,
-                  "frame_default": "", "frame_guest_choice": True},
+                  "frame_default": "", "frame_guest_choice": True,
+                  "seconds_choices": [], "seconds_guest_choice": False,
+                  "min_total_seconds": 15, "max_total_seconds": 30},
     "video": {"format": "9:16", "layout": "blur", "source": "live", "seconds": 8, "fps": 25, "width": "auto", "max_width": 1080, "scale": "native",
               "frames": False, "frame_templates": [], "frame_builtins": [], "frame_none": True,
               "frame_default": "", "frame_guest_choice": True},
@@ -321,10 +324,20 @@ DEFAULT_PROFILE: Dict[str, Any] = {
             # Aufnahmen, ohne dass der Gast ein zweites Mal posieren muss. Der
             # Druck bleibt die Collage; das GIF ist die Zugabe für das Telefon.
             # Erst ab genügend Einzelbildern, sonst zuckt es nur.
-            "from_collage": False, "from_collage_min": 4,
+            # On by default since 18.11.2026 (owner: "a collage is always also
+            # saved as GIF/video unless it is deactivated"); from two pictures on.
+            "from_collage": True, "from_collage_min": 2,
             # The sheet a GIF run is printed on: one of the own templates (file
             # name), "" = the built-in sheet for that number of pictures.
             "print_template": "",
+            # Set up like the boomerang (18.11.2026): "guest_choice" opens the
+            # format choice for the GIF alone (guest_choice.format does it for
+            # all); "format" above is the GIF's own when nobody chooses. The
+            # frame keys are the boomerang's, and the frames offered are those
+            # made for the boomerang; off, the GIF is as before.
+            "guest_choice": False,
+            "frames": False, "frame_templates": [], "frame_builtins": [], "frame_none": True,
+            "frame_default": "", "frame_guest_choice": True,
             # Dasselbe GIF zusätzlich als Boomerang fürs Handy. Eigene Maße:
             # Aufgenommen wird meist 4:5, gebraucht wird 9:16 — und dabei darf
             # niemand am Rand wegfallen, deshalb „blur" als Voreinstellung
@@ -457,7 +470,7 @@ DEFAULT_PROFILE: Dict[str, Any] = {
               "positions": {},
               # Colour when no start media is set ("" = blurred live picture)
               # and a flat dim in percent; -1 keeps the old gradient.
-              "bg_color": "", "dim": -1,
+              "bg_color": "", "text_tone": "auto", "dim": -1,
               # Own start picture: title and status line can go (the operator
               # notice stays as a dot); fit = drift | cover | contain.
               "show_title": True, "show_status": True, "fit": "drift"},
@@ -559,7 +572,10 @@ DEFAULT_PROFILE: Dict[str, Any] = {
         "keys_start": ["Space", "Enter", "NumpadEnter", "PageDown", "ArrowRight", "F13"],
         "keys_back": ["Escape"],      # zurück zum Start
         "keys_print": ["KeyP"],       # Drucken auf dem Ergebnisbildschirm
-        "mouse_start": "off",         # off | left | right | middle | any — „left" ist der Maus-Buzzer
+        # off | left | right | middle | any. "left" by default since 18.11.2026
+        # (owner: the buzzer is a mouse and must work without a setting); a
+        # finger is never taken for it (pressRule), "off" makes the mouse a mouse.
+        "mouse_start": "left",
         "mouse_swallow": True,        # Buzzer-Klick nicht zusätzlich an die Schaltfläche darunter geben
         "hide_cursor": True,          # Mauszeiger ausblenden — bei einem Maus-Buzzer steht er sonst im Bild
         # On-screen keyboard for every text field of the booth's pages (osk.js):
@@ -2420,6 +2436,7 @@ MEDIA_FIELDS = (
     "sounds.countdown", "sounds.shutter", "sounds.done", "sounds.print",
     "theme.font_file", "lock.image", "collage_templates", "backgrounds",
     "chroma.backgrounds", "gif.print_template", "boomerang.frame_templates", "video.frame_templates",
+    "gif.frame_templates",
 )
 
 
@@ -2473,7 +2490,7 @@ def assets_for_profile(profile: Dict[str, Any]) -> List[Dict[str, Any]]:
     wanted = set(media_files(profile))
     wanted |= _template_media(list(profile.get("collage_templates") or [])
                               + [str((profile.get("gif") or {}).get("print_template") or "")]
-                              + [str(x) for m in ("boomerang", "video")
+                              + [str(x) for m in ("boomerang", "video", "gif")
                                  for x in ((profile.get(m) or {}).get("frame_templates") or [])])
     # LUT-Dateien: die Box braucht jede, die sie anbieten oder fest anwenden soll.
     luts = profile.get("luts") or {}

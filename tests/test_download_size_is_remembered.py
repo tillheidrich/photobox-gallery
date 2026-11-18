@@ -1,5 +1,11 @@
 """The size a guest picks for a download is remembered, and can be changed again (17.11.2026).
 
+Since 18.11.2026 a download no longer asks first: without a choice the guest
+gets the best size the event allows (the original if offered), and the sheet
+opens only from the "Download-Größe: … · ändern" button next to the count.
+The first version asked on the first download with the 640 px line on top and
+focused; that pick stuck and a print came down as ~23 KB.
+
 The size sheet (#dlSheet) says "Eure Auswahl wird gemerkt." and the choice is
 kept in localStorage under ``pb-dl-size``. Checked in headless Chrome against a
 real gallery server (tests/chrome_cdp.py): the tile button, the lightbox button
@@ -36,7 +42,7 @@ def test_selection_and_lightbox_ask_the_same_remembered_size():
                      r"selection\.zip\?ids=.*?&size=\$\{encodeURIComponent\(size\)\}", src, re.S)
     assert "downloadPhoto(d.url, d.name, d.id)" in src          # the lightbox button
     assert "localStorage.setItem(DL_KEY, size); } catch" in src   # private mode must not break a download
-    assert "localStorage.getItem(DL_KEY)" in src and "catch (e) { return ''; }" in src
+    assert "localStorage.getItem(DL_KEY)" in src and "catch (e) { /* private mode */ }" in src
 
 
 @pytest.fixture(scope="module")
@@ -69,7 +75,7 @@ def _open(b, g, before=""):
 
 
 def _tile_download(b):
-    # Since 17.11.2026 a tile carries no buttons (Picdrop-style); the download
+    # Since 17.11.2026 a tile carries no buttons (as proofing galleries do it); the download
     # of a picture is the large view's button. Same dlAskSize() path as before.
     b.eval("(() => { if (!document.getElementById('lightbox').classList.contains('open'))"
            " document.querySelector('.photo-item .photo-open')"
@@ -77,6 +83,14 @@ def _tile_download(b):
     time.sleep(0.5)
     b.eval("document.getElementById('lbDownload').click()")
     time.sleep(0.4)
+
+
+def _change(b):
+    # The button sits next to the photo count, behind the large view.
+    b.eval("window.pbLightboxClose && window.pbLightboxClose()")
+    time.sleep(0.3)
+    b.eval("document.getElementById('dlChange').click()")
+    time.sleep(0.3)
 
 
 def _pick(b, size):
@@ -92,13 +106,20 @@ def _last(b):
 pytestmark = pytest.mark.skipif(CHROME is None, reason="no Chrome on this machine")
 
 
-def test_the_first_download_asks_the_next_ones_do_not_and_a_reload_remembers(gallery):
+def test_the_first_download_takes_the_best_size_a_change_sticks_and_a_reload_remembers(gallery):
     with Browser() as b:
         _open(b, gallery)
         b.eval("localStorage.removeItem('pb-dl-size')")
         _tile_download(b)
+        assert b.eval("document.getElementById('dlSheet').hidden") is True, "a download asked first"
+        assert "size=original" in _last(b)
+        _change(b)
         _pick(b, "web")
         assert b.eval("localStorage.getItem('pb-dl-size')") == "web"
+        b.eval("window.pbLightboxClose && window.pbLightboxClose()")
+        time.sleep(0.3)
+        b.eval("window.__dl.length = 0")
+        _tile_download(b)
         assert "size=web" in _last(b) and f"/photo/{gallery['mid']}/download" in _last(b)
         b.eval("window.__dl.length = 0")
         _tile_download(b)
@@ -125,8 +146,10 @@ def test_there_is_a_visible_way_to_change_the_choice(gallery):
     with Browser() as b:
         _open(b, gallery)
         b.eval("localStorage.removeItem('pb-dl-size')")
-        assert b.eval("document.getElementById('dlChange').hidden") is True      # nothing chosen yet
-        _tile_download(b)
+        shown = b.eval("document.getElementById('dlChange').textContent")
+        assert b.eval("document.getElementById('dlChange').hidden") is False     # nothing chosen: the best size
+        assert "Original" in shown, shown
+        _change(b)
         _pick(b, "web")
         shown = b.eval("(() => { const c = document.getElementById('dlChange'); const r = c.getBoundingClientRect();"
                        " return {hidden: c.hidden, text: c.textContent.trim(), h: r.height}; })()")
@@ -151,10 +174,12 @@ def test_there_is_a_visible_way_to_change_the_choice(gallery):
 def test_a_browser_that_stores_nothing_still_downloads(gallery):
     with Browser() as b:
         _open(b, gallery, before=NO_STORAGE)
-        _tile_download(b)
-        _pick(b, "original")
+        _tile_download(b)                       # nothing stored, nothing asked: the best size
         assert "size=original" in _last(b)
-        b.eval("window.__dl.length = 0")
-        _tile_download(b)                       # nothing remembered: it asks again, and works again
+        b.eval("window.pbLightboxClose && window.pbLightboxClose()")
+        time.sleep(0.3)
+        _change(b)                              # a change still holds for this visit
         _pick(b, "web")
+        b.eval("window.__dl.length = 0")
+        _tile_download(b)
         assert "size=web" in _last(b)

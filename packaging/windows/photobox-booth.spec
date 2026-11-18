@@ -3,10 +3,11 @@
 # Eine Datei, die alles mitbringt: Kiosk-Oberfläche, LUTs, ffmpeg, Sync.
 # Bauen: siehe build.ps1 im selben Ordner (läuft auf dem Windows-Rechner).
 #
-# Nicht enthalten und nie enthalten: Canon EDSDK. Die DLLs kommen von Canon und
-# landen im Datenordner der Box unter EDSDK\ — dorthin legt sie
-# „PhotoboxBooth.exe --install-edsdk <entpackter SDK-Ordner>“, und dort sucht die
-# Box zuerst. Ein Ordner EDSDK\ neben der .exe wird weiterhin gefunden.
+# Free edition (every build from this repository, every CI build): no file of
+# Canon's EDSDK. The operator brings it with
+# "PhotoboxBooth.exe --install-edsdk <SDK folder>" (data folder, EDSDK\), or
+# a folder EDSDK\ next to the .exe. Only the edition with camera SDK, built
+# by hand outside CI, adds the libraries - see PHOTOBOX_CAMERA_SDK_STAGE below.
 import os
 from pathlib import Path
 
@@ -27,6 +28,11 @@ datas = [
     (str(BOOTH / "boothcore" / "media" / "motion_frames.json"), "boothcore/media"),
 ]
 datas += collect_data_files("imageio_ffmpeg")        # bringt ffmpeg mit
+# The CA bundle for outgoing TLS (photobox_sync.trust): FTPS and SMTP trust
+# the system roots plus certifi's cacert.pem, because the Windows store lacks
+# roots the PC never fetched. PyInstaller's certifi hook packs it too when
+# httpx pulls certifi in; said here so a build can never ship without it.
+datas += collect_data_files("certifi")
 # The commit this build is made from, as boothcore/BUILD_COMMIT. Whoever gets
 # the booth gets the right to the source of exactly this build (AGPL); the
 # admin card shows the commit, and the booth itself never runs git.
@@ -85,6 +91,27 @@ for _dist in ('fastapi', 'uvicorn', 'python-multipart', 'pillow', 'qrcode', 'htt
     except _NotInstalled:
         print(f"note: {_dist} is not installed here, its licence files are not packed")
 
+# The edition with camera SDK (website only, never CI): build.ps1
+# -WithCameraSdk stages Canon's runtime libraries OUTSIDE the repository
+# (camera_sdk_edition.py stage) and names that folder here. They go in as
+# data, byte for byte, into EDSDK\ inside the program, with the licence file
+# beside them; boothcore/camera_sdk_bundle.py finds them there. Without the
+# variable - every free build, every CI build - nothing of this happens.
+_camera_sdk_stage = os.environ.get("PHOTOBOX_CAMERA_SDK_STAGE", "").strip()
+if _camera_sdk_stage:
+    import importlib.util as _ilu
+    _ed_spec = _ilu.spec_from_file_location("photobox_camera_sdk_edition",
+                                            ROOT / "packaging" / "windows" / "camera_sdk_edition.py")
+    _edition = _ilu.module_from_spec(_ed_spec)
+    _ed_spec.loader.exec_module(_edition)
+    _edition.refuse_ci()
+    _stage = Path(_camera_sdk_stage)
+    _edition.refuse_inside(_stage, "PHOTOBOX_CAMERA_SDK_STAGE", ROOT)
+    for _n in (_stage / "camera-sdk-files.txt").read_text(encoding="ascii").split():
+        datas.append((str(_stage / "EDSDK" / _n), "EDSDK"))
+    datas.append((str(_stage / "CAMERA-SDK-LICENCE.txt"), "."))
+    print(f"note: edition with camera SDK - libraries from {_stage}")
+
 # Kamera- und Druckerbackends werden zur Laufzeit nach Namen geladen —
 # PyInstaller sieht das nicht, also hier von Hand.
 # `collect_submodules("boothcore")` lieferte hier immer eine leere Liste:
@@ -128,35 +155,19 @@ except ImportError:
 
 
 # Version resource: Explorer, the Task Manager and "Apps & Features" show a
-# named program by a known publisher instead of a bare "PhotoboxBooth.exe".
-def _version_file():
-    import re
-    import tempfile
-    text = (BOOTH / "boothcore" / "__init__.py").read_text(encoding="utf-8")
-    version = re.search(r'__version__\s*=\s*"([^"]+)"', text).group(1)
-    nums = [int(n) for n in re.findall(r"\d+", version)[:4]] + [0, 0, 0, 0]
-    four = tuple(nums[:4])
-    fields = {"CompanyName": "Till Heidrich", "FileDescription": "Photobox - Fotobox-Programm",
-              "FileVersion": version, "InternalName": "PhotoboxBooth", "LegalCopyright": "AGPL-3.0-or-later",
-              "OriginalFilename": "PhotoboxBooth.exe", "ProductName": "Photobox", "ProductVersion": version}
-    strings = ",\n".join(f"          StringStruct('{k}', '{v}')" for k, v in fields.items())
-    body = f"""VSVersionInfo(
-  ffi=FixedFileInfo(filevers={four}, prodvers={four}, mask=0x3f, flags=0x0, OS=0x40004,
-                    fileType=0x1, subtype=0x0, date=(0, 0)),
-  kids=[
-    StringFileInfo([StringTable('040704B0', [
-{strings}
-    ])]),
-    VarFileInfo([VarStruct('Translation', [0x0407, 1200])])
-  ]
-)
-"""
-    path = Path(tempfile.mkdtemp(prefix="photobox-version-")) / "version.txt"
-    path.write_text(body, encoding="utf-8")
-    return str(path)
+# named program by a known publisher instead of a bare "PhotoboxBooth.exe",
+# and a code signing service checks product name and version
+# (version_resource.py, shared with the sync spec).
+def _version_resource():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "photobox_version_resource", ROOT / "packaging" / "windows" / "version_resource.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
-VERSION_FILE = _version_file()
+VERSION_FILE = _version_resource().write(ROOT, "PhotoboxBooth")
 
 a = Analysis(
     [str(ROOT / "packaging" / "windows" / "launch_booth.py")],

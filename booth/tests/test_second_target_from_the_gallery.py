@@ -1,6 +1,6 @@
 """The second upload target set from the gallery, as the booth sees it (17.11.2026).
 
-The operator wants to set "Zweites Ziel im Netz" (Picdrop, FTP, SFTP) from
+The operator wants to set "Zweites Ziel im Netz" (FTP/FTPS/SFTP) from
 the gallery's page of the booth. The booth's side: no switch at the booth
 any more (owner's decision, 17.11.2026 evening); one narrow job that changes
 only the card's fields and checks them again; a password that arrives
@@ -236,23 +236,23 @@ def test_the_second_target_gets_sheet_singles_and_originals_whatever_the_gallery
     booth.store.profile["upload_originals"] = False          # and no camera originals
     booth.store.save_local({"targets": [{"name": "picdrop", **_target()}]})
     s = _run(booth, "collage", "grid4")
-    gallery, picdrop = _rows(booth, "gallery"), _rows(booth, "picdrop")
-    assert (s.uid, "collage", "web") not in gallery and (s.uid, "collage", "web") in picdrop
-    assert (s.uid, "collage", "original") in picdrop
-    assert sum(1 for u, k, v in picdrop if k == "photo") == 2 * s.shots_needed      # each single, web + full
-    assert sum(1 for u, k, v in picdrop if k == "original") == s.shots_needed       # camera originals
+    gallery, second = _rows(booth, "gallery"), _rows(booth, "picdrop")
+    assert (s.uid, "collage", "web") not in gallery and (s.uid, "collage", "web") in second
+    assert (s.uid, "collage", "original") in second
+    assert sum(1 for u, k, v in second if k == "photo") == 2 * s.shots_needed      # each single, web + full
+    assert sum(1 for u, k, v in second if k == "original") == s.shots_needed       # camera originals
     assert not any(k == "original" for u, k, v in gallery)
-    assert not any(v == "print" for u, k, v in picdrop)                              # print sheets: off by default
+    assert not any(v == "print" for u, k, v in second)                              # print sheets: off by default
 
 
 def test_gif_films_boomerang_and_print_sheets_reach_it(booth):
     booth.store.profile.setdefault("gif", {}).setdefault("boomerang", {})["enabled"] = True
     booth.store.save_local({"targets": [{"name": "picdrop", **_target(print_sheets=True)}]})
     s = _run(booth, "gif")
-    picdrop = _rows(booth, "picdrop")
-    assert (s.uid, "gif", "web") in picdrop and (f"{s.uid}.mp4", "video", "web") in picdrop
+    second = _rows(booth, "picdrop")
+    assert (s.uid, "gif", "web") in second and (f"{s.uid}.mp4", "video", "web") in second
     if s.boom:
-        assert (f"{s.uid}.boom", "boomerang", "web") in picdrop
+        assert (f"{s.uid}.boom", "boomerang", "web") in second
     s2 = _run(booth, "photo")
     if s2.print_file and Path(s2.print_file) != Path(s2.result):
         assert (f"{s2.uid}.print", "print", "print") in _rows(booth, "picdrop")
@@ -338,3 +338,36 @@ def test_the_booth_and_the_gallery_check_the_same_fields_and_limits():
             if node.targets[0].id in ("TYPES", "FIELDS", "LIMITS", "NAMES"):
                 there[node.targets[0].id] = ast.literal_eval(node.value)
     assert there == {"TYPES": here.TYPES, "FIELDS": here.FIELDS, "LIMITS": here.LIMITS, "NAMES": here.NAMES}
+
+
+# ── Direct upload for live-push accounts (rule L-S5, 18.11.2026) ─────────
+
+def test_direct_is_taken_from_the_job_reported_and_off_when_the_job_leaves_it_out(booth):
+    from boothcore.second_target import find
+    ok, text = _job(booth, "set_second_target", {"v": 1, "target": _target(direct=True), **_seal(booth)})
+    assert ok, text
+    _, entry = find(booth.store.local)
+    assert entry["direct"] is True and booth.second_target.report()["direct"] is True
+    assert any("direct" in e["message"] for e in booth.logbuf.take(50))
+    # A gallery sends "direct" only while it is on: a job without it switches it off.
+    ok, text = _job(booth, "set_second_target", {"v": 1, "target": _target()})
+    assert ok, text
+    _, entry = find(booth.store.local)
+    assert entry["direct"] is False and booth.second_target.report()["direct"] is False
+    ok, text = _job(booth, "set_second_target", {"v": 1, "target": _target(direct="ja")})
+    assert not ok and "direct" in text
+
+
+def test_the_admin_card_offers_direct_upload_with_a_line_of_help():
+    html = page(WEB / "admin.html")
+    assert 'id="zt_direct"' in html and "Direkt hochladen, ohne Zwischennamen" in html
+    js = (WEB / "static" / "admin-page.js").read_text(encoding="utf-8")
+    assert '$("zt_direct").checked = !!(zweites && zweites.direct)' in js
+    assert 'direct: $("zt_direct").checked' in js
+
+
+def test_a_refused_final_name_is_said_as_the_account_refusing_it():
+    from boothcore.app import ziel_fehler_text
+    raw = "Das Konto auf dem Server nimmt die Datei a.heic nicht an: … (550 Permission denied.)"
+    assert ziel_fehler_text(raw) == raw
+    assert "nicht beschreibbar" in ziel_fehler_text("550 Permission denied.")

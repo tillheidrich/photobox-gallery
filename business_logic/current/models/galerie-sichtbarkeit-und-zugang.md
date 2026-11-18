@@ -231,6 +231,6 @@ Festgehalten durch `tests/test_lightbox_tags_exif.py`.
 | `--client` | Kunde anlegen oder finden, alle importierten Galerien zuordnen |
 | `--ids` (CSV: `ordnerpfad`, `kennung`, optional `titel`) | Setzt die alten Kennungen (Abschnitt 14) und auf Wunsch den Titel |
 | `--dry-run` | Prüft alles (auch die Typprüfung), schreibt nichts |
-| Netz | Kein Abruf bei Picdrop, keine Zugangsdaten |
+| Netz | Kein Abruf bei einer fremden Galerie, keine Zugangsdaten |
 
 Festgehalten durch `tests/test_import_folder.py`.

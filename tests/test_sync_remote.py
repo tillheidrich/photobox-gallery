@@ -187,10 +187,10 @@ def test_errors_from_the_event_pc_show_up_in_the_gallery_log(client, admin_clien
 
     dev = _device(client)
     app = SyncApp(base=tmp_path / "data", start_threads=False)
-    logging.getLogger("photobox.sync").warning("Ziel picdrop nicht erreichbar")
+    logging.getLogger("photobox.sync").warning("Ziel nas nicht erreichbar")
     logging.getLogger("photobox.sync").error("Nur noch 1.2 GB frei")
     for _ in range(4):
-        logging.getLogger("photobox.sync").warning("Ziel picdrop nicht erreichbar")   # wird gefaltet
+        logging.getLogger("photobox.sync").warning("Ziel nas nicht erreichbar")   # wird gefaltet
 
     entries = app.agent.logs()
     assert len(entries) == 2 and "(5×)" in entries[0]["message"]
@@ -199,9 +199,9 @@ def test_errors_from_the_event_pc_show_up_in_the_gallery_log(client, admin_clien
                 headers={"X-API-Key": dev["api_key"]})
 
     page = admin_client.get(f"/admin/devices/{dev['id']}/logs").get_data(as_text=True)
-    assert "picdrop nicht erreichbar" in page and "1.2 GB frei" in page
+    assert "nas nicht erreichbar" in page and "1.2 GB frei" in page
     nur_fehler = admin_client.get(f"/admin/devices/{dev['id']}/logs?level=error").get_data(as_text=True)
-    assert "1.2 GB frei" in nur_fehler and "picdrop nicht erreichbar" not in nur_fehler
+    assert "1.2 GB frei" in nur_fehler and "nas nicht erreichbar" not in nur_fehler
 
     from app import ecosystem
     assert ecosystem.device_log_counts(dev["id"])["error"] == 1

@@ -50,6 +50,7 @@ same commit.
 ```bash
 pip install -r requirements.txt -c constraints.txt
 (cd booth && pip install -r requirements.txt -c ../constraints.txt)   # -e ../sync is cwd-relative
+pip install -r requirements-dev.txt -c constraints.txt   # test-only; every suite needs all of the above
 python -m pytest tests -q          # gallery   (must stay green)
 cd booth && python -m pytest tests -q
 cd sync  && python -m pytest tests -q
@@ -81,8 +82,12 @@ finished, whatever the diff looks like.
 These are not style preferences. A pull request that breaks one of them is
 closed, however good the code is.
 
-1. **No Canon EDSDK in the repository, ever.** It is under NDA. The booth loads
-   `EDSDK.dll` from a folder the operator provides. Same for any other vendor
+1. **No Canon EDSDK in the repository, ever.** It is Canon's proprietary SDK,
+   not open source. The booth loads `EDSDK.dll` from a folder the operator
+   provides, or from the edition with camera SDK, which the maintainer builds
+   outside this repository and outside CI (`build.ps1 -WithCameraSdk`, see
+   `docs/INSTALLER.md`); its guards (`tools/check_hygiene.py`,
+   `packaging/windows/camera_sdk_edition.py`) must keep passing. Same for any other vendor
    SDK that is not freely redistributable. The AGPL side of loading it is
    settled by the section 7 permission in `LICENSE-EXCEPTION`; do not edit
    `LICENSE` itself, it is the unmodified AGPL text.
@@ -131,6 +136,33 @@ closed, however good the code is.
 * If you added an asset kind, extend `ASSET_KINDS` and the allowed extensions.
 * One commit, a message that says what changes for a user and why. Not "fix
   stuff", not a list of files.
+
+## Before a release
+
+Green suites are not enough: the 0.9.1 gallery shipped a lightbox arrow
+under the picture, two iPhone buttons doing the same thing, a 23 KB default
+download and a draft's title in its link preview, all with every test green.
+Before a version number moves (or a build goes to a real event), tick each
+line and record the result as one dated block in `docs/RELEASE-CHECKS.md`
+(who, what was checked on which device, findings, commit):
+
+- [ ] **Independent review of the diff since the last recorded review**
+      (`git diff <last reviewed commit>..HEAD`), by someone or an agent that
+      did not write it. Findings get a fix or an issue, not a shrug.
+- [ ] **Guest on a phone:** scan a run's QR code, open the gallery, open a
+      picture, swipe both ways, download, share, change the size, close.
+- [ ] **Link sharer:** paste a gallery link, a run link and a share link into a
+      chat app; check title, picture and count of the preview. A draft's link
+      must look like an unknown one.
+- [ ] **Privacy-minded guest:** try a draft's, a password gallery's and an
+      unknown name's addresses, og.jpg and downloads; nothing may tell them
+      apart beyond what `SECURITY.md` says.
+- [ ] **First-time installer:** follow `README.md` / `docs/INSTALL-NAS.md` on
+      a clean machine to a working gallery and a paired mock booth.
+- [ ] **Real phone, large view:** an iPhone (Safari) and an Android phone
+      (Chrome): both arrows fully visible, close and bottom bar clear of the
+      notch and home bar, download saves the full-size file, share opens the
+      share sheet. Headless Chrome in the tests is not Safari.
 
 ## What we will not merge
 

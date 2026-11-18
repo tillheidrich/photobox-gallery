@@ -155,6 +155,6 @@ def test_the_session_page_links_the_full_proof_not_half_of_it(client):
         con.close()
         code = ecosystem.session_path(event, uid).rsplit("/", 1)[-1]
     seite = client.get(f"/p/{code}").get_data(as_text=True)
-    assert "/download?size=large" in seite, "Die Seite zeigt die Knöpfe nicht"
+    assert "/download?size=original" in seite, "Die Seite zeigt die Knöpfe nicht"   # best allowed since 18.11.2026
     assert f"code={code}" in seite, "Der Nachweis ist unvollständig verlinkt"
     assert f"code={uid}&" not in seite

@@ -1,0 +1,19 @@
+{# "Box bei diesem Event": which booths are on the event and whether they took
+   its settings, plus where the second upload target lives. The second target
+   is set per booth (sync page); a folder and on/off per event needs a booth
+   update and is not built yet, so this says so instead of offering a field. #}
+<style>
+  .evb{margin:0 0 1rem;padding:12px 14px;border-radius:10px;border:1px solid var(--c-border,#e5e5e5)}
+  .evb h3{font-size:.875rem;font-weight:600;margin:0 0 .5rem}
+  .evb-list{margin:0;padding:0 0 0 1.1rem;font-size:.875rem;line-height:1.6}
+  .evb-ok{color:#067647} .evb-bad{color:#b42318}
+  .evb .form-hint{margin:.5rem 0 0}
+</style>
+<section class="evb" data-event-booths data-live-url="{{ url_for('admin.event_booths_state', event_id=event.id) }}"
+         data-live-busy="{{ 1 if eb.busy else 0 }}" aria-live="polite">
+  <h3>{{ t('events.booths.title') }}</h3>
+  {% include "admin/events/_booths_live.html" %}
+  <p class="form-hint">{{ t('events.booths.second_target') }}
+    {% for b in eb.booths %}<a href="/admin/devices/{{ b.id }}/sync#zweites-ziel">{{ t('events.booths.second_target_link', name=b.name) }}</a>{% if not loop.last %} · {% endif %}{% else %}<a href="/admin/devices">{{ t('events.booths.to_booths') }}</a>{% endfor %}</p>
+</section>
+<script src="/static/js/live-block.js" defer></script>

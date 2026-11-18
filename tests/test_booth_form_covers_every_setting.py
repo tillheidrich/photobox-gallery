@@ -61,8 +61,14 @@ def _fields():
         for k in ("format", "layout", "seconds", "fps", "scale", "source"):
             f[f"{clip}.{k}"] = f"{clip}_{k}"
     f.update({"boomerang.loops": "boomerang_loops", "boomerang.guest_choice": "boomerang_guest_choice",
-              "boomerang.print": "boomerang_print"})
-    for clip in ("boomerang", "video"):          # frames ("Rahmen", 17.11.2026)
+              "boomerang.print": "boomerang_print",
+              # The lengths the guest may choose (18.11.2026).
+              "boomerang.seconds_choices": "boomerang_seconds_choices",
+              "boomerang.seconds_guest_choice": "boomerang_seconds_guest_choice",
+              "boomerang.min_total_seconds": "boomerang_min_total",
+              "boomerang.max_total_seconds": "boomerang_max_total"})
+    f["gif.guest_choice"] = "gif_guest_choice"     # the GIF set up like the boomerang (18.11.2026)
+    for clip in ("boomerang", "video", "gif"):   # frames ("Rahmen", 17.11.2026; GIF 18.11.2026)
         for k in ("frames", "frame_templates", "frame_builtins", "frame_none", "frame_default",
                   "frame_guest_choice"):
             f[f"{clip}.{k}"] = f"{clip}_{k}"
@@ -116,7 +122,7 @@ def _fields():
         "layout": "start_layout", "button_size": "button_size", "show_gallery_button": "show_gallery_button",
         "show_mode_hints": "show_mode_hints", "steps": "start_steps", "show_last": "start_last",
         "show_qr": "start_qr", "logo": "start_logo", "logo_size": "start_logo_size",
-        "bg_color": "start_bg_color", "dim": "start_dim", "show_title": "start_show_title",
+        "bg_color": "start_bg_color", "text_tone": "start_text_tone", "dim": "start_dim", "show_title": "start_show_title",
         "show_status": "start_show_status", "fit": "start_fit", "gallery_style": "gallery_style",
         "corner_size": "corner_size"}.items()})
     for screen in ("setup", "capture", "result"):

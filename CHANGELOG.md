@@ -6,7 +6,338 @@ private repository; this file says what changed for the people who run it.
 
 ## Unreleased
 
-Nothing yet.
+## 0.9.2 — 2026-11-18
+
+### Windows: two editions, both free of charge
+
+* From 0.9.2 there are two Windows editions of the same program. The **free
+  edition** is built from this repository alone, is attached to the GitHub
+  releases, is the only one built in CI and the only one that will be
+  code-signed; it contains no file of Canon's SDK, as before. The **edition
+  with camera SDK** is offered only on the project website: the same program
+  plus the runtime libraries of the Canon EOS Digital SDK, so a Canon EOS
+  camera works without the `--install-edsdk` step. Offered as a setup only:
+  `Photobox-Setup-<version>-mit-Kamera-SDK.exe`,
+  `SHA256SUMS-mit-Kamera-SDK.txt` (the setup alone),
+  `THIRD-PARTY-NOTICES-mit-Kamera-SDK.txt`. It is built by the maintainer with
+  `build.ps1 -Installer -WithCameraSdk <SDK Dll folder>` from a folder outside
+  the repository, never on a CI runner, and stays unsigned. Canon's files are
+  copied unmodified (checked by checksum), are not under the AGPL and come
+  with end-user terms of their own (`CAMERA-SDK-LICENCE.txt`, German and
+  English): the setup shows them on a second licence page that must be
+  accepted; the booth's "Über" card lists the SDK as a
+  separate proprietary component. `THIRD-PARTY-NOTICES.txt` of that edition
+  has a section for it. Guards: build.ps1, the PyInstaller spec, the setup
+  script and `packaging/windows/camera_sdk_edition.py` refuse a CI runner and
+  any folder inside the repository; the free files are checked for Canon
+  files before and after the second build; a test fails if a workflow names
+  the switch. The former `Edition` define of the setup is gone.
+* The booth recognises a bundled SDK by itself (`boothcore/camera_sdk_bundle.py`):
+  automatic camera choice picks the Canon SDK, the self-check calls it ready.
+  The free edition behaves as before; `--install-edsdk` stays.
+* Review of the edition with camera SDK (18.11.2026): a silent install
+  (`/SILENT`, `/VERYSILENT`) no longer accepts Canon's terms tacitly - it stops
+  unless `/ACCEPTSDKTERMS=1` is given, and says why in the setup log and in
+  `installer.log`. Only a bundle inside the program or the setup's own
+  installation folder (with its uninstaller data) counts as the edition; an
+  `EDSDK` folder and a licence file next to some other `.exe` do not, and the
+  booth no longer writes `CAMERA-SDK-LICENCE.txt` next to itself (the copy
+  goes to the data folder). `build.ps1` clears a left-over
+  `PHOTOBOX_CAMERA_SDK_STAGE` before it builds and checks the free programs
+  for Canon files before it signs anything; the portable booth with camera
+  SDK is still built for the check, but lies in `nicht-veroeffentlichen\`
+  and is not in the checksum file. `--doctor` and "Prüfen" name the
+  `EDSDK.dll` that was actually loaded; the documented load order is now the
+  real one: `edsdk_dll`, data folder, program folder, bundle.
+* Voluntary support: a "Support the project" link (PayPal) in the README and
+  `.github/FUNDING.yml`. Nothing in the booth or the gallery asks for money.
+
+### Wording
+
+* User-visible texts, help and documentation name the booth's second upload
+  target neutrally ("Online-Galerie per FTP/FTPS/SFTP", "an FTP-fed proofing
+  gallery") instead of a service's name. Behaviour is unchanged, including
+  "everything into one folder" and the name under which existing booths keep
+  their target. `tools/check_hygiene.py` stops the name from coming back.
+
+### Changed
+
+* Booth: the guest can choose how long a boomerang records. Switch on
+  `boomerang.seconds_guest_choice` and list two to four lengths in
+  `boomerang.seconds_choices` (1–15 s each, e.g. 2, 5, 10; with the camera's
+  own film at most 10 s): the set-up screen shows them as big buttons, the
+  title and the recording ring follow the choice, and the finished film runs
+  15–30 s (`min_total_seconds` / `max_total_seconds`; 2 s plays 4 times =
+  16 s, 5 s twice = 20 s, 10 s once = 20 s). Off by default; without it
+  `seconds` and `loops` work as before.
+
+* Booth: title and status line on an own start picture are now white on a
+  dark shade by default, also in the light colour scheme (dark text stood on
+  dark photos). `start.text_tone` (`auto`, `hell`, `dunkel`) forces either;
+  tiles and buttons keep the scheme's colours.
+
+* Booth: a collage is now also saved as an animated GIF by default
+  (`gif.from_collage` on, from two pictures); switch it off per booth.
+
+* Booth: photo mode offers the chosen layouts with one photo (event layouts,
+  own templates, ticked built-ins) on the same cards as the collage; the
+  collage then lists only layouts with two or more photos. The layout makes
+  the result and the print, the plain photo is kept as well. Booths without
+  chosen layouts are unchanged.
+
+* Booth: the left mouse button is the buzzer by default (`controls.mouse_start`
+  `left`; `off` makes the mouse a mouse again). Start keys for space-bar
+  buzzers are unchanged. Every buzzer or start-key press now leaves one line
+  in booth.log saying on which screen it came and what it did, or why not
+  (camera not ready, a window open, bounce guard, run in progress).
+
+* Booth: GIF is set up like Boomerang. Guests choose the format (same switch
+  as for photos, or `gif.guest_choice`), and the boomerang's frames can be
+  offered for the GIF too (`gif.frames` and the same frame keys); the frame
+  is drawn around every picture. Without these settings the GIF now uses
+  `gif.format` when nobody chooses (before: the photo's default format).
+
+### Fixed
+
+* Booth: the event's file-name rule ("Event_date_time") now reaches the
+  booth. The booth dropped `event.file_naming` from the gallery's profile, so
+  USB, folder and FTP/SFTP targets got the run id as file name. Files that
+  were already queued keep their old names.
+
+### Development
+
+* Windows release workflow (`.github/workflows/windows-release.yml`),
+  prepared for free code signing through the SignPath Foundation, which is
+  **not active yet**: the files are still unsigned. A tag `vX.Y.Z` (or a run
+  by hand) builds booth, sync and setup on GitHub-hosted Windows runners with
+  `packaging/windows/build.ps1`, stops if a file of Canon's SDK is in the
+  build tree or inside a program (`tools/check_hygiene.py --build-output
+  --pyinstaller`), and makes a draft pre-release named "unsigned". Once the
+  SignPath settings exist in the repository, booth and sync are signed first,
+  the setup is built from the signed programs and signed too, every signature
+  is checked, and `SHA256SUMS.txt` is written over the signed files; the
+  release stays a draft for the owner to publish. Owner's settings:
+  `docs/CODE-SIGNING.md`; public policy: `docs/CODE-SIGNING-POLICY.md` and
+  the README's "Code signing policy".
+* `PhotoboxSync.exe` now carries a Windows version resource like the booth
+  (product "Photobox", version from `VERSION`, publisher, AGPL copyright,
+  original file name); both come from `packaging/windows/version_resource.py`.
+  The setup writes the version as text too, so all three files name the same
+  product and the same product version, as SignPath requires. Explorer shows
+  "Photobox Booth" / "Photobox Sync" as the file description.
+
+* CI: the gallery, booth and sync suites failed on GitHub Actions (Ubuntu,
+  Python 3.12) for 0.9.1. Each suite installed only its own part, but
+  the suites test across the boundaries: the gallery tests drive the booth
+  (httpx), the booth tests import the gallery app (Flask), the sync tests
+  run a local FTP server (pyftpdlib). Every suite now installs all three
+  parts plus `requirements-dev.txt`, which names these cross-suite packages
+  and pytest; the dependency audit covers the test packages too. A gallery
+  test checks the workflow against what the test files import.
+* Built-in looks: `tools/make_luts.py` no longer sums colour channels with
+  `@` (BLAS). Accelerate and OpenBLAS add in a different order, and one
+  warm-film value on an exact six-decimal tie came out 0.670319 on Linux
+  instead of 0.670318. The sums are now written out in a fixed order; the
+  shipped `.cube` files are unchanged.
+* Booth tests: the kiosk geometry comparison hands its script to Node on
+  stdin instead of `node -e`; the collage cases were larger than Linux allows
+  for one command-line argument ("Argument list too long").
+* Windows build: `SHA256SUMS.txt` is written with LF line ends and without
+  BOM; with CRLF, `sha256sum -c` on Linux and macOS reported every file as
+  missing. Checked statically in the tests; not run on Windows.
+
+### Booth and sync
+
+* Fix: nothing offers to print a run that has no print sheet. The consent
+  step offered "Nur drucken" before a video or a boomerang without
+  `boomerang.print`; a guest who took it got neither a print nor a gallery
+  link. For those modes the step now shows only its note (recorded as
+  "notice"), and the booth refuses "Nur drucken" for them (400
+  `consent.option`, also from a kiosk page that is still open from before).
+  The admin's reprint list ("Nachdruck") shows only runs with a print sheet;
+  a film's "Drucken" there only ever answered 409. Photo, collage and GIF
+  (whose sheet carries its stills) are unchanged. The result screen and the
+  kiosk gallery also hide "Drucken" when a run's print file is gone.
+* Second upload target (FTPS) on Windows: a server whose certificate chain
+  ends in a root the Windows store had not fetched yet (a newer Sectigo
+  root, for example) was refused with "unable to get local issuer
+  certificate", while the gallery upload on the same PC worked. Python's
+  default context reads only the roots already in the Windows store; httpx
+  brings the certifi bundle. FTPS (explicit and port 990, control and data
+  connection) and the booth's SMTP mail now trust the system roots plus the
+  certifi bundle, through one helper (`photobox_sync/trust.py`); certificate
+  and host name are always checked, there is no switch to turn that off.
+  certifi is now a declared dependency of the sync package (it came with
+  httpx before); a missing, damaged or unreadable bundle leaves the system
+  store alone in use, verification stays on.
+  Both Windows specs pack certifi's `cacert.pem` explicitly. Tested on macOS
+  against a local FTPS server with an empty "system store"; the frozen .exe
+  was not run on Windows.
+* The booth's message for this case says what it is ("Das Zertifikat des
+  Servers ließ sich nicht prüfen …", or "… ist abgelaufen") instead of
+  asking whether the chosen kind of target fits the server.
+* Second upload target (FTPS), next step on the same host: with the
+  certificate accepted, "Ziel prüfen" failed with "EOF occurred in violation
+  of protocol". Python's ftplib ends every data transfer with a TLS shutdown
+  and waits for the server's answer; some servers (here a Go FTP server)
+  close the data connection without one, and OpenSSL 3 calls that an error
+  although all bytes went through. The FTPS client now accepts exactly that
+  at the end of a data connection; the server's reply on the control
+  connection and the size check after an upload still decide, and a
+  connection cut during the transfer still fails. Data connections also
+  resume the control connection's TLS session, which servers with
+  "require_ssl_reuse" (vsftpd and others) demand. Explicit and implicit
+  (port 990) FTPS, TLS 1.2 and 1.3, tested against local pyftpdlib servers
+  that close bare, require session reuse or cut an upload; not yet run
+  against the real host. If the error shows anyway, the booth says "Der
+  Server hat die verschlüsselte Datenverbindung abgebrochen …".
+* Second upload target (FTP/FTPS), live-push accounts: logins that drop
+  every upload straight into a gallery chosen on the service's side took the
+  login but refused every file with "550 Permission denied" or "EOF occurred
+  in violation of protocol". The booth uploaded `<name>.part` and renamed it;
+  such accounts take picture and film names only and refuse rename, delete
+  and folders. New choice "Direkt hochladen, ohne Zwischennamen" (`direct`,
+  default off): the file goes up under its final name, no rename, no delete;
+  proof by SIZE where the server answers, otherwise its 226 and the bytes
+  sent. Without the choice, a refused in-between upload or rename is tried
+  once more under the final name in a fresh connection; if that works, the
+  booth remembers it for this server and login (next to the SFTP host keys,
+  so it survives a restart) and sends final names from then on: at once after
+  a real 5xx refusal, after a TLS end-of-file with no reply only once that
+  worked twice in the same run. 552/452 (quota, disk full) never trigger the
+  extra attempt and never give a file up. If the note cannot be saved, it is
+  logged once and holds until restart. Never more
+  than one extra attempt per file and try; a reset or 426 with no refusal is
+  still the network and waits as before. An in-between file the server will
+  neither rename nor delete is logged once, not an error. "Prüfen" falls
+  back to a 285-byte JPEG `photobox-test.jpg` and says "angemeldet, direkter
+  Upload möglich (Live-Push)", and that the test picture stays in the target
+  when the account lets nothing be deleted. A final name refused in direct
+  mode is said in plain words ("Das Konto auf dem Server nimmt die Datei …
+  nicht an"): permanent for a name that is no picture or film, otherwise the
+  files wait. Tested against a local pyftpdlib server in an "ingest-only"
+  mode (550 or a dropped TLS data connection); not yet run against the real
+  service.
+
+### Gallery
+
+* Clips are never a black box: the large view in the light theme now has
+  the theme's surface (white) behind picture and clip, with its buttons in
+  the text colour (the dark theme is unchanged); on the run page and "Meine
+  Aufnahmen" a clip without poster loads its first frame; a poster-less clip
+  tile has the surface colour behind it, not near-black. At the booth the
+  full-size view of a film shows its poster until it plays.
+* Fix: in Chrome (Android and desktop, version 133 and later) gallery tiles
+  were 0 px high until their picture had loaded, and stayed so when it never
+  did. The rule `aspect-ratio: attr(width) / attr(height)` is read by newer
+  Chrome as text and falls back to `auto`, which also switched off the
+  browser's own shape from the tile's width and height. Portrait clips and
+  GIF films whose poster had not arrived vanished from the masonry, and
+  tiles jumped while the page loaded. The rule is gone; tiles keep their
+  shape from the stored size. A clip without a poster now shows its own
+  first frame as the tile instead of an empty image.
+* Fix: after saving the booth's second upload target ("Zweites Ziel",
+  FTP/FTPS/SFTP) the sync page showed the form empty and "Noch kein
+  zweites Ziel eingerichtet" with the job "erteilt", although the booth took
+  the setting moments later. The page rendered the booth's last report, which
+  still predated the change, ignored the job it had just queued and never
+  looked again. The form is now filled from the change on its way (marked
+  "gesendet, wartet auf die Box"; never the password) or from what the booth
+  reports; a line under the password field says whether one is stored at the
+  booth or awaited. "Stand der Box" names the last contact (and says so when
+  the booth is silent), the change or check waiting and since when, the
+  folder layout, and the last check with its age; the job list says the
+  booth's answer in plain words. While something waits the card asks the
+  gallery every 4 s for up to two minutes and shows the answer without a
+  reload. The check button is now "Verbindung prüfen" and is offered while
+  the first setting is still on its way.
+* Event page: "Box bei diesem Event" lists the booths on the event and
+  whether each has taken the event's settings, is about to fetch them or is
+  not calling, with its last contact, and follows them after saving. It also
+  says that the second upload target is set per booth (with links to the
+  booths' sync pages); a folder and on/off per event needs a booth update and
+  is not offered yet.
+* Security: a picture the operator hid could still be downloaded by its
+  number (`/gallery/<slug>/photo/<id>/download`), and its watermarked copy
+  and photo QR code came too; a red-marked picture the gallery hides from
+  guests came down the same way, in the selection and "download all" ZIPs,
+  on the run page, in "Meine Aufnahmen" and through `/data`. Every guest
+  route now answers both like a picture that does not exist. The booth's
+  full-size original of a visible web version still downloads where the
+  event allows the original.
+* Fix: with the download size choice switched off for the whole gallery,
+  every download was the original, also `size=large` in an event that bans
+  originals; the gallery asked for `size=original` and such an event answered
+  403. Without a choice the download is now the best size the event allows,
+  on the server and in the gallery script.
+* Privacy: guests no longer find the operator's colour marks in the page
+  source (`data-tag` on every tile); only proofing and manage views carry it.
+* Fix: "Teilen" on the run page and in "Meine Aufnahmen" shared whatever came
+  back, so a 403 or 404 page could go out as "foto.jpg". A failed fetch now
+  falls back to the link, as in the gallery.
+* Fix (iPhone): "Teilen" fetched the full original (several MB) before
+  opening the share sheet; on a weak network Safari could refuse the sheet
+  because the tap was too long ago. Sharing now sends the best allowed size
+  up to 2048 px (the 640 px size only where it is all the event allows); the
+  download stays the best size. The picture to long-press in the iOS
+  "Datei-Download" sheet ("Zu Fotos hinzufügen") is that same up-to-2048 px
+  JPEG, fetched once, never the display copy; "Als Datei laden" still
+  fetches the best download. A share fetch no longer counts as a download in
+  the statistics a second time.
+* Fix: an animated GIF came down as a still JPEG (its first frame) when a
+  size was chosen, when shared and in the iPhone save sheet. A size that
+  cannot be animated now gives the animated GIF itself, with its name and
+  type, in single downloads, shares and the selection ZIP.
+* Fix: shares from the run page and "Meine Aufnahmen" are counted in the
+  statistics like shares in the gallery.
+* Privacy: the owner's views of a gallery ("Verwalten" with hidden and
+  pending pictures, "Vorschau") are sent with `Cache-Control: no-store`.
+* Fix: in the large view on a phone the previous arrow was covered by the
+  picture (only a sliver showed at the left edge). Both arrows now lie above
+  the picture, sit mirrored inside the screen with the safe area, are at least
+  44 px and have a darker disc that reads on bright pictures.
+* Fix: a guest's download is the best quality the event allows (the original
+  if offered, else the largest size) unless the guest changed the size. The
+  size sheet no longer pops up on the first download with the 640 px line on
+  top; it opens from "Download-Größe: … · ändern". A 1800 px print had come
+  down as about 23 KB. Sharing a picture now sends that same file instead of
+  the display copy.
+* Fix: on iPhone and iPad "Herunterladen" and "Teilen" no longer both end in
+  the share sheet. Download shows the picture to long-press plus "Als Datei
+  laden" (a real file download); share opens the share sheet.
+* Privacy fix: the link-preview image of a draft gallery (or a folder under
+  one, or a gallery not live yet) answered with the event's title, while an
+  unknown name got the neutral card — a guesser could confirm a name and read
+  its title. It now answers byte for byte like an unknown name. A guard test
+  walks every public route with a gallery slug and compares a draft with an
+  unknown name.
+* Fix: the photo count in a gallery's link preview ("981 Fotos") counted every
+  stored row, including the unframed captures and red pictures the page hides;
+  it now says the number the page shows (568).
+* Faster on phones: text answers (HTML, CSS, JS, JSON, SVG) go out gzip-
+  compressed when the browser accepts it — in the app, standard library only,
+  so it works behind Coolify/Traefik and on a NAS without a proxy alike. A
+  gallery page with 200 tiles: 326 KB → 28 KB. Media, ZIPs, streams, range
+  requests and answers already encoded are left alone; ETags become weak so a
+  revalidation still answers 304.
+* Faster on phones: in the photo grid a phone loads the thumbnail (≥ 600 px
+  long edge) instead of the web version (1200–1600 px), which it took at 3x
+  pixel density — 3 to 7 times the bytes per tile. The large view still loads
+  the web version.
+* Wording: the German guest pages speak to the guests as a group ("ihr")
+  throughout; "Tippe lange", "Bitte gib", "Bitte wähle", "Schau bitte",
+  "Scanne den QR Code" and the guest upload's "dich/deine" are now "ihr" forms
+  like the rest. A guard test checks every guest string and template.
+* Sizes shown to guests read "ca. 61 KB" / "ca. 1,4 MB" (German comma, sensible
+  rounding, "1.4 MB" in English) instead of "ca. 61.42 KB": one helper on the
+  server (`media.guest_bytes`) and the same rule in the page's script.
+* The guest filter "Originalfotos" is now "Einzelfotos ohne Rahmen" ("Single
+  shots without frame"): it lists the camera's single shots uploaded without
+  frame, mostly those that went into a collage. `?show=originals` still works.
+* The run page (`/p/…`) and "Meine Aufnahmen" offer one "Herunterladen", the
+  best size the event allows (the original if offered), instead of 2048 px
+  next to a separate "Original"; their share button sends that same file
+  instead of the display copy. A guard test checks every guest page.
 
 ## 0.9.1 — 2026-11-17
 

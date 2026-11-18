@@ -2,8 +2,8 @@
 
 A self-hosted photo booth: software for the box at the party, a gallery the
 guests open afterwards, and the sync that carries pictures from one to the
-other. Built to replace rented dslrBooth licences with something the operator
-owns, and to be honest about data in a way the commercial products are not.
+other. Built to replace rented booth licences with something the operator
+owns, and to be honest about data.
 
 **Register: product.** The design serves the job. Nobody admires the booth; they
 use it for forty seconds and walk away with a print.
@@ -45,7 +45,7 @@ Error messages name a next step. "Kamera verbinden" beats "device not found".
 
 ## Anti-references
 
-* **dslrBooth**: the functional benchmark, the aesthetic warning. Dense option
+* **Established commercial booth software**: the functional benchmark, the aesthetic warning. Dense option
   screens, borrowed Windows-dialog look, a wall of switches with no hierarchy.
 * **Anything that looks like a SaaS landing page**: big gradient number, three
   identical feature cards, a purple glow. This is a tool, not a pitch.

@@ -1,5 +1,19 @@
 # Nur für die Tests — nicht für den Betrieb.
 #
+# The three suites test across the boundaries on purpose: the gallery suite
+# drives a real booth object against the Flask test client, the booth suite
+# holds its shared blocks against the gallery's, the sync suite runs a real
+# FTP server. So every suite needs all three parts installed, plus this file
+# (CI does exactly this, see .github/workflows/tests.yml):
+#
+#   pip install -r requirements.txt -c constraints.txt
+#   (cd booth && pip install -r requirements.txt -c ../constraints.txt)
+#   pip install -r requirements-dev.txt -c constraints.txt
+#
+# Versions come from constraints.txt; nothing here is pinned twice.
+
+pytest>=8.0
+
 # Zwei Testdateien prüfen die einzigen Zusagen, die sich nicht am HTML ablesen
 # lassen: ob ein QR-Code mit Logo in der Mitte noch dekodierbar ist und ob eine
 # Texterkennung die Adresse im Sharepic fehlerfrei zurückgibt. Ohne diese
@@ -12,3 +26,11 @@
 opencv-python-headless>=4.9
 pytesseract>=0.3.10
 numpy>=1.24
+
+# Runtime dependencies of one part that another part's tests import. They are
+# already installed with the three parts above; they are named here so that
+# a suite run on its own says what it needs (CI for 0.9.1 failed on these).
+Flask>=3.0.0      # booth tests import the gallery app (shared profile blocks)
+httpx>=0.27       # gallery tests drive the booth's pairing client
+pyftpdlib>=1.5    # sync tests deliver to a real local FTP server
+pyOpenSSL>=24.0   # sync tests: FTPS against that server

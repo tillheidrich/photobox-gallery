@@ -6,7 +6,7 @@
   {% if noindex %}<meta name="robots" content="noindex,nofollow">{% endif %}
   <meta name="lang" content="{{ g.lang or 'de' }}">
   <title>{% block title %}Photobox Gallery{% endblock %}</title>
-  <meta name="description" content="{% block meta_desc %}Deine Fotobox-Galerie{% endblock %}">
+  <meta name="description" content="{% block meta_desc %}Eure Fotobox-Galerie{% endblock %}">
   {% block og %}{% if event is defined and event and event.slug is defined %}{% with og = link_meta(event) %}{% include "public/_og.html" %}{% endwith %}{% endif %}{% endblock %}
   <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
   <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" sizes="any">

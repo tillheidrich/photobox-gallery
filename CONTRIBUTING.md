@@ -21,7 +21,7 @@ the hard rules and the definition of done. This file is only the process.
 
 ## Pull requests
 
-1. Branch from `ecosystem` (not `main` — that is what runs at real events).
+1. Branch from `ecosystem` (the integration branch; `main` is the release branch).
 2. One topic per pull request. If you fixed a typo on the way, that is fine;
    if you reformatted three files, split it.
 3. Run all three test suites and say so in the description, including what you
@@ -104,8 +104,9 @@ Do not open a public issue for a vulnerability. See [`SECURITY.md`](SECURITY.md)
 ## Licence of your contribution
 
 Your work is published under [AGPL-3.0-or-later](LICENSE), the project's
-licence, and stays in this public repository. There is no paid edition and
-nothing your code could disappear into.
+licence, and stays in this public repository. All code stays complete and open; money is made
+with operation (managed hosting, set-up, support), not with a closed feature
+set, so nothing your code could disappear into.
 
 Contributions need one step beyond the sign-off: read [`CLA.md`](CLA.md) and
 add this line to your pull request description:

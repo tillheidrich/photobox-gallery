@@ -324,6 +324,11 @@
               <option value="-1">Verlauf (Standard)</option>
               <option value="0">keine</option><option value="20">20 %</option><option value="40">40 %</option>
               <option value="60">60 %</option><option value="80">80 %</option></select></label>
+            <label>Schrift auf dem Startbild<select id="start_text_tone">
+              <option value="auto">automatisch</option>
+              <option value="hell">immer hell</option>
+              <option value="dunkel">immer dunkel</option></select>
+              <small class="hint">Titel und Statuszeile; automatisch = hell auf eigenem Startbild, sonst Farbschema.</small></label>
           </div>
           <div class="row">
             <label>Sekunden je Bild
@@ -478,7 +483,7 @@
     </section>
     <section class="card">
       <h2>Ablage</h2>
-      <p class="hint">Die Box speichert immer erst bei sich. Zusätzlich kann sie alles in einen zweiten Ordner und auf einen USB-Stick kopieren — der Sync mit Galerie/NAS/Picdrop läuft davon unabhängig weiter.</p>
+      <p class="hint">Die Box speichert immer erst bei sich. Zusätzlich kann sie alles in einen zweiten Ordner und auf einen USB-Stick kopieren — der Sync mit Galerie/NAS/Online-Galerie läuft davon unabhängig weiter.</p>
       <label>Zweiter Ordner auf diesem Rechner<input id="st_folder" placeholder="D:\Fotobox\Backup"></label>
       <div class="row">
         <label>Ordnerstruktur<select id="st_layout">
@@ -543,11 +548,11 @@
     </section>
     <section class="card">
       <h2>Zweites Ziel im Netz</h2>
-      <p class="hint">Zusätzlich zur eigenen Galerie lädt die Box jede Aufnahme an einen zweiten Ort, zum Beispiel zu Picdrop oder auf ein NAS. Fällt eines der Ziele aus, läuft das andere weiter. Die Zugangsdaten stehen beim Anbieter unter „FTP-Zugang“.</p>
+      <p class="hint">Zusätzlich zur eigenen Galerie lädt die Box jede Aufnahme an einen zweiten Ort, zum Beispiel in eine Online-Galerie per FTP oder auf ein NAS. Fällt eines der Ziele aus, läuft das andere weiter. Die Zugangsdaten stehen beim Anbieter unter „FTP-Zugang“.</p>
       <label class="check"><input type="checkbox" id="zt_on"> Zweites Ziel benutzen</label>
       <label>Art
         <select id="zt_type">
-          <option value="ftps">FTP mit Verschlüsselung (Picdrop)</option>
+          <option value="ftps">FTP mit Verschlüsselung (FTPS)</option>
           <option value="ftp">FTP ohne Verschlüsselung – Passwort und Bilder gehen lesbar durchs Netz</option>
           <option value="sftp">SFTP (NAS, eigener Server)</option>
         </select></label>
@@ -556,16 +561,19 @@
       <label>Benutzer<input id="zt_user" autocomplete="off"></label>
       <label>Passwort<input id="zt_pass" type="password" autocomplete="new-password"></label>
       <label>Ordner auf dem Server (leer = Startordner der Anmeldung)<input id="zt_path" placeholder="z. B. fotobox/{jahr}/{event}"></label>
-      <p class="hint">Leer: der Ordner, in dem die Anmeldung beginnt (bei Picdrop der Ordner der Galerie). Sonst ein
+      <p class="hint">Leer: der Ordner, in dem die Anmeldung beginnt (bei einer Online-Galerie per FTP meist der Ordner der Galerie). Sonst ein
         Ordner, der angelegt wird, wenn er fehlt, auch mehrere Ebenen. Mit „/“ vorn ab der obersten Ebene des Servers,
         ohne „/“ im Startordner. Nicht erlaubt: „..“. Platzhalter: {event} {event_name} {datum} {jahr} {monat} {tag}.</p>
       <p class="hint" id="zt_path_example" role="status"></p>
-      <label class="check"><input type="checkbox" id="zt_flat" checked> Alles in diesen einen Ordner legen (Picdrop erwartet das)</label>
+      <label class="check"><input type="checkbox" id="zt_flat" checked> Alles in diesen einen Ordner legen (so erwarten es Online-Galerien per FTP)</label>
       <p class="hint">Dorthin geht jede Aufnahme, die die Box behält: Fotos, Collagen samt Einzelbildern, GIFs mit
         ihren Filmen, Boomerangs und Videos. Ausgenommen sind nur gelöschte Durchgänge und „Nur drucken“.</p>
       <label class="check"><input type="checkbox" id="zt_originals" checked> Volle Auflösung und Kamera-Originale mitschicken
         (Standard: an; aus = nur die Webfassungen und Filme)</label>
       <label class="check"><input type="checkbox" id="zt_prints"> Druckblätter mitschicken (Standard: aus)</label>
+      <label class="check"><input type="checkbox" id="zt_direct"> Direkt hochladen, ohne Zwischennamen (Standard: aus)</label>
+      <p class="hint">Für Live-Push-Zugänge, die nur Bilder und Filme annehmen und nichts umbenennen lassen. Die Box
+        erkennt das meist auch selbst.</p>
       <div class="actions"><button type="button" class="btn-secondary" id="zt_test">Verbindung testen</button>
         <button type="button" class="btn-secondary" id="zt_backfill">Bisherige Aufnahmen dieses Events nachsenden</button></div>
       <p class="hint" id="zt_result" role="status"></p>

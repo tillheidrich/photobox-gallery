@@ -21,7 +21,7 @@
   SELPHY CP1300 baut: JSON-Format, Papiere, sicherer Rand, vier geprüfte
   Beispiele, Prüfliste. Die Beispiele laufen im Test durch den echten Prüfer.
 * [`SECOND-TARGET-FROM-THE-GALLERY.md`](SECOND-TARGET-FROM-THE-GALLERY.md) — why a
-  booth's second upload target (Picdrop, FTP, SFTP) is set at the booth and
+  booth's second upload target (FTP/FTPS/SFTP) is set at the booth and
   not from the gallery, and the smallest safe design if it ever should be.
 * [`LAYOUT-FREIGABE.md`](LAYOUT-FREIGABE.md) — für Betreiber: den Kunden das
   Drucklayout seines Events gestalten lassen, Link verschicken, freigeben.

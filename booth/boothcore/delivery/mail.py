@@ -28,13 +28,14 @@ import mimetypes
 import re
 import smtplib
 import sqlite3
-import ssl
 import threading
 import time
 from email.message import EmailMessage
 from email.utils import formataddr, formatdate, make_msgid
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+from photobox_sync.trust import verify_context
 
 from .. import redact
 
@@ -446,15 +447,17 @@ class MailSender:
         # blocking reverse lookup as in _build().
         sender = cfg.get("from_addr") or cfg.get("user") or ""
         helo = sender.rpartition("@")[2].strip() or "localhost"
+        # System roots plus certifi, as for the second upload target: on Windows
+        # the system store alone lacks roots the PC never fetched (photobox_sync.trust).
         if security == "ssl":
             client = smtplib.SMTP_SSL(host, port, local_hostname=helo, timeout=SMTP_TIMEOUT,
-                                      context=ssl.create_default_context())
+                                      context=verify_context())
         else:
             client = smtplib.SMTP(host, port, local_hostname=helo, timeout=SMTP_TIMEOUT)
         try:
             client.ehlo()
             if security == "starttls":
-                client.starttls(context=ssl.create_default_context())
+                client.starttls(context=verify_context())
                 client.ehlo()
             if user:
                 client.login(user, password)

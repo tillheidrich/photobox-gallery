@@ -1,10 +1,10 @@
 """Zusätzliche Ziele: wohin eine Datei tatsächlich geschrieben wird.
 
-Der Ort ist bei fremden Diensten kein Detail. Picdrop zum Beispiel ordnet
+Der Ort ist bei fremden Diensten kein Detail. Eine Online-Galerie per FTP zum Beispiel ordnet
 Bilder selbst einer Galerie zu und erwartet sie im Wurzelverzeichnis — was in
 einem Unterordner landet, sieht dort niemand wieder.
 """
-# ── Picdrop: alles in den Wurzelordner ─────────────────────────────────
+# ── Online-Galerie per FTP: alles in den Wurzelordner ─────────────────────────────────
 class _FakeSftp:
     """Ein SFTP-Kanal, der nur mitschreibt, wohin geschrieben würde."""
 
@@ -77,10 +77,10 @@ def _ziel_pfad(cfg, monkeypatch, tmp_path):
 
 
 def test_sftp_puts_everything_in_the_root_when_asked(monkeypatch, tmp_path):
-    """Picdrop ordnet selbst zu und will die Bilder im Wurzelverzeichnis.
+    """Eine Online-Galerie per FTP ordnet selbst zu und will die Bilder im Wurzelverzeichnis.
 
     Bisher tat das nur FTPS; über SFTP landeten die Bilder in Unterordnern
-    je Event und Tag — und damit dort, wo Picdrop nicht nachsieht.
+    je Event und Tag — und damit dort, wo sie nicht nachsieht.
     """
     pfad = _ziel_pfad({"flat": True, "path": "/"}, monkeypatch, tmp_path)
     assert pfad and pfad.count("/") == 1, f"Kein Unterordner erwartet, war: {pfad}"

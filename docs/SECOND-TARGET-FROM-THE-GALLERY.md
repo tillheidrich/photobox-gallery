@@ -7,12 +7,12 @@ design that stood here as "not built" on branch `fix/admin-1711`; the
 differences are listed at the end. Rules and tests: `business_logic/index.md`
 A-3 to A-3c.
 
-The "Zweites Ziel im Netz" card of the booth's own admin (Picdrop over FTPS,
+The "Zweites Ziel im Netz" card of the booth's own admin (an FTP-fed proofing gallery over FTPS,
 an FTP server or an SFTP NAS; ids `zt_*` in `booth/boothcore/web/admin.html`)
 can now also be filled in on the gallery's sync page of a booth
 (`/admin/devices/<id>/sync`, card `#zweites-ziel`) and through MCP with the
 right `secure`. Both ways edit the same entry of the booth's local `targets`
-(name `picdrop`, or the older `zweites-ziel`).
+(stored legacy name `"picdrop"`, or the older `zweites-ziel`).
 
 ## No opt-in at the booth (since 17.11.2026, evening)
 
@@ -70,7 +70,9 @@ address; no scheme, path, port, user or spaces; at most 253), `port` (0 =
 usual, 1–65535, a real integer), `user` (at most 128), `path` (at most 255,
 backslashes become slashes, empty parts and `.` dropped, `..` refused, a
 leading slash kept), `flat`, `enabled`, `originals`, `print_sheets`
-(booleans). No control characters anywhere. The same lists and limits are in
+(booleans), and `direct` (boolean, since 18.11.2026; the gallery sends it
+only when it is on, the booth reads a job without it as off: upload under the
+final name, for live-push accounts, see business_logic rule L-S5). No control characters anywhere. The same lists and limits are in
 `app/second_target.py` and `booth/boothcore/second_target.py`; a test in
 each suite compares them.
 
@@ -124,7 +126,7 @@ way since 17.11.2026, to a key of that program (`app/sync_secrets.py`,
 
 Rule and placeholders: `app/zielordner.py` (shared byte for byte with
 `sync/photobox_sync/zielordner.py`). Empty = the login's start folder
-(Picdrop: the gallery's folder); a leading `/` = from the top of the
+(an FTP-fed proofing gallery: usually the gallery's folder); a leading `/` = from the top of the
 server; otherwise relative to the start folder; made when missing, nested;
 no `..`, no control characters, no unknown `{…}`. Placeholders, filled per
 file: `{event}`, `{event_name}`, `{datum}`, `{jahr}`, `{monat}`, `{tag}`.
@@ -177,7 +179,7 @@ copies and films only) and `print_sheets` (default off; `…-druck.jpg`).
 Deleted runs, "Nur drucken" and the data-minimal mode send nothing, as
 before. Posters and thumbnails are not sent. Files that wait while the
 target is down stay queued and go when it answers (unchanged). In flat mode
-(Picdrop) the folder field is not used, as before.
+(an FTP-fed proofing gallery) the folder field is not used, as before.
 
 "Bisherige Aufnahmen dieses Events nachsenden" (booth card, gallery card,
 job `backfill_second_target`) queues once, for the current event only, the
@@ -224,7 +226,7 @@ Every change of (b) and (c) is in the change log and on the card.
   the memory of that request.
 * (17.11.2026 evening) The switch is gone; the public key is always published; rule B2 protects the password.
 * Two upload choices (`originals`, `print_sheets`) and the backfill job were
-  added for the owner's "everything must reach Picdrop".
+  added for the owner's "everything must reach the second target".
 * The audit line goes to the booth log and, as an `info` entry, to the
   gallery's device log; the gallery's change log names the action.
 

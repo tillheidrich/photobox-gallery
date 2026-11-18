@@ -516,9 +516,11 @@ def _code(path):
 def test_the_exe_carries_the_web_view_and_says_who_made_it():
     spec = _code(WIN / "photobox-booth.spec")
     for needed in ('"webview.platforms.winforms"', '"webview.platforms.edgechromium"', '"clr"', "'pywebview'",
-                   "version=VERSION_FILE", "'CompanyName': 'Till Heidrich'".replace("'", '"'),
-                   '"ProductName": "Photobox"', "binaries=_webview_binaries"):
+                   "version=VERSION_FILE", '"version_resource.py"', "binaries=_webview_binaries"):
         assert needed in spec, needed
+    # Who made it lives in the resource both specs share.
+    resource = _code(WIN / "version_resource.py")
+    assert 'COMPANY_NAME = "Till Heidrich"' in resource and 'PRODUCT_NAME = "Photobox"' in resource
 
 
 def test_the_web_view_is_installed_for_the_windows_build_only():

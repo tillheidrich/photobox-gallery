@@ -15,6 +15,7 @@ kodiert. Breite ``"auto"`` = so groß wie die Quelle hergibt, höchstens ``max_w
 """
 from __future__ import annotations
 
+import math
 import os
 import shutil
 import subprocess
@@ -248,6 +249,24 @@ def encode_passes(one_pass: List[Image.Image], size: tuple[int, int], target: Pa
 
 
 MAX_FRAMES = 900     # 60 s × 15 fps oder 30 s × 30 fps — genug für Grüße, schützt den Speicher
+
+
+def loops_for_total(seconds: float, min_total: float = 15, max_total: float = 30) -> int:
+    """Loops of a boomerang whose guest chose its length (``boomerang.seconds_choices``).
+
+    One loop is the recording forward and back (2 × ``seconds``). The film
+    should last at least ``min_total`` and never more than ``max_total``:
+    the fewest loops that reach the minimum, fewer if that passes the
+    maximum, never less than one (2 s -> 4 = 16 s, 5 s -> 2 = 20 s,
+    10 s -> 1 = 20 s). A length whose single loop is already longer than
+    the maximum is not offered (Booth.clip_seconds_offer).
+    """
+    loop = 2.0 * max(0.1, float(seconds))
+    top = max(float(max_total), float(min_total))
+    n = max(1, math.ceil(float(min_total) / loop - 1e-9))
+    while n > 1 and n * loop > top + 1e-9:
+        n -= 1
+    return n
 
 
 def played_fps(n_frames: int, elapsed: float, nominal: float) -> int:

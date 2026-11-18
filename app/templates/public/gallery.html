@@ -11,7 +11,7 @@
 
 {% block nav %}
 {% if owner %}
-{#- The owner's slim bar (Picdrop's "Vorschau"): exactly the guest's page
+{#- The owner's slim bar (the proofing-gallery "Vorschau"): exactly the guest's page
     below it in preview, the same page with tools in manage mode. -#}
 <div class="pv-bar" id="pvBar" data-view="{{ owner.view }}" role="region" aria-label="{{ t('preview.label') if owner.view == 'vorschau' else t('manage.label') }}">
   <div class="pv-bar-in">
@@ -121,7 +121,7 @@
         {% endif %}
       </div>
       {% if event.description %}
-      {#- Picdrop's description card: three lines, then "mehr lesen". The
+      {#- The proofing-gallery description card: three lines, then "mehr lesen". The
           button appears only when the text is really cut (script below). -#}
       <div class="g-desc" id="gDesc">
         <p class="g-desc-text" id="gDescText">{{ event.description }}</p>
@@ -319,8 +319,15 @@
   {#- How wide a tile is drawn, per layout (public.css), so srcset picks the
       thumbnail for a narrow column and the web version for the list. -#}
   {% if gs.layout == 'list' %}{% set tile_sizes = '(max-width: 900px) 100vw, 900px' %}
-  {% elif gs.layout in ('grid', 'polaroid') %}{% set tile_sizes = '(max-width: 700px) ' ~ ('100vw' if gs.thumb_size == 'l' else '50vw') ~ ', (max-width: 1100px) 33vw, 25vw' %}
-  {% else %}{% set tile_sizes = '(max-width: 340px) 100vw, (max-width: 700px) 50vw, (max-width: 1100px) 33vw, ' ~ ('17vw' if gs.thumb_size == 's' else '33vw' if gs.thumb_size == 'l' else '25vw') %}{% endif %}
+  {#- On a phone (≤ 700 px) the slot is declared at half its drawn width. A
+      two-column tile at 390 px is ~190 px; at 3x the browser wanted 585 px
+      and took the web version (1200-1600 px, 4-7 times the bytes). Declared
+      half, it takes the thumbnail (≥ 600 px long edge, 400 px wide for a
+      2:3 portrait): about 2 device pixels per CSS pixel - sharp at 2x,
+      slightly soft at 3x, which a grid tile does not show. The large view
+      loads the web version as before. Pinned by tests/test_gallery_page_weight.py. -#}
+  {% elif gs.layout in ('grid', 'polaroid') %}{% set tile_sizes = '(max-width: 700px) ' ~ ('50vw' if gs.thumb_size == 'l' else '25vw') ~ ', (max-width: 1100px) 33vw, 25vw' %}
+  {% else %}{% set tile_sizes = '(max-width: 340px) 50vw, (max-width: 700px) 25vw, (max-width: 1100px) 33vw, ' ~ ('17vw' if gs.thumb_size == 's' else '33vw' if gs.thumb_size == 'l' else '25vw') %}{% endif %}
   <div class="photo-grid photo-grid--{{ gs.layout }} pg-size-{{ gs.thumb_size }} pg-gap-{{ gs.gap }} pg-{{ gs.corners }}" id="photoGrid"
        role="list" aria-label="{{ t('a11y.gallery') }}">
     {% for photo in photos %}
@@ -334,12 +341,16 @@
        data-filename="{{ photo.display_name }}"
        data-id="{{ photo.id }}"{% if photo.unframed_id %}
        data-unframed="{{ photo.unframed_id }}"{% endif %}
-       data-token="{{ photo.share_token }}"
-       data-tag="{{ photo.color_tag or '' }}"{% if gs.likes and photo.liked_by_me %} data-liked="1"{% endif %}{% if manage %}
+       data-token="{{ photo.share_token }}"{% if darf_markieren or manage %}
+       data-tag="{{ photo.color_tag or '' }}"{% endif %}{# marks are the owner's and the proofers' tool, not in a guest's source #}{% if gs.likes and photo.liked_by_me %} data-liked="1"{% endif %}{% if manage %}
        data-likes="{{ photo.like_count }}"{% if photo.hidden %} data-hidden="1"{% endif %}{% if photo.pending and photo.guest_upload %} data-pending="1"{% endif %}{% endif %}{% if gs.layout == 'polaroid' %}
        style="--pola-tilt:{{ '%.1f'|format(((photo.id * 37) % 9 - 4) * 0.45) }}deg"{% endif %}>
       <a class="photo-open" href="{{ photo.url }}" aria-label="{{ t('a11y.open_photo', name=photo.display_name) }}">
+        {% if photo.is_video and not photo.thumb_url %}{# a clip whose poster never arrived: its own first frame, not an empty tile #}
+        <video class="photo-clip" src="{{ photo.url }}#t=0.1" preload="metadata" muted playsinline width="{{ photo.width }}" height="{{ photo.height }}" aria-hidden="true" tabindex="-1"></video>
+        {% else %}
         <img src="{{ photo.thumb_url }}"{% if photo.srcset %} srcset="{{ photo.srcset }}" sizes="{{ tile_sizes }}"{% endif %} alt="" width="{{ photo.width }}" height="{{ photo.height }}" {% if loop.index <= 8 %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async">
+        {% endif %}
         {% if photo.is_video %}<span class="photo-play" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span>{% endif %}
         {% if gs.likes %}<span class="photo-liked" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>{% endif %}
         {% if photo.id in comment_marks %}<span class="photo-comment-mark" title="{{ t('comments.has') }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="sr-only">{{ t('comments.has') }}</span></span>{% endif %}
@@ -363,7 +374,7 @@
       {% endif %}
       {% if darf_markieren and not manage %}
       {#- Nothing else on a tile: share, download and like live in the large
-          view, as in Picdrop. The flag stays where marking is the job. -#}
+          view, as proofing galleries do. The flag stays where marking is the job. -#}
       <div class="photo-item-overlay">
         <button class="btn btn--secondary btn--sm tag-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagMenu({{ photo.id }}, this)" title="{{ t('gallery.tags') }}" aria-label="{{ t('gallery.tags') }}" aria-haspopup="true" aria-expanded="false" aria-controls="tagMenu">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 22V4m0 0h13l-2 4 2 4H4"/></svg>
@@ -531,18 +542,21 @@
 </div>
 {% endif %}
 
-{#- "Datei-Download" (Picdrop): Safari on iPhone and iPad does not save a
+{#- "Datei-Download": Safari on iPhone and iPad does not save a
     picture through the download attribute; it opens a file in a new view
     or lands in "Dateien". The sheet shows the picture itself - a long press
-    offers "Zu Fotos hinzufügen" - and, where the share sheet takes files,
-    one button for it. Other platforms download directly. -#}
+    offers "Zu Fotos hinzufügen" - and a real file download (attachment, with
+    the event's file name) for "Dateien". It no longer opens the share sheet:
+    that is the share button's job, and two buttons ending in the same sheet
+    left guests asking what the arrow down was for. Other platforms download
+    directly. -#}
 <div class="dl-save" id="dlSave" role="dialog" aria-modal="true" aria-labelledby="dlSaveTitle" hidden>
   <div class="dl-save-panel">
     <h2 class="dl-save-title" id="dlSaveTitle">{{ t('dl.sheet_title') }}</h2>
     <div class="dl-save-media"><img id="dlSaveImg" alt=""><video id="dlSaveVideo" playsinline controls hidden></video></div>
     <p class="dl-save-hint">{{ t('dl.sheet_hint') }}</p>
     <div class="dl-save-actions">
-      <button type="button" class="btn btn--secondary" id="dlSaveShare" hidden>{{ t('dl.sheet_save') }}</button>
+      <a class="btn btn--secondary" id="dlSaveFile" href="#" download>{{ t('dl.sheet_file') }}</a>
       <button type="button" class="btn btn--primary" id="dlSaveClose">{{ t('dl.sheet_close') }}</button>
     </div>
   </div>
@@ -784,7 +798,7 @@
   window.pbLightboxClose = () => close();
 
   document.getElementById('lbShare').addEventListener('click', () => {
-    const el = order[pos]; if (el) { const d = dataOf(el); sharePhoto(d.url, d.name, d.token); }
+    const el = order[pos]; if (el) { const d = dataOf(el); sharePhoto(d.url, d.name, d.token, d.id); }
   });
   document.getElementById('lbDownload').addEventListener('click', () => {
     const el = order[pos]; if (el) { const d = dataOf(el); downloadPhoto(d.url, d.name, d.id); }
@@ -902,13 +916,31 @@ function pbToast(msg) {
 // Einzelfoto teilen: nativ (Web Share, inkl. Bilddatei), sonst Link kopieren.
 const SHARE_NATIVE = {{ 'true' if gs.share_native else 'false' }};
 const SHARE_COPY = {{ 'true' if gs.share_link_copy else 'false' }};
-async function sharePhoto(url, filename, token) {
+// Where the guest may download the picture, the shared file is the same file
+// the download gives (best allowed size, the event's file name), not the
+// display variant the large view shows. Without download rights (or with a
+// watermark) it stays the picture as shown.
+const SHARE_FILE_OK = {{ 'true' if (gs.download_single and not gs.watermark) else 'false' }};
+// The shared file is the best allowed size up to 2048 px, not the original:
+// iOS Safari refuses navigator.share when the tap is too long ago, and a
+// several-MB original on a weak network takes that long (18.11.2026).
+const SHARE_SIZE = {{ share_download_size(gs)|tojson }};
+function fileNameFrom(resp, fallback) {
+  const cd = resp.headers.get('Content-Disposition') || '';
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(cd), plain = /filename="?([^";]+)"?/i.exec(cd);
+  try { if (star) return decodeURIComponent(star[1]); } catch (e) { /* fall through */ }
+  return plain ? plain[1] : fallback;
+}
+async function sharePhoto(url, filename, token, mediaId) {
   const link = token ? (location.origin + '/s/' + token) : location.href;
   try {
     if (SHARE_NATIVE && navigator.canShare) {
-      const resp = await fetch(url);
+      const asFile = SHARE_FILE_OK && mediaId;
+      const resp = await fetch(asFile ? photoFileUrl(mediaId, SHARE_SIZE) + '&share=1' : url, { credentials: 'same-origin' });
+      if (!resp.ok) throw new Error('fetch ' + resp.status);
       const blob = await resp.blob();
-      const file = new File([blob], filename || 'foto.jpg', { type: blob.type || 'image/jpeg' });
+      const file = new File([blob], asFile ? fileNameFrom(resp, filename || 'foto.jpg') : (filename || 'foto.jpg'),
+                            { type: blob.type || 'image/jpeg' });
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: document.title });
         trackAction('share_photo', token || null);
@@ -964,17 +996,29 @@ document.querySelectorAll('button.filter-btn').forEach(btn => {
 // Der Gast wählt einmal (Handy / Groß / Original), danach merken wir es.
 const DL_SIZES_ON = {{ 'true' if download_sizes_enabled else 'false' }};
 const DL_ALLOWED = {{ dl_options|map(attribute='id')|list|tojson }};
+// The best size this event allows (media.best_download_size). With the size
+// choice off DL_ALLOWED is empty; asking for a fixed "original" then got a 403
+// from an event that bans originals.
+const DL_BEST = {{ best_download_size(gs)|tojson }};
 const DL_KEY = 'pb-dl-size';
 
+// A browser that stores nothing (private mode) still keeps a change for this visit.
+let dlMem = '';
 function dlGetSize() {
-  if (!DL_SIZES_ON) return 'original';
-  try {
-    const saved = localStorage.getItem(DL_KEY) || '';
-    // Eine gemerkte Größe, die dieses Event nicht anbietet, zählt nicht.
-    return DL_ALLOWED.indexOf(saved) >= 0 ? saved : '';
-  } catch (e) { return ''; }
+  if (!DL_SIZES_ON) return '';
+  let saved = dlMem;
+  try { saved = localStorage.getItem(DL_KEY) || dlMem; } catch (e) { /* private mode */ }
+  // Eine gemerkte Größe, die dieses Event nicht anbietet, zählt nicht.
+  return DL_ALLOWED.indexOf(saved) >= 0 ? saved : '';
 }
+// A guest who never chose gets the best the event allows: the original if it
+// is offered, else the largest size (DL_ALLOWED runs small to original). The
+// sheet used to ask on the first download with the 640 px line on top and
+// focused, and that pick stuck: a 1800 px print came down as ~23 KB.
+function dlBest() { return DL_ALLOWED.length ? DL_ALLOWED[DL_ALLOWED.length - 1] : DL_BEST; }
+function dlCurrent() { return DL_SIZES_ON ? (dlGetSize() || dlBest()) : DL_BEST; }
 function dlSetSize(size) {
+  dlMem = size;
   try { localStorage.setItem(DL_KEY, size); } catch (e) { /* Privatmodus */ }
   dlShowChoice();
 }
@@ -984,7 +1028,7 @@ const DL_CHANGE = {{ t('dl.change', size='{size}')|tojson }};
 function dlShowChoice() {
   const c = document.getElementById('dlChange');
   if (!c) return;
-  const size = dlGetSize();
+  const size = dlCurrent();
   // The size comes from localStorage: escaped, and a selector that still does
   // not parse hides the button instead of stopping the page's script at load.
   let main = null;
@@ -1004,28 +1048,39 @@ function dlShowChoice() {
 // portrait collage and a landscape photo differ by half. The original has no
 // estimate per picture, so it shows none rather than a wrong one.
 const DL_ABOUT = {{ t('dl.size_about', size='{size}')|tojson }};
+// A size as the guest reads it, the rule of media.guest_bytes: "61 KB",
+// "1,4 MB" in German, "1.4 MB" in English. No other size formatting on this page.
+function pbBytes(n) {
+  const lang = (document.documentElement.lang || 'de').slice(0, 2);
+  let text, unit;
+  if (n < 999500) { text = String(n ? Math.max(1, Math.round(n / 1000)) : 0); unit = 'KB'; }
+  else {
+    const v = n >= 1e9 ? n / 1e9 : n / 1e6; unit = n >= 1e9 ? 'GB' : 'MB';
+    text = v < 10 ? v.toFixed(1).replace(/\.0$/, '') : String(Math.round(v));
+  }
+  return (lang === 'de' ? text.replace('.', ',') : text) + ' ' + unit;
+}
+window.pbBytes = pbBytes;
 function dlEstimate(sheet, mediaId) {
   const tile = mediaId ? document.querySelector('.photo-item[data-id="' + mediaId + '"]') : null;
   const w = tile ? +tile.dataset.pswpWidth : 0, h = tile ? +tile.dataset.pswpHeight : 0;
-  const fmt = new Intl.NumberFormat(document.documentElement.lang || 'de', { maximumFractionDigits: 1 });
   sheet.querySelectorAll('.dl-opt-est').forEach(est => {
     const px = +est.dataset.px;
     if (!w || !h) return;                      // keep the server's figure
     if (!px) { est.textContent = ''; return; }
     const f = Math.min(1, px / Math.max(w, h));
     const bytes = Math.round(w * f) * Math.round(h * f) * 0.18;   // as media.JPEG_BYTES_PER_PIXEL
-    const text = bytes >= 1e6 ? fmt.format(bytes / 1e6) + ' MB' : fmt.format(Math.max(1, Math.round(bytes / 1e3))) + ' KB';
-    est.textContent = ' · ' + DL_ABOUT.replace('{size}', text);
+    est.textContent = ' · ' + DL_ABOUT.replace('{size}', pbBytes(bytes));
   });
 }
 
 function dlAskSize(mediaId, change) {
   return new Promise(resolve => {
-    const known = dlGetSize();
-    if (!DL_SIZES_ON || (known && !change)) { resolve(known || 'original'); return; }
+    // Only "Größe ändern" opens the sheet; a download never asks first.
+    if (!DL_SIZES_ON || !change) { resolve(dlCurrent()); return; }
     const sheet = document.getElementById('dlSheet');
     // Nur eine Größe erlaubt? Dann gibt es nichts zu fragen.
-    if (!sheet) { resolve(DL_ALLOWED[0] || 'large'); return; }
+    if (!sheet) { resolve(dlCurrent()); return; }
     dlEstimate(sheet, mediaId);
 
     // Der Fokus gehört in das Blatt, solange es offen ist. Die Lightbox in
@@ -1070,7 +1125,12 @@ function dlAskSize(mediaId, change) {
     document.addEventListener('keydown', onKey);
     sheet.hidden = false;
     if (dahinter !== document.body) dahinter.setAttribute('inert', '');
-    const zuerst = sheet.querySelector('.dl-opt');
+    // The size in use is marked and focused, not the smallest line on top.
+    const now = dlCurrent();
+    sheet.querySelectorAll('.dl-opt').forEach(b => {
+      if (b.dataset.size === now) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+    });
+    const zuerst = sheet.querySelector('.dl-opt[aria-current]') || sheet.querySelector('.dl-opt');
     if (zuerst) zuerst.focus();
   });
 }
@@ -1081,42 +1141,40 @@ dlShowChoice();
 // iPhone and iPad (an iPad says "Mac" but has touch points).
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
 
-/** The "Datei-Download" sheet for iOS: the picture to long-press, plus the share sheet where it takes files. */
+/** The "Datei-Download" sheet for iOS: the picture to long-press, plus a real file download. */
 function dlSaveSheet(dlUrl, filename, mediaId) {
   const sheet = document.getElementById('dlSave');
   if (!sheet) return;
   if (sheet.parentNode !== document.body) document.body.appendChild(sheet);
   const img = document.getElementById('dlSaveImg'), vid = document.getElementById('dlSaveVideo');
-  const share = document.getElementById('dlSaveShare'), close = document.getElementById('dlSaveClose');
+  const file = document.getElementById('dlSaveFile'), close = document.getElementById('dlSaveClose');
   const tile = mediaId ? document.querySelector('.photo-item[data-id="' + mediaId + '"]') : null;
   const video = !!(tile && tile.dataset.video === '1');
   if (video) { img.hidden = true; img.removeAttribute('src'); vid.hidden = false; vid.src = dlUrl; }
-  else { vid.hidden = true; vid.removeAttribute('src'); img.hidden = false; img.src = dlUrl; img.alt = filename || ''; }
-  share.hidden = !(navigator.canShare && navigator.share);
+  // The picture to long-press ("Zu Fotos hinzufügen", what most iPhone guests
+  // do) is what they keep: the share file - the download route's JPEG at up to
+  // 2048 px (share=1), fetched once - never the display copy. The route's
+  // attachment header does not stop an image element from showing it. "Als Datei
+  // laden" below stays the best download (the original where offered).
+  else { vid.hidden = true; vid.removeAttribute('src'); img.hidden = false; img.src = photoFileUrl(mediaId, SHARE_SIZE) + '&share=1'; img.alt = filename || ''; }
+  // The route answers with Content-Disposition: attachment and the event's
+  // file name; the empty download attribute lets that name win.
+  file.href = dlUrl; file.setAttribute('download', '');
   const before = document.activeElement;
-  const lb = document.getElementById('lightbox');
   function done() {
     sheet.hidden = true; vid.pause(); vid.removeAttribute('src');
     document.removeEventListener('keydown', onKey, true);
-    share.onclick = null; close.onclick = null; sheet.onclick = null;
+    file.onclick = null; close.onclick = null; sheet.onclick = null;
     if (before && before.focus) before.focus({ preventScroll: true });
   }
   function onKey(e) {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(); return; }
     if (e.key !== 'Tab') return;
-    const ziele = Array.from(sheet.querySelectorAll('button:not([hidden]), video:not([hidden])'));
+    const ziele = Array.from(sheet.querySelectorAll('button:not([hidden]), a[href], video:not([hidden])'));
     const i = ziele.indexOf(document.activeElement);
     if (e.shiftKey && i <= 0) { e.preventDefault(); ziele[ziele.length - 1].focus(); }
     else if (!e.shiftKey && i === ziele.length - 1) { e.preventDefault(); ziele[0].focus(); }
   }
-  share.onclick = async () => {
-    try {
-      const blob = await (await fetch(dlUrl, { credentials: 'same-origin' })).blob();
-      const ext = blob.type === 'image/png' ? '.png' : (blob.type.indexOf('video') === 0 ? '.mp4' : '.jpg');
-      const file = new File([blob], (filename || 'foto').replace(/\.[^.]+$/, '') + ext, { type: blob.type || 'image/jpeg' });
-      if (navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
-    } catch (e) { /* cancelled or not possible: the picture stays to long-press */ }
-  };
   close.onclick = done;
   sheet.onclick = e => { if (e.target === sheet) done(); };
   document.addEventListener('keydown', onKey, true);
@@ -1125,6 +1183,12 @@ function dlSaveSheet(dlUrl, filename, mediaId) {
   trackAction('download', mediaId);
 }
 window.dlSaveSheet = dlSaveSheet;
+
+/** The picture as a file, through the download route: the size in use, never a display or thumbnail variant. */
+function photoFileUrl(mediaId, size) {
+  return `/gallery/${encodeURIComponent(EVENT_SLUG)}/photo/${mediaId}/download?size=${encodeURIComponent(size || dlCurrent())}`;
+}
+window.photoFileUrl = photoFileUrl;
 
 /** Download eines Einzelfotos über die Server-Route (skaliert + gecacht). */
 async function downloadPhoto(url, filename, mediaId) {
@@ -1136,7 +1200,7 @@ async function downloadPhoto(url, filename, mediaId) {
     trackAction('download');
     return;
   }
-  const dlUrl = `/gallery/${encodeURIComponent(EVENT_SLUG)}/photo/${mediaId}/download?size=${encodeURIComponent(size)}`;
+  const dlUrl = photoFileUrl(mediaId, size);
   if (IS_IOS) { dlSaveSheet(dlUrl, filename, mediaId); return; }
   pbToast(_t.dlPreparing);
   const a = document.createElement('a');

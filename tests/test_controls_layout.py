@@ -37,11 +37,13 @@ def test_both_sides_know_the_same_blocks():
     assert config.DEFAULT_PROFILE["layout"] == ecosystem.DEFAULT_PROFILE["layout"]
 
 
-def test_the_buzzer_is_off_until_somebody_turns_it_on():
-    """Eine Maus ist erst ein Buzzer, wenn es jemand so will — sonst löst jeder
-    versehentliche Klick eine Aufnahme aus."""
+def test_the_mouse_buzzer_is_on_by_default():
+    """Until 18.11.2026 a mouse was a buzzer only when somebody said so. The
+    owner's buzzer is a mouse and stayed silent on a fresh profile; now the
+    left button triggers out of the box ("off" makes the mouse a mouse), and
+    the start keys for space-bar buzzers are unchanged."""
     c = config.DEFAULT_PROFILE["controls"]
-    assert c["mouse_start"] == "off"
+    assert c["mouse_start"] == "left"
     assert c["touch"] is True and c["hide_cursor"] is True
     assert "F13" in c["keys_start"] and "Space" in c["keys_start"]
     assert c["repeat_ms"] >= 500          # Prellschutz von Haus aus

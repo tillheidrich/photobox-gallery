@@ -22,9 +22,13 @@ your responsibility.
 Why this exists (explanation, not part of the permission)
 
 The booth can drive Canon cameras over USB through the EDSDK, which is
-proprietary. This repository and every build made from it contain only the
-project's own wrapper code; the SDK itself is never shipped. Each operator
-obtains it from Canon and installs it on their own machine
-("--install-edsdk"). The permission above settles the AGPL side of running
-the booth together with that SDK. Whether and how the SDK itself may be
-passed on is decided by Canon's agreement alone.
+proprietary. This repository, its public mirror, every CI build and every
+GitHub release contain only the project's own wrapper code; with that free
+edition each operator obtains the SDK from Canon and installs it on their
+own machine ("--install-edsdk"). The edition with camera SDK, offered on the
+project website and built outside this repository, additionally carries the
+SDK's runtime libraries, unmodified and in object code only, solely for use
+with Canon cameras. Those files are not under the AGPL and not covered by
+this permission's grant; they come with end-user terms of their own
+(CAMERA-SDK-LICENCE.txt). The permission above settles the AGPL side of
+running and conveying the booth together with the SDK.

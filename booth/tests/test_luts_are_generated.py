@@ -37,6 +37,43 @@ def test_the_check_mode_agrees():
     assert MAKER.main(["--check"]) == 0
 
 
+def test_the_maths_does_not_go_through_blas():
+    """``@``/``np.dot`` hand the sums to BLAS, and BLAS is not the same everywhere.
+
+    Accelerate (macOS) and OpenBLAS (Linux x86_64 with FMA) add the three
+    products of a dot product in a different order; the last bit differs, and
+    a value that sits exactly on a six-decimal tie (warm-film, grid point
+    0.875/0.6875/0.75: 0.6703185) is printed as 0.670318 on one machine and
+    0.670319 on the other. Plain element-wise numpy arithmetic is IEEE
+    exact and gives the same bits on every machine.
+    """
+    import ast
+    tree = ast.parse((ROOT / "tools" / "make_luts.py").read_text(encoding="utf-8"))
+    blas = {"dot", "matmul", "einsum", "inner", "vdot", "tensordot"}
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.MatMult):
+            found.append(f"@ on line {node.lineno}")
+        if isinstance(node, ast.Attribute) and node.attr in blas:
+            found.append(f"{node.attr} on line {node.lineno}")
+    assert not found, found
+
+
+def test_the_luma_is_the_same_fixed_sum_as_plain_python():
+    grid = MAKER.grid(17)
+    w = [float(x) for x in MAKER.LUMA]
+    expected = [(w[0] * r + w[1] * g) + w[2] * b for r, g, b in grid.tolist()]
+    assert MAKER.luma(grid).tolist() == expected
+
+
+def test_a_value_on_a_six_decimal_tie_is_printed_the_same_everywhere():
+    # 0.6703185 in exact decimals; the fixed order of the sums decides which
+    # way it rounds, and that order no longer depends on the machine.
+    row = 6 + 3669   # header lines + grid index of (r, g, b) = (0.875, 0.6875, 0.75)
+    line = MAKER.cube_text("warm-film").splitlines()[row]
+    assert line.split()[1] == "0.670318"
+
+
 def test_every_shipped_look_is_generated_or_documented():
     shipped = {p.stem for p in luts.builtin_folder().glob("*.cube")}
     assert shipped == set(MAKER.LOOKS)

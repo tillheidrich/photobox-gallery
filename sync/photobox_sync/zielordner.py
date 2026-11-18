@@ -9,7 +9,7 @@ with it, offline.
 
 The rule, as the help text states it:
 
-* Empty: the folder the login starts in (Picdrop: the gallery's own folder).
+* Empty: the folder the login starts in (an FTP-fed proofing gallery: usually the gallery's own folder).
 * Otherwise a folder on the server, created when it is missing, sub-folders
   included. Forward slashes; a backslash becomes one. A leading ``/`` means
   "from the top of the server"; without it the folder is inside the start

@@ -48,7 +48,9 @@ def run_js(expr: str):
     if not NODE:
         pytest.skip("node is not installed")
     script = _geometry_source() + f"\nprocess.stdout.write(JSON.stringify({expr}));"
-    out = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=60, check=True)
+    # The script goes in on stdin, not as `-e <script>`: the collage cases make
+    # it larger than Linux allows for one command-line argument (128 KiB).
+    out = subprocess.run([NODE, "-"], input=script, capture_output=True, text=True, timeout=60, check=True)
     return json.loads(out.stdout)
 
 
@@ -87,6 +89,15 @@ def _server(kind: str, src, fmt: str = "", slot=None, collage_fit: str = "auto",
         return "contain", None
     x0, y0, x1, y1 = boxes[0]
     return "cover", [x0, y0, x1 - x0, y1 - y0]
+
+
+def test_a_large_batch_of_cases_reaches_node():
+    # The collage cases are a few hundred KB of JSON. As a command-line
+    # argument (`node -e`) that is fine on macOS but over Linux's limit for a
+    # single argument (128 KiB, E2BIG "Argument list too long"), so the CI
+    # runner never ran the comparison. 1.2 MB is over macOS's limit too.
+    big = "x" * 1_200_000
+    assert run_js(json.dumps(big) + ".length") == len(big)
 
 
 def _js_cases(cases):

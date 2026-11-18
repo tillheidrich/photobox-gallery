@@ -31,7 +31,7 @@ def share_code(share_key: str, uid: str) -> str:
 
 
 def share_url(base_url: str, share_key: str, uid: str, template: str = "") -> str:
-    """Link für den QR-Code. ``template`` erlaubt fremde Ziele (z. B. Picdrop-Galerie)."""
+    """Link für den QR-Code. ``template`` erlaubt fremde Ziele (z. B. eine Online-Galerie)."""
     if template:
         return template.replace("{uid}", uid)
     if not base_url or not share_key:
@@ -180,7 +180,7 @@ def qr_target(profile: dict, uid: str, mode: str = "photo") -> str:
     if mode == "gallery":
         url = gallery
     elif mode == "custom" or (mode == "auto" and legacy and not qr.get("url")):
-        # ein gesetztes qr_url_template hat wie bisher Vorrang (z. B. Picdrop)
+        # ein gesetztes qr_url_template hat wie bisher Vorrang (z. B. eine Online-Galerie)
         url = _fill(custom, uid, code, event, datei)
     else:                                   # auto: eigene Galerie zuerst
         url = gallery or _fill(custom, uid, code, event, datei)

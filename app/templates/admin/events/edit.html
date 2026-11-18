@@ -548,6 +548,7 @@
           überschreibt die Einstellung der Box; nichts angehakt heißt: Es bleibt bei der Box.
         </p>
         {% if event %}
+        {% include "admin/events/_booths.html" %}
         {# Layouts für dieses Event: app/layout_wahl.py. Pictures rendered by the gallery. #}
         <section class="lw" id="layouts" aria-labelledby="lw-title">
           <input type="hidden" name="ev_layouts_form" value="1">
@@ -1119,7 +1120,7 @@
         </p>
         <div class="form-group"><label class="form-label" for="redirect_url">Galerie-Link leitet weiter auf …</label>
           <input class="form-control" id="redirect_url" name="redirect_url" type="url" inputmode="url" autocapitalize="off" spellcheck="false"
-                 maxlength="500" value="{{ event.redirect_url or '' }}" placeholder="https://www.picdrop.com/…">
+                 maxlength="500" value="{{ event.redirect_url or '' }}" placeholder="https://…">
           <p class="form-hint" style="margin:6px 0 0">Nur vollständige Adressen mit <code>https://</code> oder <code>http://</code>.</p></div>
         <label class="gs-check" style="display:flex;gap:8px;margin:0 0 1.25rem"><input type="checkbox" name="redirect_all" value="1"
           {% if event.redirect_url and event.qr_target == 'external' and event.external_url == event.redirect_url %}checked{% endif %}>
@@ -1129,11 +1130,13 @@
         <p style="font-size:.875rem;color:var(--color-text-secondary);margin:0 0 12px">Jeder QR-Code der Box zeigt auf <code>/p/…</code> dieser Galerie, also auf die Aufnahmen genau eines Durchgangs. Hier entscheidest du jederzeit, wohin er führt — auch für bereits gedruckte Karten.</p>
         <div class="form-group">
           <label style="display:flex;gap:8px;margin-bottom:6px"><input type="radio" name="qr_target" value="gallery" {% if (event.qr_target or 'gallery') == 'gallery' %}checked{% endif %}> Eigene Galerie (Seite mit genau diesen Aufnahmen)</label>
-          <label style="display:flex;gap:8px;margin-bottom:6px"><input type="radio" name="qr_target" value="external" {% if event.qr_target == 'external' %}checked{% endif %}> Weiterleiten, z. B. zur Picdrop-Galerie</label>
+          <label style="display:flex;gap:8px;margin-bottom:6px"><input type="radio" name="qr_target" value="external" {% if event.qr_target == 'external' %}checked{% endif %}> Weiterleiten, z. B. zu einer Online-Galerie</label>
+          <p class="form-hint" style="margin:0 0 6px 26px" data-second-target-hint>{{ t('events.booths.second_target_qr') }}
+            {% for b in eb.booths %}<a href="/admin/devices/{{ b.id }}/sync#zweites-ziel">{{ b.name }}</a>{% if not loop.last %} · {% endif %}{% else %}<a href="/admin/devices">{{ t('events.booths.to_booths') }}</a>{% endfor %}</p>
           <label style="display:flex;gap:8px"><input type="radio" name="qr_target" value="status" {% if event.qr_target == 'status' %}checked{% endif %}> Statusseite (Galerie offline, gelöscht, in Wartung)</label>
         </div>
         <div class="form-group"><label class="form-label">Weiterleitungs-Adresse (<code>{uid}</code> wird ersetzt)</label>
-          <input class="form-control" name="external_url" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ event.external_url or '' }}" placeholder="https://www.picdrop.com/…"></div>
+          <input class="form-control" name="external_url" inputmode="url" autocapitalize="off" spellcheck="false" value="{{ event.external_url or '' }}" placeholder="https://…"></div>
         <div class="form-group"><label class="form-label">Text der Statusseite</label>
           <textarea class="form-control" name="status_message" rows="2" placeholder="Die Galerie ist nicht mehr online. Bei Fragen: …">{{ event.status_message or '' }}</textarea></div>
 

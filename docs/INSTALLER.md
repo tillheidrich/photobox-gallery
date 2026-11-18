@@ -137,8 +137,8 @@ Ohne WebView2 startet die Box Chrome oder Edge als Ersatz.
 
 **Startmenü „Photobox“:** Photobox · Photobox Verwaltung (öffnet
 `http://127.0.0.1:8765/admin` im Browser; PIN wie immer) · Photobox Selbsttest
-(`--doctor`) · Photobox Sync (der Sync allein, für Rechner mit dslrBooth oder
-LumaBooth; das Setup startet ihn nicht und richtet keinen Autostart für ihn
+(`--doctor`) · Photobox Sync (der Sync allein, für Rechner mit anderer
+Fotobox-Software; das Setup startet ihn nicht und richtet keinen Autostart für ihn
 ein — die Box hat ihren Sync eingebaut, eingerichtet wird er bei Bedarf mit
 `PhotoboxSync.exe --install`) · Handbuch · Wenn etwas hakt · Datenschutz an der Box ·
 Photobox deinstallieren.
@@ -192,9 +192,9 @@ in einer Administrator-Konsole.) Das ältere Setup erneut auszuführen geht auch
 ## Ohne Fenster (ssh)
 
 ```powershell
-.\Photobox-Setup-0.9.1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- `
+.\Photobox-Setup-0.9.2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- `
   /DIR="C:\Fotobox" /TASKS="autostart,desktopicon,aktivzeit" `
-  /LOG="C:\Fotobox\setup-0.9.1.log"
+  /LOG="C:\Fotobox\setup-0.9.2.log"
 echo $LASTEXITCODE
 ```
 
@@ -211,6 +211,15 @@ echo $LASTEXITCODE
   gewählt ist) und schreibt in `%LOCALAPPDATA%\PhotoboxBooth\logs\installer.log`.
   Die Deinstallation ruft `--uninstall` auf und entfernt die Aufgabe ebenfalls.
   Probeinstallationen gehören auf einen anderen Rechner oder in eine VM.
+* `/ACCEPTSDKTERMS=1` braucht nur die Fassung mit Kamera-SDK: Still
+  (`/SILENT`, `/VERYSILENT`) entfällt die Seite mit den Bedingungen für die
+  Canon-Dateien, und ohne diesen Schalter nimmt das Setup sie nicht
+  stillschweigend an. Es bricht dann ab, bevor es eine Datei kopiert
+  (Rückgabewert ungleich 0) und schreibt den Grund ins Setup-Protokoll
+  (`/LOG=`) und nach `%LOCALAPPDATA%\PhotoboxBooth\logs\installer.log`; ohne
+  `/SUPPRESSMSGBOXES` erscheint außerdem ein Hinweisfenster. Wer die
+  Bedingungen (`CAMERA-SDK-LICENCE.txt`) gelesen hat und annimmt, hängt
+  `/ACCEPTSDKTERMS=1` an. Die freie Fassung kennt den Schalter nicht.
 * `/START=1` startet die Box danach über die Aufgabe. Ohne den Schalter wird
   sie nur dann wieder gestartet, wenn sie vorher lief.
 * Das Setup startet den Rechner **nie** neu, auch nicht still. Nötig ist ein
@@ -288,7 +297,7 @@ SmartScreen-Ruf erst mit der Zeit auf.
 Neben dem Setup liegt `SHA256SUMS.txt`. Vor dem Ausführen:
 
 ```powershell
-Get-FileHash .\Photobox-Setup-0.9.1.exe -Algorithm SHA256
+Get-FileHash .\Photobox-Setup-0.9.2.exe -Algorithm SHA256
 ```
 
 Der angezeigte Wert muss (ohne Rücksicht auf Groß-/Kleinschreibung) mit der Zeile
@@ -296,14 +305,71 @@ in `SHA256SUMS.txt` übereinstimmen. Unter Linux/macOS: `sha256sum -c SHA256SUMS
 bzw. `shasum -a 256 -c SHA256SUMS.txt`. Die Prüfsummendatei gehört auf die
 Release-Seite, nicht nur neben die Datei auf demselben Server.
 
-## Später: die Canon-Ausgabe
+## Zwei Fassungen: frei und mit Kamera-SDK
 
-Im Setup gibt es einen Ausgaben-Schalter (`#define Edition`). Erlaubt ist nur
-`community`; jeder andere Wert bricht den Bau ab. Eine spätere Canon-Ausgabe
-(nur für die Website, gebaut außerhalb dieses Repositorys) würde dort einen
-`EDSDK`-Ordner in den Datenordner legen und eine zweite Lizenzseite mit Canons
-Bedingungen zeigen. Das setzt eine Weitergabeerlaubnis von Canon voraus; bis dahin
-enthält weder das Repository noch das Setup eine Canon-Datei.
+Ab 0.9.2 gibt es zwei Windows-Fassungen, beide kostenlos, dasselbe Programm.
+Die Fassung mit Kamera-SDK wird nur als Setup angeboten; eine portable Box mit
+Kamera-SDK wird nicht veröffentlicht.
+
+| | freie Fassung | Fassung mit Kamera-SDK |
+|---|---|---|
+| Inhalt | nur dieses Repository | zusätzlich die Laufzeitbibliotheken des Canon EOS Digital SDK (unverändert) |
+| Wo | GitHub-Releases (und die Website) | nur auf der Projekt-Website |
+| Gebaut | in CI oder von Hand, `build.ps1 -Installer` | nur von Hand auf dem Bau-PC, `build.ps1 -Installer -WithCameraSdk <Dll-Ordner>`, nie in CI |
+| Signiert | sobald die Code-Signatur aktiv ist | nie |
+| Dateien | `Photobox-Setup-<v>.exe`, `PhotoboxBooth-<v>.exe`, `PhotoboxSync-<v>.exe`, `SHA256SUMS.txt` | nur als Setup: `Photobox-Setup-<v>-mit-Kamera-SDK.exe`, `SHA256SUMS-mit-Kamera-SDK.txt` (nur diese eine Datei), `THIRD-PARTY-NOTICES-mit-Kamera-SDK.txt` |
+
+Die Canon-Dateien kommen nie ins Repository, in den öffentlichen Spiegel, in
+CI oder in ein GitHub-Release. Dafür sorgen:
+
+* `build.ps1` bricht `-WithCameraSdk` auf einem CI-Runner ab (`GITHUB_ACTIONS`
+  oder `CI` gesetzt), ohne `-Installer` und für jeden Ordner im Repository
+  (SDK-Ordner wie Ausgabeordner). Ausgabe standardmäßig
+  `%USERPROFILE%\Photobox-Build\mit-Kamera-SDK`, außerhalb des Repositorys.
+* Die freie Fassung entsteht zuerst, genau wie sonst in `dist\`, und wird mit
+  `tools/check_hygiene.py --build-output … --pyinstaller …` geprüft (keine
+  Canon-Datei); nach dem zweiten Bau noch einmal.
+* `packaging/windows/camera_sdk_edition.py` kopiert die 64-Bit-DLLs aus dem
+  Dll-Ordner Byte für Byte (Prüfsummenvergleich), schreibt
+  `CAMERA-SDK-LICENCE.txt` (Endnutzer-Bedingungen, de/en, Text aus
+  `booth/boothcore/camera_sdk_bundle.py`) und die Lizenzhinweise mit einem
+  eigenen Abschnitt für das SDK; danach prüft es, dass die portable `.exe`
+  genau diese Dateien enthält. Diese portable `.exe` entsteht nur für die
+  Prüfung und liegt im Unterordner `nicht-veroeffentlichen\` der Ausgabe;
+  veröffentlicht werden nur Setup, Prüfsummendatei und Lizenzhinweise. Es
+  verweigert die Arbeit auf CI und für Ordner im Repository.
+* `photobox.iss` stoppt mit `#error`, wenn `CameraSdkDir` auf einem CI-Runner
+  gesetzt ist; der frühere Schalter `Edition` ist entfernt und bricht den Bau ab.
+* `tests/test_camera_sdk_edition.py` stellt sicher, dass kein Workflow den
+  Schalter benutzt.
+
+Was die Fassung mit Kamera-SDK anders macht:
+
+* **Setup:** legt die DLLs nach `{app}\EDSDK\` und `CAMERA-SDK-LICENCE.txt`
+  neben das Programm; nach den Lizenzhinweisen kommt eine zweite Lizenzseite
+  mit den Endnutzer-Bedingungen für die Canon-Dateien, „Weiter“ erst nach „Ich
+  akzeptiere“. Still installiert nur mit `/ACCEPTSDKTERMS=1` (siehe „Ohne
+  Fenster“), sonst bricht das Setup ab. Box und Sync darin sind die Programme
+  der freien Fassung aus `dist\`.
+* **Welche EDSDK.dll die Box lädt** (`booth/boothcore/camera/edsdk.py`): erst
+  der Eintrag `edsdk_dll`, dann der Datenordner (`--install-edsdk` legt das SDK
+  dorthin), dann `EDSDK\` neben dem Programm (`{app}\EDSDK\` des Setups),
+  zuletzt ein im Programm steckendes SDK. `--doctor` und „Prüfen“ in der
+  Verwaltung nennen die tatsächlich geladene Datei („Geladen: …“).
+* **Erkennung:** Als Fassung mit Kamera-SDK gilt nur ein im Programm
+  steckendes SDK oder ein vom Setup installierter Programmordner (`EDSDK\`,
+  `CAMERA-SDK-LICENCE.txt` und die Deinstallationsdaten `unins*.dat`). Ein
+  `EDSDK`-Ordner mit Lizenzdatei neben irgendeiner `.exe` zählt nicht. Zeigt
+  die Box die Bedingungen ohne Setup-Seite einmal in ihrer Konsole, legt sie
+  die Kopie nur in den Datenordner, nie neben das Programm.
+* **Verwaltung → Über:** listet das SDK als eigene, proprietäre Komponente,
+  „nicht unter der AGPL“, mit Link auf die Bedingungen.
+* Eine Canon-Kamera läuft ohne `--install-edsdk`. Ein vom Betreiber selbst
+  eingerichtetes SDK im Datenordner hat weiter Vorrang.
+
+Wer von der Fassung mit Kamera-SDK auf die freie Fassung wechselt: Das freie
+Setup entfernt `{app}\EDSDK\` nicht (dort kann auch ein selbst eingerichtetes
+SDK liegen); zum vollständigen Entfernen erst deinstallieren.
 
 ## Testliste auf dem Windows-Rechner
 

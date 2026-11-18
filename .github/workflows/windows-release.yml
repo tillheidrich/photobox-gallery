@@ -1,0 +1,327 @@
+name: windows release
+
+# Builds the Windows files of a release on GitHub-hosted runners, from this
+# repository and nothing else, with packaging/windows/build.ps1 - the same
+# script a maintainer runs by hand. Started by pushing a tag vX.Y.Z (it must
+# match VERSION) or by hand (Actions -> windows release -> Run workflow).
+#
+# Free edition only. The Canon EDSDK is never part of a build (AGENTS.md,
+# rule 1): the guard steps fail the run when a file of it turns up in the
+# build tree or inside the PyInstaller programs, before anything is uploaded.
+# SignPath signs open-source components only; this is also what keeps a
+# signing request clean.
+#
+# Signing (SignPath Foundation, docs/CODE-SIGNING.md) runs only when the
+# repository has all of these, otherwise the signing jobs are skipped:
+#   secret    SIGNPATH_API_TOKEN
+#   variables SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG,
+#             SIGNPATH_SIGNING_POLICY_SLUG,
+#             SIGNPATH_ARTIFACT_CONFIGURATION_PROGRAMS (booth + sync),
+#             SIGNPATH_ARTIFACT_CONFIGURATION_SETUP (the setup)
+# The setup is an Inno Setup file, which SignPath cannot open to sign what is
+# inside. So booth and sync are signed first, the setup is built from the
+# signed programs, then the setup is signed: two signing requests per
+# release, each approved by hand in SignPath.
+#
+# Nothing is ever published by this workflow. A tag ends in a DRAFT release:
+# signed files when signing is set up, otherwise the unsigned files as a
+# draft pre-release named "unsigned". The owner publishes by hand.
+#
+# Actions are pinned to a commit, not to a tag (see tests.yml).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Whether SignPath is set up, without the secret ever reaching a job that
+  # builds anything. Only "true" or "false" leaves this job.
+  config:
+    name: signing set up?
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      signing: ${{ steps.check.outputs.signing }}
+    steps:
+      - name: SignPath secret and variables present
+        id: check
+        env:
+          HAS_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+          ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          CONFIG_PROGRAMS: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_PROGRAMS }}
+          CONFIG_SETUP: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SETUP }}
+        run: |
+          if [ "$HAS_TOKEN" = "true" ] && [ -n "$ORGANIZATION_ID" ] && [ -n "$PROJECT_SLUG" ] \
+             && [ -n "$SIGNING_POLICY_SLUG" ] && [ -n "$CONFIG_PROGRAMS" ] && [ -n "$CONFIG_SETUP" ]; then
+            echo "signing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signing=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SignPath is not set up; the files stay unsigned."
+          fi
+
+  build:
+    name: build (unsigned)
+    needs: config
+    runs-on: windows-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      programs-artifact-id: ${{ steps.upload-programs.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Version from VERSION; a tag must match it
+        id: version
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$v") {
+            throw "Tag $env:GITHUB_REF_NAME does not match VERSION ($v)."
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+      - name: Repository hygiene (vendor binaries, credentials, one version)
+        run: python tools/check_hygiene.py
+      - name: Build booth, sync and setup with build.ps1 (unsigned)
+        env:
+          PHOTOBOX_COMMIT: ${{ github.sha }}
+          # Unsigned on purpose: signing happens in SignPath, never on the runner.
+          PHOTOBOX_SIGN_THUMBPRINT: ""
+          PHOTOBOX_SIGN_COMMAND: ""
+        run: ./packaging/windows/build.ps1 -Installer -Python python
+      - name: Guard - no Canon SDK file in the build tree or in the programs
+        run: >-
+          packaging/windows/.buildenv/Scripts/python.exe tools/check_hygiene.py --build-output .
+          --pyinstaller packaging/windows/dist/PhotoboxBooth.exe packaging/windows/dist/PhotoboxSync.exe
+      - name: Product name and version in every file
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $d = "packaging/windows/dist"
+          ./packaging/windows/check_release_files.ps1 -Version $env:VERSION `
+            "$d/PhotoboxBooth-$env:VERSION.exe" "$d/PhotoboxSync-$env:VERSION.exe" "$d/Photobox-Setup-$env:VERSION.exe"
+      - name: Collect the release files and the programs to sign
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $d = "packaging/windows/dist"
+          New-Item -ItemType Directory -Force out/release, out/programs | Out-Null
+          foreach ($n in "Photobox-Setup-$env:VERSION.exe", "PhotoboxBooth-$env:VERSION.exe",
+                         "PhotoboxSync-$env:VERSION.exe", "SHA256SUMS.txt", "THIRD-PARTY-NOTICES.txt") {
+            Copy-Item "$d/$n" out/release/
+          }
+          Copy-Item "$d/PhotoboxBooth.exe", "$d/PhotoboxSync.exe" out/programs/
+      - name: Upload the unsigned release files
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-unsigned
+          path: out/release/
+          if-no-files-found: error
+      # SignPath reads the programs from this artifact by its id.
+      - name: Upload booth and sync for signing
+        id: upload-programs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: programs-unsigned
+          path: out/programs/
+          if-no-files-found: error
+
+  sign-programs:
+    name: sign booth and sync (SignPath)
+    needs: [config, build]
+    if: needs.config.outputs.signing == 'true'
+    runs-on: windows-latest
+    # The request waits for a person to approve it in SignPath.
+    timeout-minutes: 330
+    permissions:
+      contents: read
+      actions: read
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Submit the signing request and wait for approval
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_PROGRAMS }}
+          github-artifact-id: ${{ needs.build.outputs.programs-artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 18000
+          output-artifact-directory: out/programs-signed
+          parameters: |
+            version: ${{ toJSON(needs.build.outputs.version) }}
+      - name: Check the signatures of booth and sync
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: ./packaging/windows/check_release_files.ps1 -Version $env:VERSION -Signed out/programs-signed/PhotoboxBooth.exe out/programs-signed/PhotoboxSync.exe
+      - name: Upload the signed booth and sync
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: programs-signed
+          path: out/programs-signed/
+          if-no-files-found: error
+
+  sign-setup:
+    name: build the setup from the signed programs, sign it (SignPath)
+    needs: [config, build, sign-programs]
+    if: needs.config.outputs.signing == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 330
+    permissions:
+      contents: read
+      actions: read
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Fetch the signed booth and sync
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: programs-signed
+          path: packaging/windows/dist
+      - name: Build the setup from the signed programs with build.ps1 -InstallerOnly
+        env:
+          PHOTOBOX_COMMIT: ${{ github.sha }}
+          PHOTOBOX_SIGN_THUMBPRINT: ""
+          PHOTOBOX_SIGN_COMMAND: ""
+        run: ./packaging/windows/build.ps1 -InstallerOnly -Python python
+      - name: Guard - no Canon SDK file in the build tree or in the programs
+        run: >-
+          packaging/windows/.buildenv/Scripts/python.exe tools/check_hygiene.py --build-output .
+          --pyinstaller packaging/windows/dist/PhotoboxBooth.exe packaging/windows/dist/PhotoboxSync.exe
+      - name: Product name and version of the setup
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: ./packaging/windows/check_release_files.ps1 -Version $env:VERSION "packaging/windows/dist/Photobox-Setup-$env:VERSION.exe"
+      - name: Collect the setup to sign
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          New-Item -ItemType Directory -Force out/setup | Out-Null
+          Copy-Item "packaging/windows/dist/Photobox-Setup-$env:VERSION.exe" out/setup/
+      - name: Upload the setup for signing
+        id: upload-setup
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: setup-unsigned
+          path: out/setup/
+          if-no-files-found: error
+      - name: Submit the signing request and wait for approval
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SETUP }}
+          github-artifact-id: ${{ steps.upload-setup.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 18000
+          output-artifact-directory: out/setup-signed
+          parameters: |
+            version: ${{ toJSON(needs.build.outputs.version) }}
+      - name: Collect the signed release files
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          $d = "packaging/windows/dist"
+          New-Item -ItemType Directory -Force out/release | Out-Null
+          # build.ps1 -InstallerOnly made the versioned copies from the signed programs.
+          Copy-Item "$d/PhotoboxBooth-$env:VERSION.exe", "$d/PhotoboxSync-$env:VERSION.exe", "$d/THIRD-PARTY-NOTICES.txt" out/release/
+          Copy-Item "out/setup-signed/Photobox-Setup-$env:VERSION.exe" out/release/
+      - name: Check every signature
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          ./packaging/windows/check_release_files.ps1 -Version $env:VERSION -Signed `
+            "out/release/Photobox-Setup-$env:VERSION.exe" "out/release/PhotoboxBooth-$env:VERSION.exe" "out/release/PhotoboxSync-$env:VERSION.exe"
+      - name: Checksums of the signed files (SHA256SUMS.txt, LF, no BOM)
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          $sums = @()
+          foreach ($n in (@("Photobox-Setup-$env:VERSION.exe", "PhotoboxBooth-$env:VERSION.exe", "PhotoboxSync-$env:VERSION.exe") | Sort-Object)) {
+            $sums += "$((Get-FileHash "out/release/$n" -Algorithm SHA256).Hash.ToLower())  $n"
+          }
+          [IO.File]::WriteAllText("$PWD/out/release/SHA256SUMS.txt", ($sums -join "`n") + "`n", (New-Object Text.UTF8Encoding $false))
+          Get-Content out/release/SHA256SUMS.txt
+      - name: Upload the signed release files
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-signed
+          path: out/release/
+          if-no-files-found: error
+
+  # A draft release for a tag. Signed files when signing is set up (and only
+  # then, never falling back to unsigned ones); otherwise the unsigned files
+  # as a draft pre-release named "unsigned". Never published from here.
+  release:
+    name: draft release
+    needs: [config, build, sign-setup]
+    if: >-
+      always() && github.ref_type == 'tag' && needs.build.result == 'success' &&
+      ((needs.config.outputs.signing == 'true' && needs.sign-setup.result == 'success') ||
+       (needs.config.outputs.signing != 'true' && needs.sign-setup.result == 'skipped'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Fetch the signed release files
+        if: needs.config.outputs.signing == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-signed
+          path: release
+      - name: Fetch the unsigned release files
+        if: needs.config.outputs.signing != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-unsigned
+          path: release
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+          SIGNED: ${{ needs.config.outputs.signing }}
+        run: |
+          cd release
+          sha256sum -c SHA256SUMS.txt
+          if [ "$SIGNED" = "true" ]; then
+            gh release create "$TAG" ./* --repo "$GITHUB_REPOSITORY" --verify-tag --draft \
+              --title "Photobox $VERSION" \
+              --notes "Windows files built by the windows release workflow from $GITHUB_SHA and signed through SignPath Foundation. Draft: check, then publish by hand."
+          else
+            gh release create "$TAG" ./* --repo "$GITHUB_REPOSITORY" --verify-tag --draft --prerelease \
+              --title "Photobox $VERSION (unsigned)" \
+              --notes "UNSIGNED Windows files built by the windows release workflow from $GITHUB_SHA. Windows SmartScreen warns about an unknown publisher; compare SHA256SUMS.txt first. Draft: check, then publish by hand."
+          fi

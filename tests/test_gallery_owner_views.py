@@ -1,4 +1,4 @@
-"""The owner's two views of a gallery (Picdrop round, 17.11.2026).
+"""The owner's two views of a gallery (proofing-gallery round, 17.11.2026).
 
 * ``?ansicht=vorschau`` - the page exactly as a guest gets it, also for a
   draft or a password gallery, under a slim bar "Vorschau · <state>".
@@ -120,8 +120,10 @@ def test_ios_gets_a_save_sheet_with_the_long_press_hint(client):
     _photo(ev)
     html = client.get(f"/gallery/{ev['slug']}").get_data(as_text=True)
     assert 'id="dlSave"' in html and "Datei-Download" in html
-    assert "Tippe lange auf die Datei, um diese zu speichern." in html
+    assert "Tippt lange auf das Bild, um es zu speichern." in html
     assert "if (IS_IOS) { dlSaveSheet(" in html
+    # Since 18.11.2026 the sheet offers a real file download, not the share sheet.
+    assert 'id="dlSaveFile"' in html and "Als Datei laden" in html
 
 
 # ── D: preview ────────────────────────────────────────────────
@@ -296,3 +298,33 @@ def test_the_owners_colour_marks_are_not_shown_to_guests(client):
     _admin(client)
     assert 'class="photo-tag"' not in client.get(f"/gallery/{ev['slug']}?ansicht=vorschau").get_data(as_text=True)
     assert 'class="photo-tag"' in client.get(f"/gallery/{ev['slug']}?ansicht=verwalten").get_data(as_text=True)
+
+
+def test_guests_do_not_get_the_colour_marks_in_the_markup_either(client):
+    """Review 18.11.2026: the dot was gone, but every tile still said
+    ``data-tag="green"`` in the source. Only viewers who may mark (proofing)
+    or manage get the attribute; nothing a guest runs reads it."""
+    ev = _event(hide_red_in_presentation=False, color_tags=True)
+    _photo(ev, color_tag="green")
+    guest = client.get(f"/gallery/{ev['slug']}").get_data(as_text=True)
+    assert "data-tag=" not in guest
+    proofing = _event(hide_red_in_presentation=False, color_tags=True, mode="proofing")
+    _photo(proofing, color_tag="green")
+    assert 'data-tag="green"' in client.get(f"/gallery/{proofing['slug']}").get_data(as_text=True)
+    _admin(client)
+    assert "data-tag=" not in client.get(f"/gallery/{ev['slug']}?ansicht=vorschau").get_data(as_text=True)
+    assert 'data-tag="green"' in client.get(f"/gallery/{ev['slug']}?ansicht=verwalten").get_data(as_text=True)
+
+
+def test_the_owners_views_are_never_stored_by_a_cache(client):
+    """Review 18.11.2026: manage shows hidden and pending pictures, and both
+    views carry the owner's bar with its CSRF token. A browser or proxy cache
+    must not keep them (back button after logout, shared machine)."""
+    ev = _event()
+    _photo(ev)
+    guest = client.get(f"/gallery/{ev['slug']}")
+    assert "no-store" not in (guest.headers.get("Cache-Control") or "")
+    _admin(client)
+    for view in ("verwalten", "vorschau"):
+        r = client.get(f"/gallery/{ev['slug']}?ansicht={view}")
+        assert r.status_code == 200 and "no-store" in (r.headers.get("Cache-Control") or ""), view

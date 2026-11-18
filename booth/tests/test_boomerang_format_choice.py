@@ -76,7 +76,8 @@ def test_the_video_mode_is_not_affected(booth):
 
 def test_the_set_up_screen_offers_formats_for_the_boomerang_like_for_the_photo():
     js = (ROOT / "boothcore" / "web" / "static" / "app.js").read_text(encoding="utf-8")
-    assert 'const FORMAT_MODES = ["photo", "boomerang"];' in js
+    # the GIF joined on 18.11.2026 (test_gif_setup_like_boomerang.py)
+    assert 'const FORMAT_MODES = ["photo", "boomerang", "gif"];' in js
     assert "(mayFormat && FORMAT_MODES.includes(mode))" in js
     assert 'mode === "boomerang" && !!(p.boomerang || {}).guest_choice' in js
     # pre-selected: the operator's boomerang format when it is offered

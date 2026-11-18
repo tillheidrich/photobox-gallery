@@ -97,10 +97,14 @@ def test_the_booth_page_explains_the_three(admin_client, client):
 
 
 # ── GIF als Zugabe zur Collage ────────────────────────────
-def test_the_collage_gif_is_off_until_somebody_wants_it():
-    """Eine Zugabe, die Rechenzeit kostet, schaltet man selbst ein."""
-    assert config.DEFAULT_PROFILE["gif"]["from_collage"] is False
-    assert config.DEFAULT_PROFILE["gif"]["from_collage_min"] == 4
+def test_the_collage_gif_is_on_unless_somebody_turns_it_off():
+    """Owner, 18.11.2026: "a collage must always also be saved as GIF/video
+    unless it is deactivated". Until then it was off by default. Two
+    pictures are enough, so every collage qualifies."""
+    assert config.DEFAULT_PROFILE["gif"]["from_collage"] is True
+    assert config.DEFAULT_PROFILE["gif"]["from_collage_min"] == 2
+    assert ecosystem.DEFAULT_PROFILE["gif"]["from_collage"] is True
+    assert ecosystem.DEFAULT_PROFILE["gif"]["from_collage_min"] == 2
 
 
 def test_the_remote_form_switches_the_collage_gif(admin_client, client):

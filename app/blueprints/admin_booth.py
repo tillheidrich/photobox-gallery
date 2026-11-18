@@ -11,7 +11,7 @@ from flask import (Blueprint, Response, abort, current_app, flash, g, jsonify, r
                    render_template, request, session, url_for)
 from werkzeug.utils import secure_filename
 
-from app import booth_texts, db, ecosystem, frame_store, media
+from app import booth_texts, db, ecosystem, frame_store, media, profile_rules
 from app.blueprints.admin import _csrf_token, _require_admin
 
 bp = Blueprint("admin_booth", __name__)
@@ -324,6 +324,27 @@ def _frame_fields(f, clip: str) -> dict:
             "frame_guest_choice": bool(f.get(f"{clip}_frame_guest_choice"))}
 
 
+def _seconds_choices(text) -> list:
+    """``boomerang.seconds_choices`` from the form: "2, 5, 10" -> [2, 5, 10].
+
+    The bounds are those of profile_rules.NUMBER_LISTS (1-15 s, at most
+    four); anything outside, words and doubles are dropped, not refused, as
+    the other number fields of this form are clamped.
+    """
+    low, high, most = profile_rules.NUMBER_LISTS["boomerang.seconds_choices"]
+    out: list = []
+    for part in re.split(r"[,;\s]+", str(text or "")):
+        try:
+            value = float(part)
+        except ValueError:
+            continue
+        if low <= value <= high:
+            value = int(value) if value.is_integer() else value
+            if value not in out:
+                out.append(value)
+    return out[:most]
+
+
 def _num(name, default, cast=int, lo=None, hi=None):
     try:
         v = cast(request.form.get(name, default))
@@ -405,6 +426,12 @@ def booth_profile(device_id: int):
                 p[clip]["loops"] = _num("boomerang_loops", 3, int, 1, 10)
                 p[clip]["guest_choice"] = bool(f.get("boomerang_guest_choice"))
                 p[clip]["print"] = bool(f.get("boomerang_print"))
+                # The lengths the guest may choose (18.11.2026) and the film's bounds then.
+                p[clip]["seconds_choices"] = _seconds_choices(f.get("boomerang_seconds_choices"))
+                p[clip]["seconds_guest_choice"] = bool(f.get("boomerang_seconds_guest_choice"))
+                p[clip]["min_total_seconds"] = _num("boomerang_min_total", 15, int, 5, 60)
+                p[clip]["max_total_seconds"] = max(p[clip]["min_total_seconds"],
+                                                   _num("boomerang_max_total", 30, int, 5, 60))
             p[clip].update(_frame_fields(f, clip))
         p["gif"] = {"shots": _num("gif_shots", 6, int, 2, 10), "interval": _num("gif_interval", 1.0, float, 0.5, 10),
                     "frame_ms": _num("gif_frame_ms", 200, int, 80, 3000),
@@ -415,11 +442,14 @@ def booth_profile(device_id: int):
                     "max_width": 1080,
                     # Zugabe zur Collage: dieselben Aufnahmen, zusätzlich als GIF.
                     "from_collage": bool(f.get("gif_from_collage")),
-                    "from_collage_min": _num("gif_from_collage_min", 4, int, 2, 8),
+                    "from_collage_min": _num("gif_from_collage_min", 2, int, 2, 8),
                     # Own sheet for printing a GIF run — only a template the
                     # gallery lists, by its file name; anything else = built-in.
                     "print_template": next((a["file"] for a in ecosystem.list_assets("template")
                                             if a["file"] == (f.get("gif_print_template") or "").strip()), ""),
+                    # Set up like the boomerang (18.11.2026): its own format switch and frames.
+                    "guest_choice": bool(f.get("gif_guest_choice")),
+                    **_frame_fields(f, "gif"),
                     # Boomerang-Fassung fürs Handy, mit eigenen Maßen.
                     "boomerang": {
                         "enabled": bool(f.get("gifboom_enabled")),
@@ -595,6 +625,7 @@ def booth_profile(device_id: int):
                       "logo": (f.get("start_logo") or "").strip()[:120],
                       "logo_size": _num("start_logo_size", 18, int, 4, 50),
                       "bg_color": _hexfarbe(f.get("start_bg_color"), ""),
+                      "text_tone": f.get("start_text_tone") if f.get("start_text_tone") in ("auto", "hell", "dunkel") else "auto",
                       # -1 = the old gradient; 0–80 = a flat dim
                       "dim": _num("start_dim", -1, int, -1, 80),
                       "show_title": bool(f.get("start_show_title")),
@@ -1115,21 +1146,52 @@ def sync_device(device_id: int):
               "reasons": [r for r in status.get("failed_reasons") or [] if isinstance(r, dict)]}
     from app import second_target
     second = second_target.state(status)
-    second_jobs = [_job_view(j) for j in ecosystem.recent_jobs(device_id, 20) if j.get("type") in second_target.JOBS][:3]
+    # The card: the booth's report, the change on its way and the last contact
+    # (app/second_target.card). Without the pending job the form came back
+    # empty right after saving, because the report still predated the change.
+    zt = second_target.card(device, status)
     profile_event = {}
     try:
         ev_row = db.get_event_by_id(device["event_id"]) if device.get("event_id") else None
         profile_event = {"slug": ev_row["slug"], "name": ev_row["name"]} if ev_row else {}
     except Exception:                       # noqa: BLE001 — the example falls back to a sample event
         profile_event = {}
-    second_path_example = second_target.path_example(second.get("path") or "", second.get("flat", True)
-                                                     if second.get("configured") else True, profile_event)
+    second_path_example = second_target.path_example(zt["form"]["path"], zt["form"]["flat"], profile_event)
     second_changes = second_target.last_changes(device_id)
     return render_template("admin/sync_device.html", device=device, report=report, light=light, queues=queues,
                            jobs=[_job_view(j) for j in ecosystem.recent_jobs(device_id, 10)], csrf_token=_csrf_token(),
-                           second=second, second_jobs=second_jobs, second_changes=second_changes,
+                           second=second, zt=zt, second_changes=second_changes,
                            second_path_example=second_path_example,
                            upload_counts=status.get("upload_targets") or {}, active_nav="devices")
+
+
+@bp.get("/devices/<int:device_id>/sync/second-target/state")
+def sync_second_target_state(device_id: int):
+    """The live part of the card as JSON, polled by the page while a job waits.
+
+    Read-only, so a GET without the form token; admin only. Carries the form's
+    non-secret fields and the rendered state, never a password, its ciphertext
+    or the booth's key.
+    """
+    redir = _require_admin()
+    if redir:
+        return redir
+    ecosystem.init_schema()
+    device = db.get_device_by_id(device_id)
+    if not device:
+        abort(404)
+    from app import second_target
+    zt = second_target.card(device, db.get_device_status(device_id) or {})
+    html = render_template("admin/_second_target_live.html", zt=zt, device=device)
+    from app.i18n import t
+    note = {"pending": t("sync.second_target.form_pending", ago=(zt["pending"] or {}).get("since", "")),
+            "booth": t("sync.second_target.form_booth")}.get(zt["form_source"], "")
+    resp = jsonify({"ok": True, "busy": zt["busy"], "form_source": zt["form_source"], "form": zt["form"],
+                    "form_note": note, "password_note": zt["password_note"],
+                    "password_note_text": t("sync.second_target.pw_" + zt["password_note"]),
+                    "can_check": zt["can_check"], "html": html})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 #: The buttons of the second target card and what each one sends.
@@ -1145,7 +1207,7 @@ def _second_target_form(form) -> dict:
             "port": int(port_raw) if port_raw else 0, "user": str(form.get("user") or ""),
             "path": str(form.get("path") or ""), "flat": form.get("flat") == "1",
             "enabled": form.get("enabled") == "1", "originals": form.get("originals") == "1",
-            "print_sheets": form.get("print_sheets") == "1"}
+            "print_sheets": form.get("print_sheets") == "1", "direct": form.get("direct") == "1"}
 
 
 @bp.post("/devices/<int:device_id>/sync/second-target")

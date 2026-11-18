@@ -5,6 +5,7 @@ Bisher blieb nur, die ganze Serie zu wiederholen. Geprüft wird deshalb, ob
 sich eine einzelne Aufnahme an ihrer Stelle ersetzen lässt — und ob der
 Durchsehen-Schirm die Gäste überhaupt danach fragt.
 """
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -129,7 +130,7 @@ def test_the_screen_is_actually_shown():
 
 def test_the_buzzer_means_carry_on():
     js = (WEB / "static" / "app.js").read_text()
-    assert 'if (sc === "review") return reviewFertig();' in js
+    assert re.search(r'if \(sc === "review"\) (?:return reviewFertig\(\);|\{ reviewFertig\(\); return "acted:review"; \})', js)
     assert '|| sc === "review") return;' in js, \
         "Andere Knöpfe dürfen die Serie nicht mitten im Durchsehen verlassen"
 

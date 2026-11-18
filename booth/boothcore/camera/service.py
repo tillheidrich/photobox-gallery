@@ -95,6 +95,9 @@ def _edsdk_da() -> bool:
     """Liegt eine EDSDK.dll neben dem Programm? Dann ist eine Canon gemeint."""
     from pathlib import Path as _P
     hier = _P(sys.argv[0]).resolve().parent if sys.argv and sys.argv[0] else _P.cwd()
+    from ..camera_sdk_bundle import sdk_dir as _bundled_sdk_dir
+    if _bundled_sdk_dir() is not None:      # the edition with camera SDK
+        return True
     return any((ordner / "EDSDK.dll").is_file() or (ordner / "EDSDK" / "EDSDK.dll").is_file()
                for ordner in (hier, _P.cwd()))
 

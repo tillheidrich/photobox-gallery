@@ -1,4 +1,4 @@
-"""An event whose gallery moved elsewhere (Picdrop): forward the guests, keep the event.
+"""An event whose gallery moved elsewhere (an FTP-fed proofing gallery): forward the guests, keep the event.
 
 Two things the operator asked for on 15.11.2026:
 
@@ -17,7 +17,7 @@ import secrets
 import pytest
 from PIL import Image
 
-PICDROP = "https://www.picdrop.com/muster/abc123"
+FORWARD_URL = "https://galerie.example.com/muster/abc123"
 
 
 def _admin(client):
@@ -62,7 +62,7 @@ def _code(event, uid):
     return f"{uid}-{ecosystem.signature(ecosystem.ensure_share_key(event), uid)}"
 
 
-def _forward(client, event, url=PICDROP, everything=False, **extra):
+def _forward(client, event, url=FORWARD_URL, everything=False, **extra):
     _admin(client)
     data = {"csrf_token": "x", "qr_target": "gallery", "external_url": "", "status_message": "",
             "redirect_url": url, **extra}
@@ -88,13 +88,13 @@ def test_without_a_forward_the_gallery_is_what_it_was(client):
 
 def test_the_gallery_forwards_guests_to_the_stored_address(client):
     from app import db
-    event, _uid = _event_with_run(client, "umzug-picdrop")
+    event, _uid = _event_with_run(client, "umzug-galerie")
     r = _forward(client, event)
     assert r.status_code == 302
-    assert db.get_event_by_id(event["id"])["redirect_url"] == PICDROP
+    assert db.get_event_by_id(event["id"])["redirect_url"] == FORWARD_URL
     _guest(client)
-    r = client.get("/gallery/umzug-picdrop")
-    assert r.status_code == 302 and r.headers["Location"] == PICDROP
+    r = client.get("/gallery/umzug-galerie")
+    assert r.status_code == 302 and r.headers["Location"] == FORWARD_URL
 
 
 def test_old_names_the_password_page_and_share_links_forward_too(client):
@@ -112,10 +112,10 @@ def test_old_names_the_password_page_and_share_links_forward_too(client):
         while r.status_code in (301, 302) and not r.headers["Location"].startswith("https://") and hops < 3:
             r = client.get(r.headers["Location"], follow_redirects=False)
             hops += 1
-        assert r.status_code == 302 and r.headers["Location"] == PICDROP, path
+        assert r.status_code == 302 and r.headers["Location"] == FORWARD_URL, path
     # Typing a password at the old page does not keep anybody here either.
     r = client.post("/gallery/umzug-alles", data={"password": "ein-gaeste-passwort"})
-    assert r.status_code == 302 and r.headers["Location"] == PICDROP
+    assert r.status_code == 302 and r.headers["Location"] == FORWARD_URL
 
 
 def test_an_expired_gallery_forwards_instead_of_saying_gone(client):
@@ -128,7 +128,7 @@ def test_an_expired_gallery_forwards_instead_of_saying_gone(client):
     _forward(client, event)
     _guest(client)
     r = client.get("/gallery/umzug-abgelaufen")
-    assert r.status_code == 302 and r.headers["Location"] == PICDROP
+    assert r.status_code == 302 and r.headers["Location"] == FORWARD_URL
 
 
 def test_silent_mode_still_wins_over_the_forward(client):
@@ -147,10 +147,10 @@ def test_the_operator_still_reaches_the_event_and_sees_where_it_points(client):
     _admin(client)
     assert client.get("/gallery/umzug-admin").status_code == 200
     edit = client.get(f"/admin/events/{event['id']}/edit").get_data(as_text=True)
-    assert "leitet weiter auf www.picdrop.com" in edit
+    assert "leitet weiter auf galerie.example.com" in edit
     assert 'name="redirect_url"' in edit and "Alles weiterleiten" in edit
     listing = client.get("/admin/events").get_data(as_text=True)
-    assert "leitet weiter auf www.picdrop.com" in listing
+    assert "leitet weiter auf galerie.example.com" in listing
 
 
 @pytest.mark.parametrize("bad", ["javascript:alert(1)", "JAVASCRIPT:alert(1)", "//evil.example/x",
@@ -185,7 +185,7 @@ def test_the_target_never_comes_from_the_request(client):
     _forward(client, event)
     _guest(client)
     r = client.get("/gallery/umzug-offen?redirect_url=https://evil.example")
-    assert r.headers["Location"] == PICDROP
+    assert r.headers["Location"] == FORWARD_URL
 
 
 def test_forward_everything_points_the_qr_codes_there_too(client):
@@ -193,10 +193,10 @@ def test_forward_everything_points_the_qr_codes_there_too(client):
     event, uid = _event_with_run(client, "umzug-qr")
     _forward(client, event, everything=True)
     stored = db.get_event_by_id(event["id"])
-    assert stored["qr_target"] == "external" and stored["external_url"] == PICDROP
+    assert stored["qr_target"] == "external" and stored["external_url"] == FORWARD_URL
     _guest(client)
     r = client.get(f"/p/{_code(stored, uid)}")
-    assert r.status_code == 302 and r.headers["Location"].startswith(PICDROP)
+    assert r.status_code == 302 and r.headers["Location"].startswith(FORWARD_URL)
 
 
 # ── Delete the photos, keep the event ───────────────────────
@@ -283,12 +283,12 @@ def test_the_forward_works_before_and_after_the_photos_go(client):
     _forward(client, event, everything=True)
     code = _code(event, uid)
     _guest(client)
-    assert client.get("/gallery/leeren-weiter").headers["Location"] == PICDROP
-    assert client.get(f"/p/{code}").headers["Location"].startswith(PICDROP)
+    assert client.get("/gallery/leeren-weiter").headers["Location"] == FORWARD_URL
+    assert client.get(f"/p/{code}").headers["Location"].startswith(FORWARD_URL)
     _purge(client, event, 1)
     _guest(client)
-    assert client.get("/gallery/leeren-weiter").headers["Location"] == PICDROP
-    assert client.get(f"/p/{code}").headers["Location"].startswith(PICDROP)
+    assert client.get("/gallery/leeren-weiter").headers["Location"] == FORWARD_URL
+    assert client.get(f"/p/{code}").headers["Location"].startswith(FORWARD_URL)
 
 
 def test_a_deleted_run_with_the_gallery_as_target_says_gone(client):
@@ -320,10 +320,10 @@ def test_expiry_and_the_nightly_run_keep_a_forwarded_event(client):
     _forward(client, event, everything=True)
     maintenance.run()
     after = db.get_event_by_id(event["id"])
-    assert after is not None and after["redirect_url"] == PICDROP
+    assert after is not None and after["redirect_url"] == FORWARD_URL
     assert _files_of(event["id"])[0] == []
     # Even a caller that asks the purge for the row keeps it while a forward is set.
     retention.purge_event(event["id"], reason="retention", actor="system", delete_event_row=True)
     assert db.get_event_by_id(event["id"]) is not None
     _guest(client)
-    assert client.get("/gallery/leeren-nacht").headers["Location"] == PICDROP
+    assert client.get("/gallery/leeren-nacht").headers["Location"] == FORWARD_URL

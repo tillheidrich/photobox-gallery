@@ -1,11 +1,16 @@
-{# The booth's second upload target ("Zweites Ziel im Netz": Picdrop, FTP, SFTP).
+{# The booth's second upload target ("Zweites Ziel im Netz": FTP/FTPS/SFTP).
    A form for every paired booth that reports a key to seal the password to
    (no switch at the booth since 17.11.2026; app/second_target.py,
    docs/SECOND-TARGET-FROM-THE-GALLERY.md). A changed server loses its
    password at the booth and waits for a new one (rule B2).
-   The password is never rendered: the field is empty, its placeholder says
-   whether one is stored, and empty keeps it. #}
+   The password is never rendered: the field is empty, a line under it says
+   whether one is stored or awaited, and empty keeps it.
+   The form is filled from the change waiting for the booth (marked as such)
+   or from what the booth reports; the part in [data-zt-live] follows the
+   booth's answer (static/js/second-target-live.js, no inline script). #}
 {% set second = second if second is defined else {'supported': False} %}
+{% set zt = zt if zt is defined else {'st': second, 'pending': none, 'pending_check': none, 'contact': {'min': none, 'silent': True, 'text': ''}, 'last_check': none, 'jobs': [], 'form': {}, 'form_source': 'new', 'password_note': 'none', 'busy': False, 'can_check': second.configured} %}
+{% set zf = zt.form %}
 {% set upload_counts = upload_counts if upload_counts is defined else {} %}
 {% set second_changes = second_changes if second_changes is defined else [] %}
 {% set second_path_example = second_path_example if second_path_example is defined else {} %}
@@ -23,6 +28,7 @@
   #zweites-ziel .zt-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
   #zweites-ziel .btn{min-height:44px}
   #zweites-ziel .btn[data-armed="1"]{background:#b42318;color:#fff}
+  #zweites-ziel .zt-note{margin:0 0 12px;padding:10px 14px;border-radius:10px;border:1px solid var(--color-border,#d0d5dd);background:var(--color-bg-secondary,#f5f5f5);font-size:.95rem}
   #zweites-ziel .zt-wait{margin:0 0 12px;padding:12px 14px;border-radius:10px;border:1px solid #f0b429;background:#fff8e6;color:#4a3300;font-size:1rem}
   #zweites-ziel code.zt-ex{word-break:break-all}
   #zweites-ziel small{color:var(--color-text-secondary,#666)}
@@ -39,31 +45,10 @@
     <p class="hint">{{ t('sync.second_target.intro') }}</p>
     <p class="hint">{{ t('sync.second_target.rule_b2') }}</p>
   {% endif %}
-  {% if second.awaiting_password %}<p class="zt-wait" data-awaiting-password><b>{{ t('sync.second_target.awaiting') }}</b></p>{% endif %}
-  {% if second.supported %}
-  <h3 class="sy-q-h">{{ t('sync.second_target.state') }}</h3>
-  {% if second.configured %}
-  <dl class="sy-dl" data-second-state>
-    <dt>{{ t('sync.second_target.enabled') }}</dt><dd>{{ t('sync.second_target.yes') if second.enabled else t('sync.second_target.no') }}</dd>
-    <dt>{{ t('sync.second_target.type') }}</dt><dd>{{ {'ftps': t('sync.second_target.opt_ftps'), 'ftp': t('sync.second_target.opt_ftp'), 'sftp': t('sync.second_target.opt_sftp')}.get(second.type, second.type) }}</dd>
-    <dt>{{ t('sync.second_target.host') }}</dt><dd>{{ second.host }}{% if second.port %}:{{ second.port }}{% endif %}</dd>
-    <dt>{{ t('sync.second_target.user') }}</dt><dd>{{ second.user or '—' }}</dd>
-    <dt>{{ t('sync.second_target.path') }}</dt><dd>{{ second.path or '/' }}</dd>
-    <dt>{{ t('sync.second_target.password_set') }}</dt><dd data-password-set="{{ 1 if second.password_set else 0 }}">{{ t('sync.second_target.yes') if second.password_set else t('sync.second_target.no') }}</dd>
-    {% if second.type == 'sftp' %}
-    <dt>{{ t('sync.second_target.host_key') }}</dt>
-    <dd data-host-key><code>{{ second.host_key.sha256 if second.host_key else '' }}</code>{% if not second.host_key %}{{ t('sync.second_target.host_key_none') }}{% endif %}
-      {% if second.host_key_seen %}<br><span class="zt-bad" data-host-key-seen>{{ t('sync.second_target.host_key_seen') }}</span><br><code>{{ second.host_key_seen.sha256 }}</code>{% endif %}</dd>
-    {% elif second.type == 'ftp' %}
-    <dt>{{ t('sync.second_target.encryption') }}</dt><dd class="zt-bad" data-ftp-warn>{{ t('sync.second_target.ftp_warn') }}</dd>
-    {% endif %}
-    <dt>{{ t('sync.second_target.last_check') }}</dt>
-    <dd>{% if second.check %}<span class="{{ 'zt-ok' if second.check.ok else 'zt-bad' }}">{{ t('sync.second_target.check_ok') if second.check.ok else t('sync.second_target.check_fail') }}</span>
-      · <time data-epoch="{{ second.check.at|int }}">{{ second.check.at|int }}</time><br><small>{{ second.check.message }}</small>
-      {% else %}{{ t('sync.second_target.never') }}{% endif %}</dd>
-  </dl>
-  {% else %}<p class="hint">{{ t('sync.second_target.not_configured') }}</p>{% endif %}
-  {% endif %}
+  <div data-zt-live data-zt-url="{{ url_for('admin_booth.sync_second_target_state', device_id=device.id) }}" data-zt-busy="{{ 1 if zt.busy else 0 }}"
+       data-zt-timeout="{{ t('sync.second_target.poll_timeout') }}" aria-live="polite">
+  {% include "admin/_second_target_live.html" %}
+  </div>
   <h3 class="sy-q-h">{{ t('sync.second_target.changed') }}</h3>
   {% if second_changes %}
   <dl class="sy-dl" data-second-changes>
@@ -81,35 +66,43 @@
   {% if second.can_set %}
   <form method="post" action="{{ url_for('admin_booth.sync_second_target', device_id=device.id) }}" class="zt-form" autocomplete="off">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label class="zt-check"><input type="checkbox" name="enabled" value="1" {{ 'checked' if (second.enabled if second.configured else True) }}> {{ t('sync.second_target.f_enabled') }}</label>
+    {% if zt.form_source == 'pending' %}<p class="zt-note" data-form-source="pending">{{ t('sync.second_target.form_pending', ago=zt.pending.since) }}</p>
+    {% elif zt.form_source == 'booth' %}<small data-form-source="booth">{{ t('sync.second_target.form_booth') }}</small>
+    {% else %}<small data-form-source="new"></small>{% endif %}
+    <label class="zt-check"><input type="checkbox" name="enabled" value="1" {{ 'checked' if zf.enabled }}> {{ t('sync.second_target.f_enabled') }}</label>
     <label>{{ t('sync.second_target.type') }}
       <select name="type">
-        {% for v, label in (('ftps', t('sync.second_target.opt_ftps')), ('ftp', t('sync.second_target.opt_ftp')), ('sftp', t('sync.second_target.opt_sftp'))) %}<option value="{{ v }}" {{ 'selected' if (second.type or 'ftps') == v }}>{{ label }}</option>{% endfor %}
+        {% for v, label in (('ftps', t('sync.second_target.opt_ftps')), ('ftp', t('sync.second_target.opt_ftp')), ('sftp', t('sync.second_target.opt_sftp'))) %}<option value="{{ v }}" {{ 'selected' if zf.type == v }}>{{ label }}</option>{% endfor %}
       </select></label>
     <div class="zt-row">
-      <label>{{ t('sync.second_target.host') }}<input type="text" name="host" value="{{ second.host or '' }}" maxlength="253" required
+      <label>{{ t('sync.second_target.host') }}<input type="text" name="host" value="{{ zf.host }}" maxlength="253" required
         inputmode="url" autocapitalize="off" spellcheck="false"><small>{{ t('sync.second_target.f_host_hint') }}</small></label>
-      <label>{{ t('sync.second_target.f_port') }}<input type="number" name="port" min="1" max="65535" value="{{ second.port or '' }}" inputmode="numeric"></label>
+      <label>{{ t('sync.second_target.f_port') }}<input type="number" name="port" min="1" max="65535" value="{{ zf.port or '' }}" inputmode="numeric"></label>
     </div>
-    <label>{{ t('sync.second_target.user') }}<input type="text" name="user" value="{{ second.user or '' }}" maxlength="128" autocapitalize="off" spellcheck="false"></label>
+    <label>{{ t('sync.second_target.user') }}<input type="text" name="user" value="{{ zf.user }}" maxlength="128" autocapitalize="off" spellcheck="false"></label>
     {# Write-only: never a value attribute. #}
     <label>{{ t('sync.second_target.f_password') }}<input type="password" name="password" value="" maxlength="256" autocomplete="new-password"
       placeholder="{{ t('sync.second_target.ph_awaiting') if second.awaiting_password else (t('sync.second_target.ph_stored') if second.password_set else t('sync.second_target.ph_none')) }}"></label>
+    <p class="zt-pw" data-password-note="{{ zt.password_note }}"><b>{{ {'stored': t('sync.second_target.pw_stored'), 'awaiting': t('sync.second_target.pw_awaiting'), 'sent': t('sync.second_target.pw_sent'), 'will_wait': t('sync.second_target.pw_will_wait')}.get(zt.password_note, t('sync.second_target.pw_none')) }}</b></p>
     <small>{{ t('sync.second_target.secret_note') }}</small>
-    <label>{{ t('sync.second_target.f_path') }}<input type="text" name="path" value="{{ second.path or '' }}" maxlength="255" autocapitalize="off" spellcheck="false"
+    <label>{{ t('sync.second_target.f_path') }}<input type="text" name="path" value="{{ zf.path }}" maxlength="255" autocapitalize="off" spellcheck="false"
       placeholder="fotobox/{jahr}/{event}"><small>{{ t('sync.second_target.path_rule') }}</small></label>
     {% if second_path_example %}<small data-path-example>{{ t('sync.second_target.path_example') if second_path_example.ok else t('sync.second_target.path_bad') }}
       <code class="zt-ex">{{ second_path_example.text }}</code></small>{% endif %}
-    <label class="zt-check"><input type="checkbox" name="flat" value="1" {{ 'checked' if (second.flat if second.configured else True) }}> {{ t('sync.second_target.f_flat') }}</label>
+    <label class="zt-check"><input type="checkbox" name="flat" value="1" {{ 'checked' if zf.flat }}> {{ t('sync.second_target.f_flat') }}</label>
     <small>{{ t('sync.second_target.layout_words') }}</small>
-    <label class="zt-check"><input type="checkbox" name="originals" value="1" {{ 'checked' if (second.originals if second.configured else True) }}> {{ t('sync.second_target.f_originals') }}</label>
-    <label class="zt-check"><input type="checkbox" name="print_sheets" value="1" {{ 'checked' if second.print_sheets }}> {{ t('sync.second_target.f_print') }}</label>
+    <label class="zt-check"><input type="checkbox" name="originals" value="1" {{ 'checked' if zf.originals }}> {{ t('sync.second_target.f_originals') }}</label>
+    <label class="zt-check"><input type="checkbox" name="print_sheets" value="1" {{ 'checked' if zf.print_sheets }}> {{ t('sync.second_target.f_print') }}</label>
+    <label class="zt-check"><input type="checkbox" name="direct" value="1" {{ 'checked' if zf.direct }}> {{ t('sync.second_target.f_direct') }}</label>
+    <small>{{ t('sync.second_target.direct_help') }}</small>
     <small>{{ t('sync.second_target.what_goes') }}</small>
     <small>{{ t('sync.second_target.sftp_note') }}</small>
     <div class="zt-btns">
       <button type="submit" name="action" value="save" class="btn btn-primary">{{ t('sync.second_target.save') }}</button>
-      {% if second.configured %}
+      {% if zt.can_check %}
       <button type="submit" name="action" value="check" class="btn btn-secondary" formnovalidate>{{ t('sync.second_target.check_btn') }}</button>
+      {% endif %}
+      {% if second.configured %}
       <button type="submit" name="action" value="backfill" class="btn btn-secondary" formnovalidate>{{ t('sync.second_target.backfill_btn') }}</button>
       <button type="submit" name="action" value="clear" class="btn btn-secondary" formnovalidate data-zt-confirm="{{ t('sync.second_target.clear_confirm') }}">{{ t('sync.second_target.clear_btn') }}</button>
       {% endif %}
@@ -127,28 +120,5 @@
   </form>
   {% endif %}
   {% endif %}
-  {% if second_jobs %}
-  <h3 class="sy-q-h">{{ t('sync.second_target.jobs') }}</h3>
-  <dl class="sy-dl">{% for j in second_jobs %}<dt>{{ j.created_at }}</dt><dd>{{ j.state_label }}{% if j.result_text %}: {{ j.result_text }}{% endif %}</dd>{% endfor %}</dl>
-  {% endif %}
 </div>
-<script>
-(() => {
-  const card = document.getElementById("zweites-ziel");
-  if (!card) return;
-  card.querySelectorAll("time[data-epoch]").forEach((el) => {
-    const n = Number(el.dataset.epoch);
-    if (n > 0) el.textContent = new Date(n * 1000).toLocaleString(document.documentElement.lang || "de-DE",
-      {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
-  });
-  // "Zugang entfernen" asks once more on the same button, like the queues.
-  card.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-zt-confirm]");
-    if (!btn || btn.dataset.armed === "1") return;
-    e.preventDefault();
-    const label = btn.textContent;
-    btn.dataset.armed = "1"; btn.textContent = btn.dataset.ztConfirm;
-    setTimeout(() => { if (btn.dataset.armed === "1") { btn.dataset.armed = ""; btn.textContent = label; } }, 6000);
-  });
-})();
-</script>
+<script src="/static/js/second-target-live.js" defer></script>

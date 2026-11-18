@@ -72,6 +72,12 @@
       <div class="setup-preview"><div class="frame" id="setupFrame"><img class="live" alt="" id="setupLive"></div></div>
       <div class="setup-options">
         <div class="setup-scroll">
+          <!-- How long a boomerang records, when the guest may choose
+               (boomerang.seconds_choices): big buttons "2 s", "5 s", "10 s". -->
+          <div class="group" id="groupSeconds" hidden><h3 id="secondsHead" data-t="setup.seconds"></h3>
+            <div class="picker"><div class="cards" id="secondsChips" role="group" aria-labelledby="secondsHead"></div>
+              <button class="picker-arrow prev" data-scroll="-1" hidden data-a11y="setup.more_prev"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+              <button class="picker-arrow next" data-scroll="1" hidden data-a11y="setup.more_next"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div></div>
           <!-- Layouts as pictures of the printed sheet (layoutbilder.py): a row
                that scrolls sideways, arrows and a cut-off next card show
                there is more. -->

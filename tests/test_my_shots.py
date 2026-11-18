@@ -80,9 +80,11 @@ def test_download_and_share_actions_are_offered(app, client):
     mid = _shot(app, eid, slug, "sess2")
     _scanned(client, "sess2")
     html = client.get("/meine").get_data(as_text=True)
-    assert f"/gallery/{slug}/photo/{mid}/download?size=large" in html
-    assert "size=original" in html
-    assert "mineShare(" in html
+    # One download, the best the event allows (18.11.2026): the original here.
+    assert f"/gallery/{slug}/photo/{mid}/download?size=original" in html
+    assert 'download?size=large&amp;code' not in html and "download?size=large&code" not in html
+    # Sharing fetches at most 2048 px (iOS share sheet, 18.11.2026).
+    assert "mineShare(" in html and "download?size=large\\u0026share=1" in html
 
 
 def test_original_button_follows_the_event_setting(app, client):
@@ -91,6 +93,7 @@ def test_original_button_follows_the_event_setting(app, client):
     _scanned(client, "sess3")
     html = client.get("/meine").get_data(as_text=True)
     assert "size=original" not in html
+    assert "size=large" in html                 # the largest size the event allows
 
 
 def test_sessions_are_grouped_newest_first(app, client):

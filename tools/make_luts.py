@@ -17,8 +17,13 @@ difference 0.008 per channel. It looks the same, the bytes differ.
 
 The output is deterministic: the same script gives the same bytes on every
 machine (float64 maths, values clamped to 0…1 and printed with six decimals),
-and a test regenerates every file and compares byte for byte. The files are
-part of this project under its licence (AGPL-3.0-or-later).
+and a test regenerates every file and compares byte for byte. Sums of
+products are written out element by element (``weighted_sum``), never as
+``@``: BLAS adds in its own order, and on Linux x86_64 that flipped one
+warm-film value that sits exactly on a six-decimal tie (0.6703185). The only
+library maths left are ``np.exp`` and ``np.power``, whose results are not
+decimal ties. The files are part of this project under its licence
+(AGPL-3.0-or-later).
 
 Format: Adobe/Resolve ``.cube``, red changes fastest, the same file names,
 titles and grid sizes as before, so every profile keeps working.
@@ -42,8 +47,20 @@ LUMA = np.array([0.2126, 0.7152, 0.0722])          # Rec. 709 weights
 
 # ── building blocks ─────────────────────────────────────────────────────
 
+def weighted_sum(c: Rgb, w) -> np.ndarray:
+    """``w[0]*r + w[1]*g + w[2]*b``, always added in this order.
+
+    Not ``c @ w``: that goes to BLAS, and BLAS adds the products in an order
+    of its own (Accelerate on macOS and OpenBLAS on Linux x86_64 differ in the
+    last bit). Values that sit exactly on a six-decimal tie then print
+    differently on different machines. Element-wise numpy arithmetic is IEEE
+    exact, so this sum has the same bits everywhere.
+    """
+    return (c[..., 0] * w[0] + c[..., 1] * w[1]) + c[..., 2] * w[2]
+
+
 def luma(c: Rgb) -> np.ndarray:
-    return c @ LUMA
+    return weighted_sum(c, LUMA)
 
 
 def s_curve(x: np.ndarray, amount: float) -> np.ndarray:
@@ -67,7 +84,8 @@ def saturate(c: Rgb, factor: float) -> Rgb:
 
 
 def matrix(c: Rgb, m) -> Rgb:
-    return c @ np.asarray(m, dtype=np.float64).T
+    m = np.asarray(m, dtype=np.float64)
+    return np.stack([weighted_sum(c, row) for row in m], axis=-1)
 
 
 def split_tone(c: Rgb, shadows, highlights, strength: float = 1.0) -> Rgb:
@@ -153,7 +171,7 @@ def golden_warm(c: Rgb) -> Rgb:
 
 def classic_mono(c: Rgb) -> Rgb:
     """Black and white with weight: red-leaning grey mix (kind to skin), contrast, a deep but not crushed black."""
-    y = c @ np.array([0.38, 0.52, 0.10])
+    y = weighted_sum(c, (0.38, 0.52, 0.10))
     y = s_curve(y, 0.45)
     y = levels(y, 0.02, 1.0)
     return np.repeat(y[..., None], 3, axis=-1)

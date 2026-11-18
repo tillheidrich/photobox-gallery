@@ -5,9 +5,11 @@ sind manche Canon-Modelle (z. B. EOS M50) mit gphoto2 wackelig. Das SDK deckt di
 EOS-, EOS-M- und EOS-R-Modelle ab (Liste in der SDK-Doku).
 
 Wichtig:
-* Das SDK steht unter Canon-NDA und liegt **nicht** im Repo. Jeder Betreiber
-  holt es sich über das Canon Developer Programme und trägt den Pfad zur
-  ``EDSDK.dll`` (plus ``EdsImage.dll`` daneben) in der lokalen Konfiguration ein.
+* Das SDK ist proprietär (Canon) und liegt **nicht** im Repo. Mit der freien
+  Fassung holt es sich jeder Betreiber über das Canon Developer Programme und
+  trägt den Pfad zur ``EDSDK.dll`` (plus ``EdsImage.dll`` daneben) in der
+  lokalen Konfiguration ein; die Fassung mit Kamera-SDK bringt es mit
+  (``camera_sdk_bundle.py``).
 * Alle Aufrufe laufen auf genau einem Thread (dem Kamera-Thread des
   ``CameraService``). Das SDK verlangt das.
 * Ereignisse (fertiges Foto) kommen über ``EdsGetEvent`` bzw. die
@@ -32,6 +34,11 @@ import logging
 from .base import CameraBackend, CameraError, CaptureRefused
 
 log = logging.getLogger("booth.camera.edsdk")
+
+#: The library this process actually loaded, for --doctor and the admin's
+#: self-check. A PC can hold several copies (data folder, program folder,
+#: a bundle); the load order decides which one runs, not the one in view.
+LOADED_DLL: Optional[str] = None
 
 EDS_ERR_OK = 0x00000000
 EDS_ERR_DEVICE_BUSY = 0x00000081
@@ -382,6 +389,7 @@ class EdsdkCamera(CameraBackend):
             raise CameraError(f"EDSDK {what} fehlgeschlagen (0x{err:08X})")
 
     def _load(self):
+        global LOADED_DLL
         candidates = [self.dll_path] if self.dll_path else []
         try:                                  # dorthin legt --install-edsdk die Dateien
             from ..config import data_dir
@@ -391,8 +399,16 @@ class EdsdkCamera(CameraBackend):
         except Exception:                     # noqa: BLE001 — ohne Datenordner geht es auch
             pass
         here = Path(sys.argv[0]).resolve().parent
-        candidates += [str(here / "EDSDK" / "EDSDK.dll"),
-                       str(here / "EDSDK" / "EDSDK.framework" / "EDSDK"),
+        candidates += [str(here / "EDSDK" / "EDSDK.dll")]
+        # Order: configured edsdk_dll, data folder (--install-edsdk), EDSDK
+        # next to the program, then the edition with camera SDK's bundle
+        # (inside the program, or the setup's {app}\EDSDK, which the line
+        # above already found).
+        from ..camera_sdk_bundle import sdk_dir as _bundled_sdk_dir
+        bundled = _bundled_sdk_dir()
+        if bundled is not None:
+            candidates.append(str(bundled / "EDSDK.dll"))
+        candidates += [str(here / "EDSDK" / "EDSDK.framework" / "EDSDK"),
                        "/Library/Frameworks/EDSDK.framework/EDSDK",
                        str(Path.home() / "Library" / "Frameworks" / "EDSDK.framework" / "EDSDK"),
                        "EDSDK.dll", "libEDSDK.so"]
@@ -405,10 +421,15 @@ class EdsdkCamera(CameraBackend):
                     d = os.path.dirname(c)
                     if d and hasattr(os, "add_dll_directory"):
                         os.add_dll_directory(d)  # EdsImage.dll liegt daneben
-                    return ctypes.WinDLL(c)
-                return ctypes.CDLL(c)
+                    lib = ctypes.WinDLL(c)
+                else:
+                    lib = ctypes.CDLL(c)
             except OSError as e:
                 last = e
+                continue
+            LOADED_DLL = c
+            log.info("EDSDK geladen: %s", c)
+            return lib
         if sys.platform not in ("win32", "darwin"):
             raise CameraError(
                 "Für Linux gibt es kein Canon-SDK — dort läuft die Box mit gphoto2 "

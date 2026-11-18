@@ -341,6 +341,7 @@ MEDIA_FIELDS = (
     "sounds.countdown", "sounds.shutter", "sounds.done", "sounds.print",
     "theme.font_file", "lock.image", "collage_templates", "backgrounds",
     "chroma.backgrounds", "gif.print_template", "boomerang.frame_templates", "video.frame_templates",
+    "gif.frame_templates",
 )
 
 
@@ -395,7 +396,11 @@ DEFAULT_PROFILE: Dict[str, Any] = {
     # as "vom Event vorgegeben" instead of letting a change vanish at the next sync.
     # "frames_fixed": the same for the frames of boomerang and video.
     "event": {"slug": "", "name": "", "share_key": "", "base_url": "", "published": None,
-              "layouts_fixed": False, "frames_fixed": False},
+              "layouts_fixed": False, "frames_fixed": False,
+              # The event's file-name rule ("" or "event_datetime", app/dateinamen.py).
+              # Without the key here apply_profile dropped it and every file
+              # kept its run id as name (found at the booth, 18.11.2026).
+              "file_naming": ""},
     # Was der Gast selbst wählen darf. Aus heißt nicht „fehlt“, sondern: die Box
     # nimmt die Voreinstellung und überspringt den Schritt — ein Bildschirm weniger
     # für Gäste, die mit Auswahl nichts anfangen können.
@@ -512,10 +517,18 @@ DEFAULT_PROFILE: Dict[str, Any] = {
     # SD card, downloads it and builds the clip from it (1080x1920 for 9:16
     # instead of 360x640). Needs a camera that films over USB (Canon SDK)
     # and a card in it; any failure films from the live view instead.
+    # "seconds_choices" (18.11.2026): lengths the guest may pick on the set-up
+    # screen ("2 s", "5 s", "10 s"; 1-15 s each, at most four), offered when
+    # "seconds_guest_choice" is on and two or more are valid. "seconds" is
+    # pre-selected if listed. A chosen length sets the loops itself: the film
+    # lasts "min_total_seconds" at least, "max_total_seconds" at most
+    # (media/boomerang.py loops_for_total); "loops" applies without the choice.
     "boomerang": {"format": "9:16", "layout": "crop", "source": "live", "seconds": 2.0, "fps": 20, "loops": 3, "width": "auto",
                   "max_width": 1080, "scale": "native", "guest_choice": False, "print": False,
                   "frames": False, "frame_templates": [], "frame_builtins": [], "frame_none": True,
-                  "frame_default": "", "frame_guest_choice": True},
+                  "frame_default": "", "frame_guest_choice": True,
+                  "seconds_choices": [], "seconds_guest_choice": False,
+                  "min_total_seconds": 15, "max_total_seconds": 30},
     # GIF: several stills in a row, like dslrBooth. Guests keep the single photos too.
     # Six pictures shown 200 ms each: four at 400 ms looked like a slide show,
     # not like movement. "video_seconds" is how long the MP4 next to the GIF
@@ -526,10 +539,20 @@ DEFAULT_PROFILE: Dict[str, Any] = {
             # Aufnahmen, ohne dass der Gast ein zweites Mal posieren muss. Der
             # Druck bleibt die Collage; das GIF ist die Zugabe für das Telefon.
             # Erst ab genügend Einzelbildern, sonst zuckt es nur.
-            "from_collage": False, "from_collage_min": 4,
+            # On by default since 18.11.2026 (owner: "a collage is always also
+            # saved as GIF/video unless it is deactivated"); from two pictures on.
+            "from_collage": True, "from_collage_min": 2,
             # The sheet a GIF run is printed on: one of the own templates (file
             # name), "" = the built-in sheet for that number of pictures.
             "print_template": "",
+            # Set up like the boomerang (18.11.2026): "guest_choice" opens the
+            # format choice for the GIF alone (guest_choice.format does it for
+            # all); "format" above is the GIF's own when nobody chooses. The
+            # frame keys are the boomerang's, and the frames offered are those
+            # made for the boomerang; off, the GIF is as before.
+            "guest_choice": False,
+            "frames": False, "frame_templates": [], "frame_builtins": [], "frame_none": True,
+            "frame_default": "", "frame_guest_choice": True,
             # Dasselbe GIF zusätzlich als Boomerang fürs Handy. Eigene Maße:
             # Aufgenommen wird meist 4:5, gebraucht wird 9:16 — und dabei darf
             # niemand am Rand wegfallen, deshalb „blur" als Voreinstellung
@@ -740,6 +763,12 @@ DEFAULT_PROFILE: Dict[str, Any] = {
         # blurred live picture, as before) and a flat dim over picture or
         # colour in percent (0–80). -1 keeps the old gradient.
         "bg_color": "",
+        # Text on the start picture (title block, status line): "auto" = light
+        # on a dark shade when start media is set and bg_color is empty, the
+        # theme's colours without start media; "hell" /
+        # "dunkel" force it. Tiles and buttons keep the theme (18.11.2026: a
+        # light theme put dark text on a dark start photo).
+        "text_tone": "auto",
         "dim": -1,
         # An own start picture with headline, instructions and QR burned in:
         # the title (event name + "Tippen & lächeln") and the status line can
@@ -861,7 +890,10 @@ DEFAULT_PROFILE: Dict[str, Any] = {
         "keys_start": ["Space", "Enter", "NumpadEnter", "PageDown", "ArrowRight", "F13"],
         "keys_back": ["Escape"],      # zurück zum Start
         "keys_print": ["KeyP"],       # Drucken auf dem Ergebnisbildschirm
-        "mouse_start": "off",         # off | left | right | middle | any — „left" ist der Maus-Buzzer
+        # off | left | right | middle | any. "left" by default since 18.11.2026
+        # (owner: the buzzer is a mouse and must work without a setting); a
+        # finger is never taken for it (pressRule), "off" makes the mouse a mouse.
+        "mouse_start": "left",
         "mouse_swallow": True,        # Buzzer-Klick nicht zusätzlich an die Schaltfläche darunter geben
         "hide_cursor": True,          # Mauszeiger ausblenden — bei einem Maus-Buzzer steht er sonst im Bild
         # On-screen keyboard for every text field of the booth's pages (osk.js):
@@ -952,7 +984,7 @@ DEFAULT_PROFILE: Dict[str, Any] = {
         "font": "system",           # system (Inter) | display (Archivo) | serif | rounded | mono
         "font_file": "",            # hochgeladene Schriftart (Medienart „Schriftart“); schlägt „font“
     },
-    "qr_url_template": "",                        # z. B. Picdrop-Galerie statt eigener Galerie
+    "qr_url_template": "",                        # z. B. eine Online-Galerie statt eigener Galerie
     # Free QR destination: works without the gallery. {uid} and {event} are filled in.
     "qr": {"mode": "auto", "url": "", "utm": "", "label": ""},
     # Download without internet. A router or hotspot next to the booth spans a
